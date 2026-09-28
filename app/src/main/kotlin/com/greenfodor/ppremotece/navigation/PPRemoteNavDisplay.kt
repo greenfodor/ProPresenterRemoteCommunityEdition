@@ -1,17 +1,30 @@
 package com.greenfodor.ppremotece.navigation
 
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.feature.connect.ConnectRoot
 import com.greenfodor.ppremotece.feature.connect.ConnectRoute
+import com.greenfodor.ppremotece.feature.playlist.PlaylistsRoute
+import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
+import com.greenfodor.ppremotece.feature.playlist.grid.SlideGridRoot
+import com.greenfodor.ppremotece.feature.playlist.tree.PlaylistTreeRoot
 
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun PPRemoteNavDisplay(modifier: Modifier = Modifier) {
     val backStack = rememberNavBackStack(ConnectRoute)
+    val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>()
     NavDisplay(
         backStack = backStack,
         modifier = modifier,
@@ -20,8 +33,31 @@ fun PPRemoteNavDisplay(modifier: Modifier = Modifier) {
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator()
         ),
+        sceneStrategies = listOf(listDetailStrategy),
         entryProvider = entryProvider {
-            entry<ConnectRoute> { }
+            entry<ConnectRoute> {
+                ConnectRoot(onConnected = { backStack.replaceAll(PlaylistsRoute) })
+            }
+            entry<PlaylistsRoute>(metadata = ListDetailSceneStrategy.listPane()) {
+                PlaylistTreeRoot(
+                    onOpenItem = { item ->
+                        backStack.removeAll { it is SlideGridRoute }
+                        backStack.add(SlideGridRoute(playlistUuid = item.playlistUuid, itemIndex = item.index))
+                    },
+                    onDisconnected = { backStack.replaceAll(ConnectRoute) }
+                )
+            }
+            entry<SlideGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
+                SlideGridRoot(
+                    item = PlaylistItemKey(playlistUuid = route.playlistUuid, index = route.itemIndex),
+                    onBack = { backStack.removeLastOrNull() }
+                )
+            }
         }
     )
+}
+
+private fun NavBackStack<NavKey>.replaceAll(key: NavKey) {
+    add(key)
+    while (size > 1) removeAt(0)
 }

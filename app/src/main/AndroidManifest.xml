@@ -10,6 +10,7 @@
         android:allowBackup="false"
         android:label="@string/app_name"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.PPRemote">
         <activity
             android:name=".MainActivity"

@@ -33,8 +33,8 @@ MVI presentation (State / Action / Event, `XxxRoot` / `XxxScreen`, `UiText`).
 |----------------------|--------------------------------------|----------------------------------------------------------------------------------|
 | `:app`               | `ppremotece.android.application`     | `MainActivity`, `PPRemoteApplication` (Koin start), the `NavDisplay`             |
 | `:core:domain`       | `ppremotece.jvm.library`             | Pure Kotlin: models, arrangement expansion, status-stream frame parser           |
-| `:core:data`         | `ppremotece.android.library`         | Ktor client, NSD, DataStore, repositories, DTOs + mappers                        |
-| `:core:designsystem` | `ppremotece.android.library.compose` | Dark-only `PPRemoteTheme`, colour scheme, shapes, `GroupColors` extended token   |
+| `:core:data`         | `ppremotece.android.library`         | Ktor client, status stream, `ProPresenterSession`, NSD, DataStore, DTOs, Koin    |
+| `:core:designsystem` | `ppremotece.android.library.compose` | Dark-only `PPRemoteTheme`, `GroupColors`, icons, `UiText`, `ObserveAsEvents`     |
 | `:feature:connect`   | `ppremotece.android.feature`         | Discovery / manual host, connect screen, `ConnectRoute`                          |
 | `:feature:playlist`  | `ppremotece.android.feature`         | Playlist tree + slide grid                                                       |
 

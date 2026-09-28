@@ -16,6 +16,9 @@ dependencies {
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.okhttp)
+    implementation(platform(libs.koin.bom))
+    implementation(libs.koin.android)
+    implementation(libs.androidx.datastore.preferences)
 
     testImplementation(libs.assertk)
     testImplementation(libs.turbine)
