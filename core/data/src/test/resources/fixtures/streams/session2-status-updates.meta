@@ -1,0 +1,368 @@
+# HTTP/1.1 200 OK  ttfb=378ms  transfer-encoding: chunked; connection: close; content-type: application/octet-stream; vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers; date: Sun, 27 Sep 2026 18:58:27 GMT
+
+# +0.378s chunk 1 (208 B) tail=b'}}\r\n\r\n'
+
+# +0.378s chunk 2 (698 B) tail=b'}}\r\n\r\n'
+
+# +0.378s chunk 3 (258 B) tail=b'}}\r\n\r\n'
+
+# +0.378s chunk 4 (49 B) tail=b'7}\r\n\r\n'
+
+# +9.253s chunk 5 (49 B) tail=b'6}\r\n\r\n'
+
+# +10.253s chunk 6 (49 B) tail=b'7}\r\n\r\n'
+
+# +11.253s chunk 7 (49 B) tail=b'8}\r\n\r\n'
+
+# +17.253s chunk 8 (49 B) tail=b'4}\r\n\r\n'
+
+# +18.296s chunk 9 (49 B) tail=b'5}\r\n\r\n'
+
+# +20.252s chunk 10 (49 B) tail=b'7}\r\n\r\n'
+
+# +24.252s chunk 11 (49 B) tail=b'1}\r\n\r\n'
+
+# +25.260s chunk 12 (49 B) tail=b'2}\r\n\r\n'
+
+# +27.309s chunk 13 (49 B) tail=b'4}\r\n\r\n'
+
+# +31.302s chunk 14 (49 B) tail=b'8}\r\n\r\n'
+
+# +32.253s chunk 15 (49 B) tail=b'9}\r\n\r\n'
+
+# +33.254s chunk 16 (49 B) tail=b'0}\r\n\r\n'
+
+# +36.253s chunk 17 (49 B) tail=b'3}\r\n\r\n'
+
+# +37.254s chunk 18 (49 B) tail=b'4}\r\n\r\n'
+
+# +38.265s chunk 19 (49 B) tail=b'5}\r\n\r\n'
+
+# +41.253s chunk 20 (49 B) tail=b'8}\r\n\r\n'
+
+# +42.258s chunk 21 (49 B) tail=b'9}\r\n\r\n'
+
+# +43.282s chunk 22 (49 B) tail=b'0}\r\n\r\n'
+
+# +46.252s chunk 23 (49 B) tail=b'3}\r\n\r\n'
+
+# +47.276s chunk 24 (49 B) tail=b'4}\r\n\r\n'
+
+# +48.300s chunk 25 (49 B) tail=b'5}\r\n\r\n'
+
+# +51.271s chunk 26 (49 B) tail=b'8}\r\n\r\n'
+
+# +52.294s chunk 27 (49 B) tail=b'9}\r\n\r\n'
+
+# +53.320s chunk 28 (49 B) tail=b'0}\r\n\r\n'
+
+# +54.253s chunk 29 (49 B) tail=b'1}\r\n\r\n'
+
+# +57.311s chunk 30 (49 B) tail=b'4}\r\n\r\n'
+
+# +58.253s chunk 31 (49 B) tail=b'5}\r\n\r\n'
+
+# +60.281s chunk 32 (49 B) tail=b'7}\r\n\r\n'
+
+# +61.305s chunk 33 (49 B) tail=b'8}\r\n\r\n'
+
+# +63.253s chunk 34 (49 B) tail=b'0}\r\n\r\n'
+
+# +66.253s chunk 35 (49 B) tail=b'3}\r\n\r\n'
+
+# +69.088s chunk 36 (698 B) tail=b'}}\r\n\r\n'
+
+# +69.292s chunk 37 (49 B) tail=b'6}\r\n\r\n'
+
+# +70.317s chunk 38 (186 B) tail=b'}}\r\n\r\n'
+
+# +70.419s chunk 39 (208 B) tail=b'}}\r\n\r\n'
+
+# +71.254s chunk 40 (49 B) tail=b'8}\r\n\r\n'
+
+# +71.474s chunk 41 (73 B) tail=b'}}\r\n\r\n'
+
+# +74.311s chunk 42 (49 B) tail=b'1}\r\n\r\n'
+
+# +76.258s chunk 43 (49 B) tail=b'3}\r\n\r\n'
+
+# +80.254s chunk 44 (49 B) tail=b'7}\r\n\r\n'
+
+# +82.297s chunk 45 (49 B) tail=b'9}\r\n\r\n'
+
+# +84.254s chunk 46 (49 B) tail=b'1}\r\n\r\n'
+
+# +86.291s chunk 47 (49 B) tail=b'3}\r\n\r\n'
+
+# +88.254s chunk 48 (49 B) tail=b'5}\r\n\r\n'
+
+# +90.284s chunk 49 (49 B) tail=b'7}\r\n\r\n'
+
+# +92.254s chunk 50 (49 B) tail=b'9}\r\n\r\n'
+
+# +94.278s chunk 51 (49 B) tail=b'1}\r\n\r\n'
+
+# +96.254s chunk 52 (49 B) tail=b'3}\r\n\r\n'
+
+# +98.272s chunk 53 (49 B) tail=b'5}\r\n\r\n'
+
+# +99.296s chunk 54 (49 B) tail=b'6}\r\n\r\n'
+
+# +100.320s chunk 55 (49 B) tail=b'7}\r\n\r\n'
+
+# +102.265s chunk 56 (49 B) tail=b'9}\r\n\r\n'
+
+# +106.261s chunk 57 (49 B) tail=b'3}\r\n\r\n'
+
+# +108.307s chunk 58 (49 B) tail=b'5}\r\n\r\n'
+
+# +109.253s chunk 59 (49 B) tail=b'6}\r\n\r\n'
+
+# +110.253s chunk 60 (49 B) tail=b'7}\r\n\r\n'
+
+# +112.301s chunk 61 (49 B) tail=b'9}\r\n\r\n'
+
+# +115.273s chunk 62 (49 B) tail=b'2}\r\n\r\n'
+
+# +116.295s chunk 63 (49 B) tail=b'3}\r\n\r\n'
+
+# +118.253s chunk 64 (49 B) tail=b'5}\r\n\r\n'
+
+# +119.264s chunk 65 (49 B) tail=b'6}\r\n\r\n'
+
+# +122.254s chunk 66 (49 B) tail=b'9}\r\n\r\n'
+
+# +125.306s chunk 67 (49 B) tail=b'2}\r\n\r\n'
+
+# +126.253s chunk 68 (49 B) tail=b'3}\r\n\r\n'
+
+# +128.275s chunk 69 (49 B) tail=b'5}\r\n\r\n'
+
+# +129.300s chunk 70 (49 B) tail=b'6}\r\n\r\n'
+
+# +132.269s chunk 71 (49 B) tail=b'9}\r\n\r\n'
+
+# +135.253s chunk 72 (49 B) tail=b'2}\r\n\r\n'
+
+# +138.311s chunk 73 (49 B) tail=b'5}\r\n\r\n'
+
+# +139.253s chunk 74 (49 B) tail=b'6}\r\n\r\n'
+
+# +141.280s chunk 75 (49 B) tail=b'8}\r\n\r\n'
+
+# +142.304s chunk 76 (49 B) tail=b'9}\r\n\r\n'
+
+# +145.274s chunk 77 (49 B) tail=b'2}\r\n\r\n'
+
+# +148.254s chunk 78 (49 B) tail=b'5}\r\n\r\n'
+
+# +149.267s chunk 79 (49 B) tail=b'6}\r\n\r\n'
+
+# +151.315s chunk 80 (49 B) tail=b'8}\r\n\r\n'
+
+# +155.309s chunk 81 (49 B) tail=b'2}\r\n\r\n'
+
+# +157.255s chunk 82 (49 B) tail=b'4}\r\n\r\n'
+
+# +158.279s chunk 83 (49 B) tail=b'5}\r\n\r\n'
+
+# +159.304s chunk 84 (49 B) tail=b'6}\r\n\r\n'
+
+# +161.254s chunk 85 (49 B) tail=b'8}\r\n\r\n'
+
+# +165.254s chunk 86 (49 B) tail=b'2}\r\n\r\n'
+
+# +167.291s chunk 87 (49 B) tail=b'4}\r\n\r\n'
+
+# +169.254s chunk 88 (49 B) tail=b'6}\r\n\r\n'
+
+# +171.284s chunk 89 (49 B) tail=b'8}\r\n\r\n'
+
+# +173.254s chunk 90 (49 B) tail=b'0}\r\n\r\n'
+
+# +175.277s chunk 91 (49 B) tail=b'2}\r\n\r\n'
+
+# +177.254s chunk 92 (49 B) tail=b'4}\r\n\r\n'
+
+# +179.271s chunk 93 (49 B) tail=b'6}\r\n\r\n'
+
+# +181.319s chunk 94 (49 B) tail=b'8}\r\n\r\n'
+
+# +183.265s chunk 95 (49 B) tail=b'0}\r\n\r\n'
+
+# +185.313s chunk 96 (49 B) tail=b'2}\r\n\r\n'
+
+# +187.258s chunk 97 (49 B) tail=b'4}\r\n\r\n'
+
+# +191.256s chunk 98 (49 B) tail=b'8}\r\n\r\n'
+
+# +193.302s chunk 99 (49 B) tail=b'0}\r\n\r\n'
+
+# +194.255s chunk 100 (49 B) tail=b'1}\r\n\r\n'
+
+# +195.255s chunk 101 (49 B) tail=b'2}\r\n\r\n'
+
+# +197.294s chunk 102 (49 B) tail=b'4}\r\n\r\n'
+
+# +200.263s chunk 103 (49 B) tail=b'7}\r\n\r\n'
+
+# +201.288s chunk 104 (49 B) tail=b'8}\r\n\r\n'
+
+# +203.255s chunk 105 (49 B) tail=b'0}\r\n\r\n'
+
+# +204.257s chunk 106 (49 B) tail=b'1}\r\n\r\n'
+
+# +207.255s chunk 107 (49 B) tail=b'4}\r\n\r\n'
+
+# +210.299s chunk 108 (49 B) tail=b'7}\r\n\r\n'
+
+# +211.324s chunk 109 (49 B) tail=b'8}\r\n\r\n'
+
+# +213.268s chunk 110 (49 B) tail=b'0}\r\n\r\n'
+
+# +214.293s chunk 111 (49 B) tail=b'1}\r\n\r\n'
+
+# +217.262s chunk 112 (49 B) tail=b'4}\r\n\r\n'
+
+# +220.255s chunk 113 (49 B) tail=b'7}\r\n\r\n'
+
+# +223.304s chunk 114 (49 B) tail=b'0}\r\n\r\n'
+
+# +224.255s chunk 115 (49 B) tail=b'1}\r\n\r\n'
+
+# +226.273s chunk 116 (49 B) tail=b'3}\r\n\r\n'
+
+# +227.298s chunk 117 (49 B) tail=b'4}\r\n\r\n'
+
+# +230.267s chunk 118 (49 B) tail=b'7}\r\n\r\n'
+
+# +233.255s chunk 119 (49 B) tail=b'0}\r\n\r\n'
+
+# +236.309s chunk 120 (49 B) tail=b'3}\r\n\r\n'
+
+# +239.280s chunk 121 (49 B) tail=b'6}\r\n\r\n'
+
+# +240.302s chunk 122 (49 B) tail=b'7}\r\n\r\n'
+
+# +242.255s chunk 123 (49 B) tail=b'9}\r\n\r\n'
+
+# +243.272s chunk 124 (49 B) tail=b'0}\r\n\r\n'
+
+# +246.254s chunk 125 (49 B) tail=b'3}\r\n\r\n'
+
+# +249.314s chunk 126 (49 B) tail=b'6}\r\n\r\n'
+
+# +250.255s chunk 127 (49 B) tail=b'7}\r\n\r\n'
+
+# +252.283s chunk 128 (49 B) tail=b'9}\r\n\r\n'
+
+# +256.277s chunk 129 (49 B) tail=b'3}\r\n\r\n'
+
+# +258.254s chunk 130 (49 B) tail=b'5}\r\n\r\n'
+
+# +259.255s chunk 131 (49 B) tail=b'6}\r\n\r\n'
+
+# +260.271s chunk 132 (49 B) tail=b'7}\r\n\r\n'
+
+# +262.319s chunk 133 (49 B) tail=b'9}\r\n\r\n'
+
+# +266.312s chunk 134 (49 B) tail=b'3}\r\n\r\n'
+
+# +268.258s chunk 135 (49 B) tail=b'5}\r\n\r\n'
+
+# +270.306s chunk 136 (49 B) tail=b'7}\r\n\r\n'
+
+# +272.255s chunk 137 (49 B) tail=b'9}\r\n\r\n'
+
+# +274.300s chunk 138 (49 B) tail=b'1}\r\n\r\n'
+
+# +276.256s chunk 139 (49 B) tail=b'3}\r\n\r\n'
+
+# +278.293s chunk 140 (49 B) tail=b'5}\r\n\r\n'
+
+# +280.255s chunk 141 (49 B) tail=b'7}\r\n\r\n'
+
+# +282.293s chunk 142 (49 B) tail=b'9}\r\n\r\n'
+
+# +284.255s chunk 143 (49 B) tail=b'1}\r\n\r\n'
+
+# +285.257s chunk 144 (49 B) tail=b'2}\r\n\r\n'
+
+# +286.281s chunk 145 (49 B) tail=b'3}\r\n\r\n'
+
+# +288.254s chunk 146 (49 B) tail=b'5}\r\n\r\n'
+
+# +292.322s chunk 147 (49 B) tail=b'9}\r\n\r\n'
+
+# +294.268s chunk 148 (49 B) tail=b'1}\r\n\r\n'
+
+# +295.292s chunk 149 (49 B) tail=b'2}\r\n\r\n'
+
+# +296.316s chunk 150 (49 B) tail=b'3}\r\n\r\n'
+
+# +298.261s chunk 151 (49 B) tail=b'5}\r\n\r\n'
+
+# +302.256s chunk 152 (49 B) tail=b'9}\r\n\r\n'
+
+# +304.303s chunk 153 (49 B) tail=b'1}\r\n\r\n'
+
+# +305.255s chunk 154 (49 B) tail=b'2}\r\n\r\n'
+
+# +308.297s chunk 155 (49 B) tail=b'5}\r\n\r\n'
+
+# +311.268s chunk 156 (49 B) tail=b'8}\r\n\r\n'
+
+# +312.290s chunk 157 (49 B) tail=b'9}\r\n\r\n'
+
+# +314.256s chunk 158 (49 B) tail=b'1}\r\n\r\n'
+
+# +315.261s chunk 159 (49 B) tail=b'2}\r\n\r\n'
+
+# +317.308s chunk 160 (49 B) tail=b'4}\r\n\r\n'
+
+# +318.256s chunk 161 (49 B) tail=b'5}\r\n\r\n'
+
+# +321.302s chunk 162 (49 B) tail=b'8}\r\n\r\n'
+
+# +324.271s chunk 163 (49 B) tail=b'1}\r\n\r\n'
+
+# +325.295s chunk 164 (49 B) tail=b'2}\r\n\r\n'
+
+# +327.255s chunk 165 (49 B) tail=b'4}\r\n\r\n'
+
+# +328.265s chunk 166 (49 B) tail=b'5}\r\n\r\n'
+
+# +331.255s chunk 167 (49 B) tail=b'8}\r\n\r\n'
+
+# +333.283s chunk 168 (49 B) tail=b'0}\r\n\r\n'
+
+# +335.255s chunk 169 (49 B) tail=b'2}\r\n\r\n'
+
+# +337.276s chunk 170 (49 B) tail=b'4}\r\n\r\n'
+
+# +339.256s chunk 171 (49 B) tail=b'6}\r\n\r\n'
+
+# +341.270s chunk 172 (49 B) tail=b'8}\r\n\r\n'
+
+# +343.318s chunk 173 (49 B) tail=b'0}\r\n\r\n'
+
+# +345.264s chunk 174 (49 B) tail=b'2}\r\n\r\n'
+
+# +347.312s chunk 175 (49 B) tail=b'4}\r\n\r\n'
+
+# +349.257s chunk 176 (49 B) tail=b'6}\r\n\r\n'
+
+# +351.305s chunk 177 (49 B) tail=b'8}\r\n\r\n'
+
+# +353.256s chunk 178 (49 B) tail=b'0}\r\n\r\n'
+
+# +355.299s chunk 179 (49 B) tail=b'2}\r\n\r\n'
+
+# +357.255s chunk 180 (49 B) tail=b'4}\r\n\r\n'
+
+# +359.293s chunk 181 (49 B) tail=b'6}\r\n\r\n'
+
+# +361.255s chunk 182 (49 B) tail=b'8}\r\n\r\n'
+# stream ended: EOFError: 
+
+# total=10904 B in 362166 ms chunks=182
