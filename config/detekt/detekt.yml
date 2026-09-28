@@ -1,0 +1,151 @@
+complexity:
+  active: true
+  ComplexCondition:
+    active: true
+    allowedConditions: 3
+  LongParameterList:
+    active: true
+    allowedFunctionParameters: 9
+    allowedConstructorParameters: 9
+    ignoreDefaultParameters: true
+    ignoreDataClasses: true
+  LongMethod:
+    active: true
+    allowedLines: 99
+  LargeClass:
+    active: true
+    allowedLines: 599
+
+style:
+  active: true
+  UnusedPrivateFunction:
+    active: true
+    allowedNames: '.*Preview'
+  MagicNumber:
+    active: true
+    ignoreNumbers:
+      - '-1'
+      - '0'
+      - '1'
+      - '2'
+      - '3'
+      - '4'
+      - '5'
+      - '6'
+      - '7'
+      - '8'
+      - '9'
+      - '10'
+      - '11'
+      - '12'
+      - '20'
+      - '180'
+      - '270'
+      - '360'
+    ignoreHashCodeFunction: true
+    ignorePropertyDeclaration: true
+    ignoreLocalVariableDeclaration: true
+    ignoreConstantDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreNamedArgument: true
+    ignoreEnums: true
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+  DestructuringDeclarationWithTooManyEntries:
+    active: false
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    functionPattern: '([a-z][a-zA-Z0-9]*)|([A-Z][a-zA-Z0-9]*)|(`.*`) '
+    excludeClassPattern: '.*'
+  MatchingDeclarationName:
+    active: false
+
+Compose:
+  active: true
+  ComposableAnnotationNaming:
+    active: false
+  ComposableNaming:
+    active: true
+  ComposableNestingDepth:
+    active: false
+  ComposableParamOrder:
+    active: false
+  CompositionLocalAllowlist:
+    active: false
+  CompositionLocalNaming:
+    active: false
+  ConditionHoist:
+    active: false
+  ContentEmitterReturningValues:
+    active: false
+  ContentSlotReused:
+    active: false
+  ContentTrailingLambda:
+    active: false
+  DefaultsVisibility:
+    active: false
+  InvalidReadOnlyComposable:
+    active: false
+  LambdaParameterEventTrailing:
+    active: false
+  LambdaParameterInRestartableEffect:
+    active: false
+  MissingNonRestartableComposable:
+    active: false
+  MissingReadOnlyComposable:
+    active: false
+  ModifierClickableOrder:
+    active: false
+  ModifierComposed:
+    active: false
+  ModifierMissing:
+    active: true
+  ModifierNaming:
+    active: false
+  ModifierNotUsedAtRoot:
+    active: false
+  ModifierReused:
+    active: true
+  ModifierWithoutDefault:
+    active: false
+  MultipleEmitters:
+    active: false
+  MutableParams:
+    active: false
+  MutableStateAutoboxing:
+    active: false
+  MutableStateParam:
+    active: false
+  ParameterNaming:
+    active: false
+  PreviewAnnotationNaming:
+    active: false
+  PreviewNaming:
+    active: false
+  PreviewPublic:
+    active: false
+  RememberContentMissing:
+    active: false
+  RememberMissing:
+    active: true
+  StaleRememberUpdatedStateInRemember:
+    active: false
+  StateParam:
+    active: false
+  UnnecessaryComposable:
+    active: false
+  UnnecessaryLaunchedEffect:
+    active: false
+  UnstableCollections:
+    active: false
+  VarsWithoutStateBacking:
+    active: false
+  ViewModelForwarding:
+    active: true
+  ViewModelInjection:
+    active: true
