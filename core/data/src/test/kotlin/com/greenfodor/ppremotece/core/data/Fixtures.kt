@@ -16,6 +16,9 @@ object Fixtures {
     fun text(name: String): String =
         requireNotNull(javaClass.getResource("/fixtures/$name")) { "missing fixture $name" }.readText()
 
+    fun bytes(name: String): ByteArray =
+        requireNotNull(javaClass.getResource("/fixtures/$name")) { "missing fixture $name" }.readBytes()
+
     fun playlist(name: String): PlaylistDto = ProPresenterJson.decodeFromString(text(name))
 
     fun presentation(name: String): PresentationResponseDto = ProPresenterJson.decodeFromString(text(name))
