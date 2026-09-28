@@ -14,6 +14,7 @@ dependencies {
     compileOnly(libs.compose.compiler.gradle.plugin)
     compileOnly(libs.detekt.gradle.plugin)
     compileOnly(libs.ktlint.gradle.plugin)
+    compileOnly(libs.animalsniffer.gradle.plugin)
 }
 
 gradlePlugin {
