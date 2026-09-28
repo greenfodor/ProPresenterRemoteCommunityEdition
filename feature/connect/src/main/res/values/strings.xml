@@ -1,0 +1,15 @@
+<resources>
+    <string name="connect_title">Connect to ProPresenter</string>
+    <string name="connect_discovered">On this network</string>
+    <string name="connect_searching">Searching for ProPresenter…</string>
+    <string name="connect_none_found">None found yet. Make sure Network is on in ProPresenter\'s settings.</string>
+    <string name="connect_search_failed">Couldn\'t search the network. Enter the address below.</string>
+    <string name="connect_manual">Enter an address</string>
+    <string name="connect_address">IP address</string>
+    <string name="connect_port">Port</string>
+    <string name="connect_button">Connect</string>
+    <string name="connect_host_address">%1$s:%2$d</string>
+    <string name="connect_error_address">Enter the ProPresenter computer\'s IP address.</string>
+    <string name="connect_error_port">Enter a port between 1 and 65535.</string>
+    <string name="connect_error_permission">Allow access to devices on the local network to find and connect to ProPresenter.</string>
+</resources>

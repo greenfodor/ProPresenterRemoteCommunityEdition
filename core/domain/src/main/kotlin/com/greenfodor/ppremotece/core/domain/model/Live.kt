@@ -28,3 +28,9 @@ data class ProPresenterVersion(
     val hostDescription: String,
     val apiVersion: String
 )
+
+data class ProPresenterHost(
+    val name: String,
+    val address: String,
+    val port: Int
+)

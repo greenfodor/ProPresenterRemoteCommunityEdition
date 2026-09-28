@@ -1,0 +1,8 @@
+<resources>
+    <string name="error_no_connection">Can\'t reach ProPresenter. Check the address and that both devices are on the same network.</string>
+    <string name="error_timeout">ProPresenter took too long to answer.</string>
+    <string name="error_not_found">ProPresenter doesn\'t have that item or cue.</string>
+    <string name="error_server">ProPresenter reported an error.</string>
+    <string name="error_serialization">ProPresenter sent a response the app can\'t read.</string>
+    <string name="error_unknown">Something went wrong talking to ProPresenter.</string>
+</resources>

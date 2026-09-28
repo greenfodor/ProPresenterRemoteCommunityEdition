@@ -29,6 +29,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -38,6 +39,7 @@ class StreamingLiveStateRepositoryTest {
 
     private val fake = FakeProPresenter()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private lateinit var client: KtorProPresenterClient
     private lateinit var repository: StreamingLiveStateRepository
 
     private val liveItem = PlaylistItemKey(playlistUuid = FakeProPresenter.SERVICE_PLAYLIST_UUID, index = 4)
@@ -46,13 +48,18 @@ class StreamingLiveStateRepositoryTest {
     @BeforeEach
     fun setUp() {
         server.dispatcher = fake
-        repository = StreamingLiveStateRepository(
-            client = KtorProPresenterClient(HttpClientFactory.create(), server.url("/").toString()),
+        client = KtorProPresenterClient(HttpClientFactory.create(), server.url("/").toString())
+        runBlocking { client.version() }
+        repository = repositoryWithWatchdog(RELAXED_WATCHDOG)
+    }
+
+    private fun repositoryWithWatchdog(watchdog: Duration) =
+        StreamingLiveStateRepository(
+            client = client,
             scope = scope,
-            watchdogTimeout = 300.milliseconds,
+            watchdogTimeout = watchdog,
             reconnectDelay = { 10.milliseconds }
         )
-    }
 
     @AfterEach
     fun tearDown() {
@@ -62,6 +69,7 @@ class StreamingLiveStateRepositoryTest {
 
     @Test
     fun `heartbeats keep one connection alive`() = runBlocking {
+        repository = repositoryWithWatchdog(WATCHDOG)
         val delivered = AtomicInteger()
         fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL, delivered = delivered))
 
@@ -95,6 +103,7 @@ class StreamingLiveStateRepositoryTest {
 
     @Test
     fun `silent host is reported as reconnecting`() = runBlocking {
+        repository = repositoryWithWatchdog(WATCHDOG)
         fake.enqueueStream(fake.stream("status-updates", StreamEnd.STALL))
 
         repository.liveState.test(timeout = 5.seconds) {
@@ -106,6 +115,7 @@ class StreamingLiveStateRepositoryTest {
 
     @Test
     fun `silent stall reconnects after the watchdog, resubscribes and re-reads the slide index`() = runBlocking {
+        repository = repositoryWithWatchdog(WATCHDOG)
         val firstDelivered = AtomicInteger()
         fake.enqueueStream(fake.stream("status-updates", StreamEnd.STALL, delivered = firstDelivered))
         fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL))
@@ -183,6 +193,8 @@ class StreamingLiveStateRepositoryTest {
     }
 
     private companion object {
+        val WATCHDOG = 300.milliseconds
+        val RELAXED_WATCHDOG = 1.seconds
         const val SLIDE_INDEX = "/v1/presentation/slide_index"
         const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active"]"""
     }
