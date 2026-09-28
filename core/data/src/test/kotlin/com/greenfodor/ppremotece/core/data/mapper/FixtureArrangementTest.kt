@@ -4,7 +4,9 @@ import assertk.assertThat
 import assertk.assertions.contains
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
+import assertk.assertions.isTrue
 import assertk.assertions.prop
 import com.greenfodor.ppremotece.core.data.Fixtures
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
@@ -15,6 +17,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistFolder
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistLeaf
 import com.greenfodor.ppremotece.core.domain.model.Presentation
+import com.greenfodor.ppremotece.core.domain.model.SlideSize
 import org.junit.jupiter.api.Test
 
 class FixtureArrangementTest {
@@ -66,6 +69,29 @@ class FixtureArrangementTest {
 
         assertThat(cueList.choice).isEqualTo(ArrangementChoice.SongOrder)
         assertThat(cueList.cues.size).isEqualTo(11)
+    }
+
+    @Test
+    fun `song C keeps its disabled slide at both of its cue indices`() {
+        val songC = Fixtures.presentation(Fixtures.SONG_C).toDomain()
+
+        val cueList = expand(arrangementTest, 6, songC)
+
+        assertThat(cueList.arrangementName()).isEqualTo("A")
+        assertThat(cueList.cues.size).isEqualTo(8)
+        assertThat(cueList.countMismatch).isFalse()
+        assertThat(cueList.cues.filterNot { it.enabled }.map { it.index }).containsExactly(1, 6)
+        assertThat(cueList.cues.map { it.groupName }.distinct()).containsExactly("Verse 1", "Chorus")
+        assertThat(cueList.cues.map { it.size }.distinct()).containsExactly(SlideSize(width = 1920, height = 858))
+    }
+
+    @Test
+    fun `slide size and enabled flag are read for every slide`() {
+        val slides = songA.groups.flatMap { it.slides }
+
+        assertThat(slides.size).isEqualTo(15)
+        assertThat(slides.map { it.size }.distinct()).containsExactly(SlideSize(width = 1920, height = 1080))
+        assertThat(slides.all { it.enabled }).isTrue()
     }
 
     @Test

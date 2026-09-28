@@ -13,7 +13,9 @@ sealed interface ArrangementChoice {
     data object SongOrder : ArrangementChoice
 }
 
+/** [countMismatch] is true when a resolved arrangement expands to a cue count other than its `totalCues`. */
 data class CueList(
     val choice: ArrangementChoice,
-    val cues: List<Cue>
+    val cues: List<Cue>,
+    val countMismatch: Boolean = false
 )

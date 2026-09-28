@@ -36,12 +36,14 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * earlier read failed, `slide_index` is read once. Any chunk resets the watchdog. When no chunk
  * arrives for [watchdogTimeout], or the stream ends or fails, the stream is closed and reopened
  * after [reconnectDelay] with the same subscriptions, and the slide index is read again.
+ * [onReconnected] is called when the first chunk of a reopened stream arrives.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
     scope: CoroutineScope,
     private val watchdogTimeout: Duration = 10.seconds,
-    private val reconnectDelay: (attempt: Int) -> Duration = ::defaultReconnectDelay
+    private val reconnectDelay: (attempt: Int) -> Duration = ::defaultReconnectDelay,
+    private val onReconnected: () -> Unit = {}
 ) : LiveStateRepository {
     override val liveState: StateFlow<LiveState> =
         channelFlow {
@@ -55,6 +57,7 @@ class StreamingLiveStateRepository(
                 val failure = runCatching {
                     streamChunks().collect { chunk ->
                         attempt = 0
+                        if (state.connection == ConnectionStatus.RECONNECTING) onReconnected()
                         var next = state.copy(connection = ConnectionStatus.CONNECTED)
                         for (event in parser.events(chunk)) {
                             when (event) {

@@ -3,7 +3,6 @@ package com.greenfodor.ppremotece.feature.playlist.tree
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +27,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -123,7 +123,9 @@ fun PlaylistTreeScreen(
             )
         }
     ) { padding ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = { onAction(PlaylistTreeAction.OnRefresh) },
             modifier = Modifier.fillMaxSize().padding(padding).background(MaterialTheme.colorScheme.surfaceContainerLow)
         ) {
             when {
@@ -142,13 +144,17 @@ fun PlaylistTreeScreen(
 
 @Composable
 private fun TreeError(error: UiText, onRetry: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = error.asString(), color = MaterialTheme.colorScheme.error)
-        Button(onClick = onRetry) { Text(stringResource(R.string.playlists_retry)) }
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item {
+            Column(
+                modifier = Modifier.fillParentMaxSize().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = error.asString(), color = MaterialTheme.colorScheme.error)
+                Button(onClick = onRetry) { Text(stringResource(R.string.playlists_retry)) }
+            }
+        }
     }
 }
 

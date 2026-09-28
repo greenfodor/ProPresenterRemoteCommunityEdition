@@ -44,7 +44,7 @@ class KtorProPresenterClientTest {
         val playlist = client.playlist("6f760dbf-04b9-46f2-9bb3-33eeea6a6d90") as Result.Success
         val presentation = client.presentation(FakeProPresenter.SONG_A_UUID) as Result.Success
 
-        assertThat(playlist.data.items.size).isEqualTo(6)
+        assertThat(playlist.data.items.size).isEqualTo(7)
         assertThat(presentation.data.arrangements.map { it.name }).containsExactly("Full", "Chorus Only", "Short", "")
     }
 

@@ -23,7 +23,16 @@ data class GroupColor(
 )
 
 data class Slide(
-    val text: String
+    val text: String,
+    val enabled: Boolean = true,
+    val size: SlideSize? = null,
+    val label: String = ""
+)
+
+/** A slide's size in pixels. */
+data class SlideSize(
+    val width: Int,
+    val height: Int
 )
 
 /** An ordered list of group uuids; a group may appear more than once. */
@@ -34,10 +43,18 @@ data class Arrangement(
     val totalCues: Int
 )
 
-/** One triggerable slide position of a playlist item, numbered from 0 in arrangement order. */
+/**
+ * One triggerable slide position of a playlist item, numbered from 0 in arrangement order.
+ * [slideIndexInGroup] is the slide's position within its group.
+ */
 data class Cue(
     val index: Int,
+    val groupUuid: String,
     val groupName: String,
     val groupColor: GroupColor?,
-    val slideText: String
+    val slideIndexInGroup: Int,
+    val slideText: String,
+    val enabled: Boolean,
+    val size: SlideSize?,
+    val slideLabel: String = ""
 )

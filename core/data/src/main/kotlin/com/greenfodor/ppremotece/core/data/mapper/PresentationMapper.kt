@@ -4,11 +4,13 @@ import com.greenfodor.ppremotece.core.data.dto.ArrangementDto
 import com.greenfodor.ppremotece.core.data.dto.ColorDto
 import com.greenfodor.ppremotece.core.data.dto.GroupDto
 import com.greenfodor.ppremotece.core.data.dto.PresentationResponseDto
+import com.greenfodor.ppremotece.core.data.dto.SlideDto
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.Group
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.Slide
+import com.greenfodor.ppremotece.core.domain.model.SlideSize
 
 fun PresentationResponseDto.toDomain(): Presentation =
     Presentation(
@@ -23,7 +25,15 @@ private fun GroupDto.toDomain(): Group =
         uuid = uuid,
         name = name,
         color = color?.toDomain(),
-        slides = slides.map { Slide(text = it.text) }
+        slides = slides.map { it.toDomain() }
+    )
+
+private fun SlideDto.toDomain(): Slide =
+    Slide(
+        text = text,
+        enabled = enabled,
+        size = size?.let { SlideSize(width = it.width, height = it.height) },
+        label = label
     )
 
 private fun ColorDto.toDomain(): GroupColor =

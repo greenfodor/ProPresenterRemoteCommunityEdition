@@ -11,6 +11,7 @@ object Fixtures {
     const val SONG_A = "presentation-08672906.json"
     const val SONG_B = "presentation-ae707301.json"
     const val PLACEHOLDER_SONG = "presentation-1d6c5bd9.json"
+    const val SONG_C = "presentation-44a66b34.json"
     const val PLAYLIST_TREE = "playlists.json"
 
     fun text(name: String): String =

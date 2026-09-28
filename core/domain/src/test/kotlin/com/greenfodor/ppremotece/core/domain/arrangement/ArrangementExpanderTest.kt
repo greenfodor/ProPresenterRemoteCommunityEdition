@@ -3,7 +3,9 @@ package com.greenfodor.ppremotece.core.domain.arrangement
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
+import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.Cue
 import com.greenfodor.ppremotece.core.domain.model.Group
@@ -11,6 +13,7 @@ import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.PresentationRef
 import com.greenfodor.ppremotece.core.domain.model.Slide
+import com.greenfodor.ppremotece.core.domain.model.SlideSize
 import org.junit.jupiter.api.Test
 
 class ArrangementExpanderTest {
@@ -38,9 +41,67 @@ class ArrangementExpanderTest {
         assertThat(result.choice).isEqualTo(ArrangementChoice.Resolved(full))
         assertThat(result.cues.map { it.slideText }).containsExactly("V1", "V2", "C1", "C2", "B1")
         assertThat(result.cues.map { it.index }).containsExactly(0, 1, 2, 3, 4)
-        assertThat(
-            result.cues.first()
-        ).isEqualTo(Cue(index = 0, groupName = "Verse 1", groupColor = red, slideText = "V1"))
+        assertThat(result.cues.first()).isEqualTo(
+            Cue(
+                index = 0,
+                groupUuid = "g-verse",
+                groupName = "Verse 1",
+                groupColor = red,
+                slideIndexInGroup = 0,
+                slideText = "V1",
+                enabled = true,
+                size = null
+            )
+        )
+        assertThat(result.cues.map { it.slideIndexInGroup }).containsExactly(0, 1, 0, 1, 0)
+        assertThat(result.countMismatch).isFalse()
+    }
+
+    @Test
+    fun `disabled slide keeps its cue index and carries its size`() {
+        val size = SlideSize(width = 1920, height = 858)
+        val withDisabled = Group(
+            uuid = "g-verse",
+            name = "Verse 1",
+            color = null,
+            slides = listOf(
+                Slide("V1", size = size),
+                Slide("V2", enabled = false, size = size),
+                Slide("V3", size = size)
+            )
+        )
+        val presentation = Presentation(
+            uuid = "p-3",
+            name = "Song",
+            groups = listOf(withDisabled, chorus),
+            arrangements = listOf(Arrangement("a-a", "A", listOf("g-verse", "g-chorus", "g-verse"), totalCues = 8))
+        )
+
+        val result = ArrangementExpander.expand(presentation, ref("a-a", "A"))
+
+        assertThat(result.cues.size).isEqualTo(8)
+        assertThat(result.cues.filterNot { it.enabled }.map { it.index }).containsExactly(1, 6)
+        assertThat(result.cues[1].slideText).isEqualTo("V2")
+        assertThat(result.cues[1].size).isEqualTo(size)
+        assertThat(result.countMismatch).isFalse()
+    }
+
+    @Test
+    fun `dangling group uuid is skipped and flags a count mismatch`() {
+        val dangling = Arrangement("a-dangling", "Dangling", listOf("g-verse", "g-gone", "g-bridge"), totalCues = 5)
+        val presentation = presentation.copy(arrangements = listOf(dangling))
+
+        val result = ArrangementExpander.expand(presentation, ref("a-dangling", "Dangling"))
+
+        assertThat(result.cues.map { it.slideText }).containsExactly("V1", "V2", "B1")
+        assertThat(result.countMismatch).isTrue()
+    }
+
+    @Test
+    fun `song order never flags a count mismatch`() {
+        val result = ArrangementExpander.expand(presentation, ref("a-none", ""))
+
+        assertThat(result.countMismatch).isFalse()
     }
 
     @Test

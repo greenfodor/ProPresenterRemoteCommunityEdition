@@ -7,7 +7,8 @@ Usage: sanitize_fixtures.py <captures dir> <out dir>
 entities). Every other name is replaced by a generated placeholder, slide text and notes by
 "<group> · <n>", file paths by C:\\PP\\<name>.pro and private IPv4 addresses by 192.0.2.14.
 The script ends with a leak check and exits 1 if any original name, lyric line, user path or
-private IP is still present in the output.
+private IP is still present in the output, or if any image or binary file (*.jpg, *.jpeg, *.png,
+*.bin) is under core/data/src/test/resources/.
 """
 import json
 import re
@@ -16,13 +17,14 @@ from pathlib import Path
 
 PLAYLIST_TREE = "t/playlists-now.json"
 PLAYLISTS = [
-    "watch/215006-playlist.json",
+    "stage4/pprtest2.json",
     "t/pl-065f53c3-e299-4e07-8ac2-258ca76b7188.json",
 ]
 PRESENTATIONS = [
     "watch/215149-pres-08672906.json",
     "t/pres-prunc.json",
-    "watch/214950-pres-1d6c5bd9.json",
+    "../stage4-device/pres-1d6c5bd9.json",
+    "stage4/pres-disabled.json",
 ]
 VERSION = "t/version.json"
 STREAMS = [
@@ -51,6 +53,8 @@ PLACEHOLDER_WORDS = {
     "text", "notes", "item", "host", "song", "full", "chorus", "only", "short", "bridge",
     "service", "test", "+", "·",
 }
+TEST_RESOURCES = Path(__file__).resolve().parent.parent / "core" / "data" / "src" / "test" / "resources"
+IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bin"}
 MIN_NAME_SUBSTRING = 4
 MIN_LYRIC_LINE = 5
 
@@ -357,6 +361,9 @@ def leak_check(sanitizer, out_dir):
             leaks.append(f"{path}: user path")
         if any(not is_documentation_ip(address) for address in IPV4.findall(content)):
             leaks.append(f"{path}: IP address")
+    for path in sorted(TEST_RESOURCES.rglob("*")):
+        if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES:
+            leaks.append(f"{path}: image or binary file in test resources")
     if leaks:
         for leak in sorted(set(leaks)):
             print(f"LEAK {leak}", file=sys.stderr)

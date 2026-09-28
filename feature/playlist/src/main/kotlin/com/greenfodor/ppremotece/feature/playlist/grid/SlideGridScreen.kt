@@ -1,23 +1,29 @@
 package com.greenfodor.ppremotece.feature.playlist.grid
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -32,10 +38,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -43,6 +53,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -61,12 +72,18 @@ import org.koin.core.parameter.parametersOf
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val CellMinWidth = 200.dp
-private val CellMinHeight = 120.dp
-private val LabelStripHeight = 28.dp
+private val RingSlot = 4.dp
+private val RingGap = 4.dp
 private val LiveRingWidth = 4.dp
-private val IdleBorderWidth = 1.dp
+private val NextRingWidth = 2.dp
+private val FrameWidth = 4.dp
+private val FrameCorner = 4.dp
+private val LabelStripHeight = 28.dp
+private val BadgeIconSize = 16.dp
 private val StepButtonHeight = 64.dp
-private const val SLIDE_TEXT_MAX_LINES = 4
+private const val DISABLED_ALPHA = 0.38f
+
+private enum class CueMark { NONE, LIVE, NEXT }
 
 @Composable
 fun SlideGridRoot(
@@ -104,6 +121,7 @@ fun SlideGridScreen(
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -113,6 +131,23 @@ fun SlideGridScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(painterResource(DesignR.drawable.ic_arrow_back), stringResource(R.string.grid_back))
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(painterResource(DesignR.drawable.ic_more_vert), stringResource(R.string.playlists_more))
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.grid_reload)) },
+                            leadingIcon = {
+                                Icon(painterResource(DesignR.drawable.ic_refresh), contentDescription = null)
+                            },
+                            onClick = {
+                                menuOpen = false
+                                onAction(SlideGridAction.OnReloadClick)
+                            }
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -150,6 +185,7 @@ private fun CueGrid(state: SlideGridState, onAction: (SlideGridAction) -> Unit) 
                 ?: pluralStringResource(R.plurals.grid_cue_count, cueCount, cueCount),
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
         )
+        if (state.countMismatch) CountMismatchLine()
         LazyVerticalGrid(
             columns = GridCells.Adaptive(CellMinWidth),
             contentPadding = PaddingValues(12.dp),
@@ -158,69 +194,148 @@ private fun CueGrid(state: SlideGridState, onAction: (SlideGridAction) -> Unit) 
             modifier = Modifier.fillMaxSize()
         ) {
             items(state.cues, key = { it.index }) { cue ->
-                CueCell(cue = cue, isLive = cue.index == state.liveCueIndex, onClick = {
-                    onAction(SlideGridAction.OnCueClick(cue.index))
-                })
+                CueCell(
+                    cue = cue,
+                    aspect = state.aspect,
+                    mark = when (cue.index) {
+                        state.liveCueIndex -> CueMark.LIVE
+                        state.nextCueIndex -> CueMark.NEXT
+                        else -> CueMark.NONE
+                    },
+                    onClick = { onAction(SlideGridAction.OnCueClick(cue.index)) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun CueCell(cue: CueUi, isLive: Boolean, onClick: () -> Unit) {
-    val groupColors = PPRemoteTheme.groupColors
-    val stripColor = cue.groupColor?.takeIf { it.alpha > 0f }?.toColor() ?: groupColors.fallback
+private fun CountMismatchLine() {
     Surface(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.extraSmall,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = if (isLive) {
-            BorderStroke(LiveRingWidth, MaterialTheme.colorScheme.tertiary)
-        } else {
-            BorderStroke(IdleBorderWidth, MaterialTheme.colorScheme.outlineVariant)
-        },
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = stringResource(R.string.grid_count_mismatch),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun CueCell(cue: CueUi, aspect: Float, mark: CueMark, onClick: () -> Unit) {
+    val groupColors = PPRemoteTheme.groupColors
+    val frameColor = cue.groupColor?.takeIf { it.alpha > 0f }?.toColor() ?: MaterialTheme.colorScheme.outlineVariant
+    val ringModifier = when (mark) {
+        CueMark.LIVE -> Modifier.border(LiveRingWidth, MaterialTheme.colorScheme.tertiary, RingShape)
+        CueMark.NEXT -> Modifier.border(NextRingWidth, MaterialTheme.colorScheme.secondary, RingShape)
+        CueMark.NONE -> Modifier
+    }
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = CellMinHeight)
-            .semantics { selected = isLive }
+            .alpha(if (cue.enabled) 1f else DISABLED_ALPHA)
+            .then(ringModifier)
+            .clip(RingShape)
+            .clickable(enabled = cue.enabled, onClick = onClick)
+            .semantics { selected = mark == CueMark.LIVE }
+            .padding(RingSlot + RingGap)
     ) {
-        Column {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(FrameCorner))
+                .background(frameColor)
+                .padding(start = FrameWidth, top = FrameWidth, end = FrameWidth)
+        ) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(LabelStripHeight)
-                    .background(stripColor)
-                    .padding(horizontal = 8.dp)
+                    .aspectRatio(aspect)
+                    .background(Color.Black)
             ) {
+                Text(
+                    text = cue.text.ifBlank { cue.groupName },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.align(Alignment.Center).padding(8.dp)
+                )
+                CueBadges(mark = mark, enabled = cue.enabled)
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth().height(LabelStripHeight)
+            ) {
+                val labelColor = groupColors.labelOn(frameColor)
                 Text(
                     text = stringResource(R.string.grid_cue_label, cue.index + 1, cue.groupName),
                     style = MaterialTheme.typography.labelMedium,
-                    color = groupColors.labelOn(stripColor),
+                    color = labelColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-                if (isLive) LiveBadge()
+                if (cue.label.isNotEmpty()) {
+                    Text(
+                        text = cue.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = labelColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
-            Text(
-                text = cue.text,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = SLIDE_TEXT_MAX_LINES,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(8.dp)
+        }
+    }
+}
+
+private val RingShape = RoundedCornerShape(FrameCorner + RingGap + RingSlot)
+
+@Composable
+private fun BoxScope.CueBadges(mark: CueMark, enabled: Boolean) {
+    when (mark) {
+        CueMark.LIVE -> Badge(
+            text = stringResource(R.string.grid_live),
+            container = MaterialTheme.colorScheme.tertiary,
+            content = MaterialTheme.colorScheme.onTertiary
+        )
+        CueMark.NEXT -> Badge(
+            text = stringResource(R.string.grid_next_badge),
+            container = MaterialTheme.colorScheme.secondary,
+            content = MaterialTheme.colorScheme.onSecondary
+        )
+        CueMark.NONE -> Unit
+    }
+    if (!enabled) {
+        Surface(
+            shape = MaterialTheme.shapes.extraSmall,
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
+        ) {
+            Icon(
+                painter = painterResource(DesignR.drawable.ic_visibility_off),
+                contentDescription = stringResource(R.string.grid_disabled),
+                modifier = Modifier.padding(2.dp).size(BadgeIconSize)
             )
         }
     }
 }
 
 @Composable
-private fun LiveBadge() {
-    Surface(shape = MaterialTheme.shapes.extraSmall, color = MaterialTheme.colorScheme.tertiary) {
+private fun BoxScope.Badge(text: String, container: Color, content: Color) {
+    Surface(
+        shape = MaterialTheme.shapes.extraSmall,
+        color = container,
+        modifier = Modifier.align(Alignment.TopStart).padding(4.dp)
+    ) {
         Text(
-            text = stringResource(R.string.grid_live),
+            text = text,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onTertiary,
+            color = content,
             modifier = Modifier.padding(horizontal = 4.dp)
         )
     }
@@ -261,14 +376,19 @@ private fun SlideGridScreenPreview() {
     PPRemoteTheme {
         SlideGridScreen(
             state = SlideGridState(
-                title = "Song A",
-                label = ArrangementLabel.Named("Chorus Only"),
+                title = "Song C",
+                label = ArrangementLabel.Named("A"),
                 cues = listOf(
-                    CueUi(0, "Loop", null, ""),
-                    CueUi(1, "Chorus 1", chorus, "Chorus 1 · 1"),
-                    CueUi(2, "Chorus 1", chorus, "Chorus 1 · 2")
+                    CueUi(0, "Verse 1", null, "Verse 1 · 1", label = "", enabled = true),
+                    CueUi(1, "Verse 1", null, "Verse 1 · 2", label = "", enabled = false),
+                    CueUi(2, "Verse 1", null, "Verse 1 · 3", label = "", enabled = true),
+                    CueUi(3, "Chorus", chorus, "Chorus · 1", label = "Label 01", enabled = true),
+                    CueUi(4, "Chorus", chorus, "", label = "", enabled = true)
                 ),
-                liveCueIndex = 1,
+                aspect = 1920f / 858f,
+                countMismatch = true,
+                liveCueIndex = 0,
+                nextCueIndex = 2,
                 isLoading = false
             ),
             onAction = {},

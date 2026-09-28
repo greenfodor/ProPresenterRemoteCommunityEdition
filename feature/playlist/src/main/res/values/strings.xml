@@ -10,6 +10,10 @@
     <string name="grid_previous">Previous</string>
     <string name="grid_next">Next</string>
     <string name="grid_live">LIVE</string>
+    <string name="grid_next_badge">NEXT</string>
+    <string name="grid_disabled">Disabled slide</string>
+    <string name="grid_reload">Reload slides</string>
+    <string name="grid_count_mismatch">Arrangement partly unresolved; cue numbers may differ from ProPresenter</string>
     <string name="grid_cue_label">%1$d. %2$s</string>
     <string name="grid_item_has_no_slides">This playlist item has no slides.</string>
     <plurals name="grid_cue_count">
