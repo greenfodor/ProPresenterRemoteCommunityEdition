@@ -8,6 +8,7 @@ import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistFolder
+import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
 import com.greenfodor.ppremotece.core.domain.model.PlaylistLeaf
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
@@ -15,19 +16,25 @@ import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
+import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.toArrangementLabel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+
+private const val MAX_PARALLEL_PRESENTATION_READS = 4
 
 /**
- * Playlist tree: folders and playlists expand in place. Expanding a playlist loads its items and
- * the presentations they play, so each item row can show the arrangement chosen for that item.
+ * Playlist tree: folders and playlists expand in place. Each time a playlist is expanded its items
+ * and their presentations are read again, and each item is labelled with its arrangement.
  */
 class PlaylistTreeViewModel(
     private val client: ProPresenterClient,
@@ -43,7 +50,7 @@ class PlaylistTreeViewModel(
     private val expanded = mutableSetOf<String>()
     private val playlists = mutableMapOf<String, Playlist>()
     private val loadingPlaylists = mutableSetOf<String>()
-    private val presentations = mutableMapOf<String, Presentation>()
+    private val labels = mutableMapOf<PlaylistItemKey, ArrangementLabel?>()
 
     init {
         loadTree()
@@ -54,7 +61,7 @@ class PlaylistTreeViewModel(
             is PlaylistTreeAction.OnFolderClick -> toggle(action.uuid)
             is PlaylistTreeAction.OnPlaylistClick -> {
                 toggle(action.uuid)
-                if (action.uuid in expanded && action.uuid !in playlists) loadPlaylist(action.uuid)
+                if (action.uuid in expanded) loadPlaylist(action.uuid)
             }
             is PlaylistTreeAction.OnItemClick -> viewModelScope.launch {
                 _events.send(PlaylistTreeEvent.OpenItem(action.key))
@@ -75,19 +82,21 @@ class PlaylistTreeViewModel(
                     tree = nodes
                     _state.update { it.copy(isLoading = false) }
                     publish()
+                    expanded.filter { it in playlists }.forEach(::loadPlaylist)
                 }
                 .onFailure { error -> _state.update { it.copy(isLoading = false, error = error.toUiText()) } }
         }
     }
 
     private fun loadPlaylist(uuid: String) {
-        loadingPlaylists += uuid
+        if (!loadingPlaylists.add(uuid)) return
         publish()
         viewModelScope.launch {
             client.playlist(uuid)
                 .onSuccess { playlist ->
+                    labels.keys.removeAll { it.playlistUuid == uuid }
+                    labels += labelsOf(playlist, readPresentations(playlist))
                     playlists[uuid] = playlist
-                    loadPresentations(playlist)
                 }
                 .onFailure { error ->
                     expanded -= uuid
@@ -98,13 +107,27 @@ class PlaylistTreeViewModel(
         }
     }
 
-    private suspend fun loadPresentations(playlist: Playlist) {
-        val missing = playlist.items.mapNotNull { it.presentation?.presentationUuid }.distinct() - presentations.keys
-        missing
-            .map { uuid -> viewModelScope.async { uuid to client.presentation(uuid) } }
-            .awaitAll()
-            .forEach { (uuid, result) -> if (result is Result.Success) presentations[uuid] = result.data }
+    private suspend fun readPresentations(playlist: Playlist): Map<String, Presentation> {
+        val permits = Semaphore(MAX_PARALLEL_PRESENTATION_READS)
+        val uuids = playlist.items.mapNotNull { it.presentation?.presentationUuid }.distinct()
+        return coroutineScope {
+            uuids
+                .map { uuid -> async { permits.withPermit { uuid to client.presentation(uuid) } } }
+                .awaitAll()
+                .mapNotNull { (uuid, result) -> (result as? Result.Success)?.let { uuid to it.data } }
+                .toMap()
+        }
     }
+
+    private fun labelsOf(
+        playlist: Playlist,
+        presentations: Map<String, Presentation>
+    ): Map<PlaylistItemKey, ArrangementLabel?> =
+        playlist.items.mapNotNull { item ->
+            val ref = item.presentation ?: return@mapNotNull null
+            val presentation = presentations[ref.presentationUuid] ?: return@mapNotNull null
+            item.key to ArrangementExpander.expand(presentation, ref).choice.toArrangementLabel()
+        }.toMap()
 
     private fun toggle(uuid: String) {
         if (!expanded.remove(uuid)) expanded += uuid
@@ -140,10 +163,14 @@ class PlaylistTreeViewModel(
             if (item.type == PlaylistItemType.HEADER) {
                 TreeRowUi.Header(id, depth, item.name)
             } else {
-                val ref = item.presentation
-                val label = ref?.let { presentations[it.presentationUuid] }
-                    ?.let { ArrangementExpander.expand(it, ref).choice.toArrangementLabel() }
-                TreeRowUi.Item(id, depth, item.name, item.key, label, opensSlides = ref != null)
+                TreeRowUi.Item(
+                    id,
+                    depth,
+                    item.name,
+                    item.key,
+                    labels[item.key],
+                    opensSlides = item.presentation != null
+                )
             }
         }
 }

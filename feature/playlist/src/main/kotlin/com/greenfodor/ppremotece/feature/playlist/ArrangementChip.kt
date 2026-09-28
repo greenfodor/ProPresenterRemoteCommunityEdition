@@ -25,13 +25,12 @@ sealed interface ArrangementLabel {
     ) : ArrangementLabel
 
     data object Unnamed : ArrangementLabel
-
-    data object SongOrder : ArrangementLabel
 }
 
-fun ArrangementChoice.toArrangementLabel(): ArrangementLabel =
+/** The chip label for an item's arrangement; null when the item plays the presentation's own group order. */
+fun ArrangementChoice.toArrangementLabel(): ArrangementLabel? =
     when (this) {
-        ArrangementChoice.SongOrder -> ArrangementLabel.SongOrder
+        ArrangementChoice.SongOrder -> null
         is ArrangementChoice.Resolved ->
             if (arrangement.name.isEmpty()) ArrangementLabel.Unnamed else ArrangementLabel.Named(arrangement.name)
     }
@@ -41,7 +40,6 @@ fun ArrangementLabel.text(): String =
     when (this) {
         is ArrangementLabel.Named -> name
         ArrangementLabel.Unnamed -> stringResource(R.string.arrangement_unnamed)
-        ArrangementLabel.SongOrder -> stringResource(R.string.arrangement_song_order)
     }
 
 private val ChipIconSize = 16.dp

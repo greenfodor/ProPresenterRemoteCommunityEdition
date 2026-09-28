@@ -23,6 +23,9 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.job
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.io.IOException
 
 /**
  * The connection to the current ProPresenter host: its [KtorProPresenterClient] and its
@@ -41,6 +44,7 @@ class ProPresenterSession(
 
     private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val connection = MutableStateFlow<Connection?>(null)
+    private val restoreMutex = Mutex()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val liveState: Flow<LiveState> =
@@ -54,7 +58,11 @@ class ProPresenterSession(
             close()
             val scope = CoroutineScope(sessionScope.coroutineContext + SupervisorJob(sessionScope.coroutineContext.job))
             connection.value = Connection(client, StreamingLiveStateRepository(client, scope), scope)
-            savedHostStore.save(host)
+            try {
+                savedHostStore.save(host)
+            } catch (_: IOException) {
+                // The connection stays open; only the saved host is not updated.
+            }
         }
     }
 
@@ -67,6 +75,14 @@ class ProPresenterSession(
         connection.getAndUpdate { null }?.scope?.cancel()
     }
 
-    /** Forwards to the current host's client. */
-    val client: ProPresenterClient = CurrentHostClient { connection.value?.client }
+    /** Forwards to the current host's client; with none connected, first reconnects to the saved host. */
+    val client: ProPresenterClient = CurrentHostClient(::currentClient)
+
+    private suspend fun currentClient(): ProPresenterClient? =
+        connection.value?.client ?: restoreMutex.withLock {
+            connection.value?.client ?: savedHostStore.read()?.let { host ->
+                connect(host)
+                connection.value?.client
+            }
+        }
 }

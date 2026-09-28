@@ -3,6 +3,7 @@
     <string name="connect_discovered">On this network</string>
     <string name="connect_searching">Searching for ProPresenter…</string>
     <string name="connect_none_found">None found yet. Make sure Network is on in ProPresenter\'s settings.</string>
+    <string name="connect_search_failed">Couldn\'t search the network. Enter the address below.</string>
     <string name="connect_manual">Enter an address</string>
     <string name="connect_address">IP address</string>
     <string name="connect_port">Port</string>

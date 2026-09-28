@@ -144,12 +144,12 @@ fun SlideGridScreen(
 @Composable
 private fun CueGrid(state: SlideGridState, onAction: (SlideGridAction) -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
-        state.label?.let { label ->
-            ArrangementChip(
-                text = pluralStringResource(R.plurals.grid_header_chip, state.cues.size, label.text(), state.cues.size),
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-            )
-        }
+        val cueCount = state.cues.size
+        ArrangementChip(
+            text = state.label?.let { pluralStringResource(R.plurals.grid_header_chip, cueCount, it.text(), cueCount) }
+                ?: pluralStringResource(R.plurals.grid_cue_count, cueCount, cueCount),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        )
         LazyVerticalGrid(
             columns = GridCells.Adaptive(CellMinWidth),
             contentPadding = PaddingValues(12.dp),

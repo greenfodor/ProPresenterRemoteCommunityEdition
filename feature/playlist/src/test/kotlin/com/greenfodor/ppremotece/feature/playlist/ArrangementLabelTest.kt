@@ -28,8 +28,8 @@ class ArrangementLabelTest {
     }
 
     @Test
-    fun `song order is labelled song order`() {
-        assertThat(ArrangementChoice.SongOrder.toArrangementLabel()).isEqualTo(ArrangementLabel.SongOrder)
+    fun `item without an arrangement has no label`() {
+        assertThat(ArrangementChoice.SongOrder.toArrangementLabel()).isNull()
     }
 
     @Test

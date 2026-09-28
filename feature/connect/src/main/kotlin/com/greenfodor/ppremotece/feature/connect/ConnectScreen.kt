@@ -59,16 +59,15 @@ fun ConnectRoot(
         viewModel.onAction(ConnectAction.OnPermissionResult(granted))
     }
     LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= LOCAL_NETWORK_PERMISSION_SDK &&
-            context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionLauncher.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
-        } else {
-            viewModel.onAction(ConnectAction.OnPermissionResult(granted = true))
-        }
+        val granted = Build.VERSION.SDK_INT < LOCAL_NETWORK_PERMISSION_SDK ||
+            context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED
+        viewModel.onAction(ConnectAction.OnStart(permissionGranted = granted))
     }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
+            ConnectEvent.RequestLocalNetworkPermission -> permissionLauncher.launch(
+                Manifest.permission.ACCESS_LOCAL_NETWORK
+            )
             ConnectEvent.Connected -> onConnected()
         }
     }
@@ -118,15 +117,20 @@ fun ConnectScreen(
 private fun DiscoveredHosts(state: ConnectState, onAction: (ConnectAction) -> Unit) {
     Text(text = stringResource(R.string.connect_discovered), style = MaterialTheme.typography.titleMedium)
     if (state.discoveredHosts.isEmpty()) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CircularProgressIndicator(modifier = Modifier.size(ProgressSize), strokeWidth = 2.dp)
-            Text(text = stringResource(R.string.connect_searching), style = MaterialTheme.typography.bodyMedium)
+        when (state.discovery) {
+            DiscoveryStatus.SEARCHING -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(ProgressSize), strokeWidth = 2.dp)
+                    Text(text = stringResource(R.string.connect_searching), style = MaterialTheme.typography.bodyMedium)
+                }
+                DiscoveryNote(stringResource(R.string.connect_none_found))
+            }
+            DiscoveryStatus.WAITING_FOR_PERMISSION -> DiscoveryNote(stringResource(R.string.connect_error_permission))
+            DiscoveryStatus.FAILED -> DiscoveryNote(stringResource(R.string.connect_search_failed))
         }
-        Text(
-            text = stringResource(R.string.connect_none_found),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
     state.discoveredHosts.forEach { host ->
         ListItem(
@@ -137,6 +141,11 @@ private fun DiscoveredHosts(state: ConnectState, onAction: (ConnectAction) -> Un
             }
         )
     }
+}
+
+@Composable
+private fun DiscoveryNote(text: String) {
+    Text(text = text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable
@@ -182,6 +191,7 @@ private fun ConnectScreenPreview() {
     PPRemoteTheme {
         ConnectScreen(
             state = ConnectState(
+                discovery = DiscoveryStatus.SEARCHING,
                 discoveredHosts = listOf(ProPresenterHost(name = "Host 01", address = "192.0.2.14", port = 50001))
             ),
             onAction = {}

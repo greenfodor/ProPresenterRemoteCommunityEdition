@@ -18,8 +18,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Connect screen: once the local network permission has been answered, browses for hosts and,
- * if a host is saved, connects to it. A failed auto-connect leaves its address and port filled in.
+ * Connect screen: browses for hosts once the local network permission is granted and connects to
+ * the saved host on start. The permission is requested on start and again on each connect attempt
+ * while it is missing; a failed auto-connect leaves its address and port filled in.
  */
 class ConnectViewModel(
     private val connectionRepository: ConnectionRepository,
@@ -32,10 +33,14 @@ class ConnectViewModel(
     val events = _events.receiveAsFlow()
 
     private var started = false
+    private var permissionGranted = false
+    private var discoveryStarted = false
+    private var pendingHost: ProPresenterHost? = null
 
     fun onAction(action: ConnectAction) {
         when (action) {
-            is ConnectAction.OnPermissionResult -> start(action.granted)
+            is ConnectAction.OnStart -> start(action.permissionGranted)
+            is ConnectAction.OnPermissionResult -> onPermissionResult(action.granted)
             is ConnectAction.OnAddressChange -> _state.update { it.copy(address = action.address, error = null) }
             is ConnectAction.OnPortChange -> _state.update {
                 it.copy(port = action.port.filter(Char::isDigit), error = null)
@@ -45,19 +50,38 @@ class ConnectViewModel(
         }
     }
 
-    private fun start(permissionGranted: Boolean) {
+    private fun start(granted: Boolean) {
         if (started) return
         started = true
-        if (!permissionGranted) {
-            _state.update { it.copy(error = UiText.StringResource(R.string.connect_error_permission)) }
+        permissionGranted = granted
+        if (granted) startDiscovery()
+        viewModelScope.launch {
+            val savedHost = connectionRepository.savedHost()
+            when {
+                savedHost != null -> connect(savedHost)
+                !granted -> _events.send(ConnectEvent.RequestLocalNetworkPermission)
+            }
         }
+    }
+
+    private fun onPermissionResult(granted: Boolean) {
+        permissionGranted = granted
+        val host = pendingHost
+        pendingHost = null
+        if (granted) {
+            startDiscovery()
+            host?.let(::connect)
+        }
+    }
+
+    private fun startDiscovery() {
+        if (discoveryStarted) return
+        discoveryStarted = true
+        _state.update { it.copy(discovery = DiscoveryStatus.SEARCHING) }
         viewModelScope.launch {
             hostDiscovery.discoveredHosts()
-                .catch { emit(emptyList()) }
+                .catch { _state.update { it.copy(discovery = DiscoveryStatus.FAILED) } }
                 .collect { hosts -> _state.update { it.copy(discoveredHosts = hosts) } }
-        }
-        viewModelScope.launch {
-            connectionRepository.savedHost()?.let(::connect)
         }
     }
 
@@ -76,9 +100,13 @@ class ConnectViewModel(
 
     private fun connect(host: ProPresenterHost) {
         if (_state.value.isConnecting) return
-        _state.update {
-            it.copy(address = host.address, port = host.port.toString(), isConnecting = true, error = null)
+        _state.update { it.copy(address = host.address, port = host.port.toString(), error = null) }
+        if (!permissionGranted) {
+            pendingHost = host
+            viewModelScope.launch { _events.send(ConnectEvent.RequestLocalNetworkPermission) }
+            return
         }
+        _state.update { it.copy(isConnecting = true) }
         viewModelScope.launch {
             connectionRepository.connect(host)
                 .onSuccess { _events.send(ConnectEvent.Connected) }

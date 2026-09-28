@@ -16,7 +16,7 @@ import com.greenfodor.ppremotece.core.domain.result.Result
  * while it is null.
  */
 internal class CurrentHostClient(
-    private val current: () -> ProPresenterClient?
+    private val current: suspend () -> ProPresenterClient?
 ) : ProPresenterClient {
     override suspend fun version(): Result<ProPresenterVersion, DataError.Network> =
         current()?.version() ?: notConnected()

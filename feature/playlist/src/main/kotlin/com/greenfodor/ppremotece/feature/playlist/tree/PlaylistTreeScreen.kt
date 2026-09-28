@@ -251,7 +251,7 @@ private fun PlaylistTreeScreenPreview() {
                     TreeRowUi.Folder("f-1", 0, "Folder A", expanded = true),
                     TreeRowUi.Playlist("pl-1", 1, "Arrangement Test", expanded = true, isLoading = false),
                     TreeRowUi.Item("pl-1/0", 2, "Song A", key, ArrangementLabel.Named("Full"), opensSlides = true),
-                    TreeRowUi.Item("pl-1/1", 2, "Song A", key, ArrangementLabel.SongOrder, opensSlides = true)
+                    TreeRowUi.Item("pl-1/1", 2, "Song A", key, label = null, opensSlides = true)
                 )
             ),
             onAction = {}
