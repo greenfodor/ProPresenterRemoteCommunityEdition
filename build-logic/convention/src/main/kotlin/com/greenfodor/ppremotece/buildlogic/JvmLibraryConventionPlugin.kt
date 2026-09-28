@@ -1,14 +1,12 @@
 package com.greenfodor.ppremotece.buildlogic
 
-import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
-
-private const val JVM_LIBRARY_API_RELEASE = 17
 
 class JvmLibraryConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
@@ -19,15 +17,15 @@ class JvmLibraryConventionPlugin : Plugin<Project> {
             configureKotlinToolchain()
             configureJUnit()
 
+            val apiRelease = libs.version("jvmLibraryApi")
             extensions.configure<KotlinJvmProjectExtension> {
                 compilerOptions {
-                    jvmTarget.set(JvmTarget.JVM_17)
-                    freeCompilerArgs.add("-Xjdk-release=$JVM_LIBRARY_API_RELEASE")
+                    jvmTarget.set(JvmTarget.fromTarget(apiRelease))
+                    freeCompilerArgs.add("-Xjdk-release=$apiRelease")
                 }
             }
-            extensions.configure<JavaPluginExtension> {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
+            tasks.withType<JavaCompile>().configureEach {
+                options.release.set(apiRelease.toInt())
             }
         }
     }

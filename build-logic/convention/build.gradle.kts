@@ -5,7 +5,7 @@ plugins {
 group = "com.greenfodor.ppremotece.buildlogic"
 
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(libs.versions.java.get().toInt())
 }
 
 dependencies {

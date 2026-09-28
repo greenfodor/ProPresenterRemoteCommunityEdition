@@ -4,6 +4,11 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.graphics.Color
 
+private val SecondaryContainer = Color(0xFF3F3F3F)
+private val OnSecondaryContainer = Color(0xFFEAEAEA)
+private val TertiaryContainer = Color(0xFF7A3300)
+private val OnTertiaryContainer = Color(0xFFFFDBCC)
+
 internal val DarkColorScheme: ColorScheme = darkColorScheme(
     primary = Color(0xFFFC6C18),
     onPrimary = Color(0xFF1F0A00),
@@ -12,12 +17,12 @@ internal val DarkColorScheme: ColorScheme = darkColorScheme(
     inversePrimary = Color(0xFFA23F00),
     secondary = Color(0xFFD9D9D9),
     onSecondary = Color(0xFF1E1E1E),
-    secondaryContainer = Color(0xFF3F3F3F),
-    onSecondaryContainer = Color(0xFFEAEAEA),
+    secondaryContainer = SecondaryContainer,
+    onSecondaryContainer = OnSecondaryContainer,
     tertiary = Color(0xFFFF8A3D),
     onTertiary = Color(0xFF230B00),
-    tertiaryContainer = Color(0xFF7A3300),
-    onTertiaryContainer = Color(0xFFFFDBCC),
+    tertiaryContainer = TertiaryContainer,
+    onTertiaryContainer = OnTertiaryContainer,
     background = Color(0xFF171717),
     onBackground = Color(0xFFEAEAEA),
     surface = Color(0xFF171717),
@@ -45,12 +50,12 @@ internal val DarkColorScheme: ColorScheme = darkColorScheme(
     primaryFixedDim = Color(0xFFFFB695),
     onPrimaryFixed = Color(0xFF351000),
     onPrimaryFixedVariant = Color(0xFF7C2E00),
-    secondaryFixed = Color(0xFF3F3F3F),
-    secondaryFixedDim = Color(0xFF3F3F3F),
-    onSecondaryFixed = Color(0xFFEAEAEA),
-    onSecondaryFixedVariant = Color(0xFFEAEAEA),
-    tertiaryFixed = Color(0xFF7A3300),
-    tertiaryFixedDim = Color(0xFF7A3300),
-    onTertiaryFixed = Color(0xFFFFDBCC),
-    onTertiaryFixedVariant = Color(0xFFFFDBCC)
+    secondaryFixed = SecondaryContainer,
+    secondaryFixedDim = SecondaryContainer,
+    onSecondaryFixed = OnSecondaryContainer,
+    onSecondaryFixedVariant = OnSecondaryContainer,
+    tertiaryFixed = TertiaryContainer,
+    tertiaryFixedDim = TertiaryContainer,
+    onTertiaryFixed = OnTertiaryContainer,
+    onTertiaryFixedVariant = OnTertiaryContainer
 )

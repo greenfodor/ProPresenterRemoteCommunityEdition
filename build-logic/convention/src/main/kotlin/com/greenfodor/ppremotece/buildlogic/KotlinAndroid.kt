@@ -12,7 +12,6 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinBaseExtension
 internal const val COMPILE_SDK = 37
 internal const val TARGET_SDK = 37
 internal const val MIN_SDK = 29
-internal const val JAVA_VERSION = 25
 
 internal fun Project.configureKotlinAndroid(extension: CommonExtension) {
     extension.apply {
@@ -20,8 +19,8 @@ internal fun Project.configureKotlinAndroid(extension: CommonExtension) {
             version = release(COMPILE_SDK)
         }
         defaultConfig.minSdk = MIN_SDK
-        compileOptions.sourceCompatibility = JavaVersion.VERSION_25
-        compileOptions.targetCompatibility = JavaVersion.VERSION_25
+        compileOptions.sourceCompatibility = JavaVersion.toVersion(libs.version("java"))
+        compileOptions.targetCompatibility = JavaVersion.toVersion(libs.version("java"))
     }
     configureKotlinToolchain()
     configureJUnit()
@@ -29,7 +28,7 @@ internal fun Project.configureKotlinAndroid(extension: CommonExtension) {
 
 internal fun Project.configureKotlinToolchain() {
     extensions.configure<KotlinBaseExtension> {
-        jvmToolchain(JAVA_VERSION)
+        jvmToolchain(libs.version("java").toInt())
     }
 }
 

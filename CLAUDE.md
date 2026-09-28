@@ -43,8 +43,10 @@ features → `domain` + `designsystem`, never `data` and never each other; `:app
 wires Koin modules and navigation. Features own their `@Serializable` `NavKey`s; cross-feature
 navigation goes through callbacks wired in `:app`.
 
-`:core:domain` compiles against the JDK 17 API (`-Xjdk-release=17`) so it only links JDK APIs that
-Android provides; Android modules compile against `android.jar`. Convention plugins live in `build-logic/convention`. `ppremotece.lint` (detekt + ktlint) is
+`:core:domain` compiles against the JDK 17 API (`-Xjdk-release=17`, javac `--release 17`), so JDK 18+
+members such as `List.removeFirst()` resolve to the Kotlin stdlib. JDK 17 APIs that Android API 29 lacks
+(e.g. `java.util.HexFormat`, `java.net.http`) still compile there: in `:core:domain` use the Kotlin
+stdlib and kotlinx libraries rather than `java.*`. Android modules compile against `android.jar`. Convention plugins live in `build-logic/convention`. `ppremotece.lint` (detekt + ktlint) is
 applied by every other plugin; JUnit Jupiter (`useJUnitPlatform()`) is configured in every module.
 Versions come only from `gradle/libs.versions.toml`.
 
