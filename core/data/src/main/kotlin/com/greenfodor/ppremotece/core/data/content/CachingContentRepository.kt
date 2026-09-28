@@ -9,6 +9,7 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.asEmptyResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,6 +37,7 @@ private typealias Read<T> = Result<T, DataError.Network>
  * [ContentRepository] that caches reads per [session] key: a value is looked up under the current
  * key, and values of other keys are dropped whenever the key changes. While the key is null the
  * flows emit nothing and call [restore]. A new collection drops a cached failure before it reads.
+ * A read that throws counts as a failed read with [DataError.Network.UNKNOWN].
  * Concurrent reads of one value share one request, and at most [MAX_PARALLEL_READS] run at once.
  * Each [staleSignals] emission re-reads every value that currently has a collector.
  */
@@ -117,9 +119,15 @@ class CachingContentRepository(
             mutex
                 .withLock {
                     inFlight?.takeIf { it.isActive } ?: scope
-                        .async { reads.withPermit { fetch() }.also(::store) }
+                        .async { reads.withPermit { fetchOrFailure() }.also(::store) }
                         .also { inFlight = it }
                 }.await()
+
+        private suspend fun fetchOrFailure(): Read<T> =
+            runCatching { fetch() }.getOrElse { error ->
+                if (error is CancellationException) throw error
+                Result.Failure(DataError.Network.UNKNOWN)
+            }
 
         fun dropFailure() {
             value.update { it as? Result.Success }

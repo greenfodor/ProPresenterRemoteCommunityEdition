@@ -3,13 +3,16 @@ package com.greenfodor.ppremotece.core.data.content
 import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.data.Fixtures
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
+import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,6 +34,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
@@ -176,6 +180,27 @@ class CachingContentRepositoryTest {
 
         assertThat(repository.playlist(PLAYLIST).first()).isEqualTo(Result.Failure(DataError.Network.SERVER))
         assertThat(host.reads(PLAYLIST_PATH)).isEqualTo(2)
+    }
+
+    @Test
+    fun `a read that throws is a failed read and does not reach the scope`() = runBlocking {
+        val uncaught = CopyOnWriteArrayList<Throwable>()
+        val guardedScope = CoroutineScope(
+            SupervisorJob() + Dispatchers.IO + CoroutineExceptionHandler { _, e -> uncaught += e }
+        )
+        val client = KtorProPresenterClient(HttpClientFactory.create(), server.url("/").toString())
+        val throwingClient = object : ProPresenterClient by client {
+            override suspend fun playlist(uuid: String): Result<Playlist, DataError.Network> = error("unexpected")
+        }
+        val throwing = CachingContentRepository(throwingClient, session, reconnects, guardedScope, restore = {})
+
+        withTimeout(2.seconds) {
+            assertThat(throwing.playlist(PLAYLIST).first()).isEqualTo(Result.Failure(DataError.Network.UNKNOWN))
+            assertThat(throwing.refreshPlaylist(PLAYLIST)).isEqualTo(Result.Failure(DataError.Network.UNKNOWN))
+        }
+        delay(100.milliseconds)
+        assertThat(uncaught.toList()).isEmpty()
+        guardedScope.cancel()
     }
 
     private fun Result<Playlist, DataError.Network>.name(): String = (this as Result.Success).data.name
