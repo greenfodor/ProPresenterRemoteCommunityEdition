@@ -25,3 +25,6 @@ local.properties
 
 # graphify
 graphify-out/
+
+# Python
+__pycache__/

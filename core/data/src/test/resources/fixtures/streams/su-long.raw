@@ -1,0 +1,54 @@
+{"url":"status/slide","data":{"current":{"text":"Chorus · 1","notes":"Chorus · 1 notes","uuid":"80e805b7-69b5-4578-ac07-ca5c6618b48c"},"next":{"text":"Chorus · 2","notes":"Chorus · 2 notes","uuid":"0acf63dd-97de-41fe-be1f-80dfb33c4eae"}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":0,"presentation_id":{"uuid":"ae707301-01ad-4cbb-9a8b-b20ae5b1afd0","name":"Song B","index":0},"total_cues":4,"remaining_cues":3}}}
+
+{"url":"playlist/active","data":{"presentation":{"playlist":{"uuid":"065f53c3-e299-4e07-8ac2-258ca76b7188","name":"Service Playlist","index":70},"item":{"uuid":"224fce09-bbfc-4533-9000-dde8dffb3803","name":"Song B","index":4},"playlist_item":{"id":{"uuid":"224fce09-bbfc-4533-9000-dde8dffb3803","name":"Song B","index":4},"type":"presentation","is_hidden":false,"is_pco":false,"presentation_info":{"presentation_uuid":"ae707301-01ad-4cbb-9a8b-b20ae5b1afd0","arrangement_name":"Full","arrangement_uuid":"72c6a585-6834-4b95-b4d6-07f4317a618d"},"target_uuid":"ae707301-01ad-4cbb-9a8b-b20ae5b1afd0","destination":"presentation"}},"announcements":{"playlist":null,"item":null,"playlist_item":null}}}
+
+{"url":"timer/system_time","data":1790534169}
+
+{"url":"timer/system_time","data":1790534171}
+
+{"url":"playlist/active","data":{"presentation":{"playlist":{"uuid":"065f53c3-e299-4e07-8ac2-258ca76b7188","name":"Service Playlist","index":70},"item":{"uuid":"224fce09-bbfc-4533-9000-dde8dffb3803","name":"Song B","index":4},"playlist_item":{"id":{"uuid":"224fce09-bbfc-4533-9000-dde8dffb3803","name":"Song B","index":4},"type":"presentation","is_hidden":false,"is_pco":false,"presentation_info":{"presentation_uuid":"ae707301-01ad-4cbb-9a8b-b20ae5b1afd0","arrangement_name":"Full","arrangement_uuid":"72c6a585-6834-4b95-b4d6-07f4317a618d"},"target_uuid":"ae707301-01ad-4cbb-9a8b-b20ae5b1afd0","destination":"presentation"}},"announcements":{"playlist":null,"item":null,"playlist_item":null}}}
+
+{"url":"status/slide","data":{"current":{"text":"Verse 1 · 1","notes":"Verse 1 · 1 notes","uuid":"66a5fd1a-b2e4-4636-972e-a1cbbe7aad5a"},"next":{"text":"Verse 1 · 2","notes":"Verse 1 · 2 notes","uuid":"91ac2b03-0dfb-45bb-aea0-db2550b9e53a"}}}
+
+{"url":"status/slide","data":{"current":{"text":"Verse 1 · 2","notes":"Verse 1 · 2 notes","uuid":"91ac2b03-0dfb-45bb-aea0-db2550b9e53a"},"next":{"text":"Verse 1 · 3","notes":"Verse 1 · 3 notes","uuid":"0bb92e9d-27f9-4bfa-9e05-a7cfb67f1c99"}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":2,"presentation_id":{"uuid":"ae707301-01ad-4cbb-9a8b-b20ae5b1afd0","name":"Song B","index":0},"total_cues":20,"remaining_cues":17}}}
+
+{"url":"timer/system_time","data":1790534177}
+
+{"url":"status/slide","data":{"current":{"text":"Chorus · 1","notes":"Chorus · 1 notes","uuid":"80e805b7-69b5-4578-ac07-ca5c6618b48c"},"next":{"text":"Chorus · 2","notes":"Chorus · 2 notes","uuid":"0acf63dd-97de-41fe-be1f-80dfb33c4eae"}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":0,"presentation_id":{"uuid":"ae707301-01ad-4cbb-9a8b-b20ae5b1afd0","name":"Song B","index":0},"total_cues":4,"remaining_cues":3}}}
+
+{"url":"timer/system_time","data":1790534178}
+
+{"url":"status/slide","data":{"current":{"text":"Chorus · 2","notes":"Chorus · 2 notes","uuid":"0acf63dd-97de-41fe-be1f-80dfb33c4eae"},"next":{"text":"Chorus · 3","notes":"Chorus · 3 notes","uuid":"140f9d0a-fbd7-4d7a-815c-601046849f40"}}}
+
+{"url":"status/slide","data":{"current":{"text":"","notes":"","uuid":"9b9338c1-b6c1-4783-a3eb-6203d1a4dd8b"},"next":{"text":"Text 01","notes":"","uuid":"a66bd68e-a072-4a78-b6ac-090d8b95cb51"}}}
+
+{"url":"timer/system_time","data":1790534182}
+
+{"url":"status/slide","data":{"current":{"text":"Text 01","notes":"","uuid":"a66bd68e-a072-4a78-b6ac-090d8b95cb51"},"next":{"text":"Text 02","notes":"","uuid":"c5531e34-4f4f-4a52-b868-246e72df812d"}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":1,"presentation_id":{"uuid":"2bf84db5-63fc-4dbf-b336-8582f6074990","name":"Presentation 03","index":0},"total_cues":33,"remaining_cues":31}}}
+
+{"url":"status/slide","data":{"current":{"text":"","notes":"","uuid":"9b9338c1-b6c1-4783-a3eb-6203d1a4dd8b"},"next":{"text":"Text 01","notes":"","uuid":"a66bd68e-a072-4a78-b6ac-090d8b95cb51"}}}
+
+{"url":"timer/system_time","data":1790534187}
+
+{"url":"status/slide","data":{"current":{"text":"Chorus · 4","notes":"Chorus · 2 notes","uuid":"2ab7877a-f96c-430f-ac66-1e5bd8661d79"},"next":{"text":"","notes":"","uuid":""}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":3,"presentation_id":{"uuid":"ae707301-01ad-4cbb-9a8b-b20ae5b1afd0","name":"Song B","index":0},"total_cues":4,"remaining_cues":0}}}
+
+{"url":"playlist/active","data":{"presentation":{"playlist":{"uuid":"065f53c3-e299-4e07-8ac2-258ca76b7188","name":"Service Playlist","index":70},"item":{"uuid":"224fce09-bbfc-4533-9000-dde8dffb3803","name":"Song B","index":4},"playlist_item":{"id":{"uuid":"224fce09-bbfc-4533-9000-dde8dffb3803","name":"Song B","index":4},"type":"presentation","is_hidden":false,"is_pco":false,"presentation_info":{"presentation_uuid":"ae707301-01ad-4cbb-9a8b-b20ae5b1afd0","arrangement_name":"Full","arrangement_uuid":"72c6a585-6834-4b95-b4d6-07f4317a618d"},"target_uuid":"ae707301-01ad-4cbb-9a8b-b20ae5b1afd0","destination":"presentation"}},"announcements":{"playlist":null,"item":null,"playlist_item":null}}}
+
+{"url":"timer/system_time","data":1790534188}
+
+{"url":"timer/system_time","data":1790534189}
+
+{"url":"timer/system_time","data":1790534190}
+
+{"url":"timer/system_time","data":1790534191}
+

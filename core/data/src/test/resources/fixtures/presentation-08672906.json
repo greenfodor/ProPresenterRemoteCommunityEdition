@@ -1,0 +1,349 @@
+{
+  "presentation": {
+    "id": {
+      "uuid": "08672906-49df-4947-8d4c-bed596d6fbf3",
+      "name": "Song A",
+      "index": 0
+    },
+    "groups": [
+      {
+        "name": "Loop",
+        "color": {
+          "red": 0.4117647111415863,
+          "green": 0.4117647111415863,
+          "blue": 0.4117647111415863,
+          "alpha": 1.0
+        },
+        "slides": [
+          {
+            "enabled": true,
+            "notes": "",
+            "text": "",
+            "label": "Label 01",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          }
+        ],
+        "uuid": "fbc30c52-fc7b-49c4-be14-f485749a4fa3"
+      },
+      {
+        "name": "Verse 1",
+        "color": {
+          "red": 0.0,
+          "green": 0.46666666865348816,
+          "blue": 0.800000011920929,
+          "alpha": 1.0
+        },
+        "slides": [
+          {
+            "enabled": true,
+            "notes": "Verse 1 · 1 notes",
+            "text": "Verse 1 · 1",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          },
+          {
+            "enabled": true,
+            "notes": "Verse 1 · 2 notes",
+            "text": "Verse 1 · 2",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          }
+        ],
+        "uuid": "b5f887d2-bce4-468e-930f-3a2047a206ff"
+      },
+      {
+        "name": "Pre-Chorus1",
+        "color": {
+          "red": 0.9843137264251709,
+          "green": 0.007843137718737125,
+          "blue": 1.0,
+          "alpha": 1.0
+        },
+        "slides": [
+          {
+            "enabled": true,
+            "notes": "Pre-Chorus1 · 1 notes",
+            "text": "Pre-Chorus1 · 1",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          },
+          {
+            "enabled": true,
+            "notes": "Pre-Chorus1 · 2 notes",
+            "text": "Pre-Chorus1 · 2",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          }
+        ],
+        "uuid": "54ccac8c-1487-47c5-a624-5180c4058c63"
+      },
+      {
+        "name": "Verse 2",
+        "color": {
+          "red": 0.0,
+          "green": 0.3490196168422699,
+          "blue": 0.6000000238418579,
+          "alpha": 1.0
+        },
+        "slides": [
+          {
+            "enabled": true,
+            "notes": "Verse 2 · 1 notes",
+            "text": "Verse 2 · 1",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          },
+          {
+            "enabled": true,
+            "notes": "Verse 2 · 2 notes",
+            "text": "Verse 2 · 2",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          }
+        ],
+        "uuid": "e62bb489-86ad-4d77-a469-95f7b13c7e2b"
+      },
+      {
+        "name": "Pre-Chorus2",
+        "color": {
+          "red": 0.7529411911964417,
+          "green": 0.0,
+          "blue": 0.7215686440467834,
+          "alpha": 1.0
+        },
+        "slides": [
+          {
+            "enabled": true,
+            "notes": "Pre-Chorus2 · 1 notes",
+            "text": "Pre-Chorus2 · 1",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          },
+          {
+            "enabled": true,
+            "notes": "Pre-Chorus2 · 2 notes",
+            "text": "Pre-Chorus2 · 2",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          }
+        ],
+        "uuid": "3939835b-d1cb-49b6-94bd-1695443cc8cd"
+      },
+      {
+        "name": "Chorus 1",
+        "color": {
+          "red": 0.800000011920929,
+          "green": 0.0,
+          "blue": 0.30588236451148987,
+          "alpha": 1.0
+        },
+        "slides": [
+          {
+            "enabled": true,
+            "notes": "Chorus 1 · 1 notes",
+            "text": "Chorus 1 · 1",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          },
+          {
+            "enabled": true,
+            "notes": "Chorus 1 · 2 notes",
+            "text": "Chorus 1 · 2",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          }
+        ],
+        "uuid": "8de227b5-1f42-4f60-bb27-1a4c19974a83"
+      },
+      {
+        "name": "Chorus 2",
+        "color": {
+          "red": 0.6000000238418579,
+          "green": 0.0,
+          "blue": 0.23137255012989044,
+          "alpha": 1.0
+        },
+        "slides": [
+          {
+            "enabled": true,
+            "notes": "Chorus 2 · 1 notes",
+            "text": "Chorus 2 · 1",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          }
+        ],
+        "uuid": "fbb7ca5f-7213-4625-8db2-34274708d38f"
+      },
+      {
+        "name": "Verse 4",
+        "color": {
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.545098066329956,
+          "alpha": 1.0
+        },
+        "slides": [
+          {
+            "enabled": true,
+            "notes": "Verse 4 · 1 notes",
+            "text": "Verse 4 · 1",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          },
+          {
+            "enabled": true,
+            "notes": "Verse 4 · 2 notes",
+            "text": "Verse 4 · 2",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          }
+        ],
+        "uuid": "d9f224da-512b-4b1c-8674-c95c5244b578"
+      },
+      {
+        "name": "Tag",
+        "color": {
+          "red": 0.0,
+          "green": 0.545098066329956,
+          "blue": 0.545098066329956,
+          "alpha": 1.0
+        },
+        "slides": [
+          {
+            "enabled": true,
+            "notes": "Tag · 1 notes",
+            "text": "Tag · 1",
+            "label": "",
+            "size": {
+              "width": 1920,
+              "height": 1080
+            }
+          }
+        ],
+        "uuid": "48ee985e-8862-433d-ae9c-9ea7c30239ec"
+      }
+    ],
+    "has_timeline": false,
+    "presentation_path": "C:\\PP\\Song A.pro",
+    "destination": "presentation",
+    "arrangements": [
+      {
+        "id": {
+          "uuid": "4adc3b58-27f1-42a5-8ff0-80dfd1afa8a5",
+          "name": "Full",
+          "index": 0
+        },
+        "groups": [
+          "fbc30c52-fc7b-49c4-be14-f485749a4fa3",
+          "b5f887d2-bce4-468e-930f-3a2047a206ff",
+          "54ccac8c-1487-47c5-a624-5180c4058c63",
+          "e62bb489-86ad-4d77-a469-95f7b13c7e2b",
+          "3939835b-d1cb-49b6-94bd-1695443cc8cd",
+          "8de227b5-1f42-4f60-bb27-1a4c19974a83",
+          "fbb7ca5f-7213-4625-8db2-34274708d38f",
+          "8de227b5-1f42-4f60-bb27-1a4c19974a83",
+          "fbb7ca5f-7213-4625-8db2-34274708d38f",
+          "d9f224da-512b-4b1c-8674-c95c5244b578",
+          "d9f224da-512b-4b1c-8674-c95c5244b578",
+          "48ee985e-8862-433d-ae9c-9ea7c30239ec",
+          "8de227b5-1f42-4f60-bb27-1a4c19974a83",
+          "fbb7ca5f-7213-4625-8db2-34274708d38f",
+          "8de227b5-1f42-4f60-bb27-1a4c19974a83",
+          "fbb7ca5f-7213-4625-8db2-34274708d38f"
+        ],
+        "total_cues": 26
+      },
+      {
+        "id": {
+          "uuid": "90da45ff-1c54-4bd0-89e2-aae33ca23ebb",
+          "name": "Chorus Only",
+          "index": 1
+        },
+        "groups": [
+          "fbc30c52-fc7b-49c4-be14-f485749a4fa3",
+          "8de227b5-1f42-4f60-bb27-1a4c19974a83",
+          "fbb7ca5f-7213-4625-8db2-34274708d38f",
+          "8de227b5-1f42-4f60-bb27-1a4c19974a83",
+          "fbb7ca5f-7213-4625-8db2-34274708d38f"
+        ],
+        "total_cues": 7
+      },
+      {
+        "id": {
+          "uuid": "e5c2816e-644a-4359-bb92-b77e48c12ffb",
+          "name": "Short",
+          "index": 2
+        },
+        "groups": [
+          "fbc30c52-fc7b-49c4-be14-f485749a4fa3",
+          "48ee985e-8862-433d-ae9c-9ea7c30239ec",
+          "b5f887d2-bce4-468e-930f-3a2047a206ff",
+          "54ccac8c-1487-47c5-a624-5180c4058c63",
+          "e62bb489-86ad-4d77-a469-95f7b13c7e2b",
+          "3939835b-d1cb-49b6-94bd-1695443cc8cd",
+          "8de227b5-1f42-4f60-bb27-1a4c19974a83",
+          "fbb7ca5f-7213-4625-8db2-34274708d38f",
+          "d9f224da-512b-4b1c-8674-c95c5244b578",
+          "8de227b5-1f42-4f60-bb27-1a4c19974a83",
+          "fbb7ca5f-7213-4625-8db2-34274708d38f"
+        ],
+        "total_cues": 18
+      },
+      {
+        "id": {
+          "uuid": "9ccdc706-56db-49a6-9658-2eec33c7ebfc",
+          "name": "",
+          "index": 3
+        },
+        "groups": [],
+        "total_cues": 0
+      }
+    ],
+    "current_arrangement": "9ccdc706-56db-49a6-9658-2eec33c7ebfc",
+    "type": "standard",
+    "is_authorized": true,
+    "total_cues": 15
+  }
+}

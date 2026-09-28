@@ -1,0 +1,264 @@
+{
+  "id": {
+    "uuid": "065f53c3-e299-4e07-8ac2-258ca76b7188",
+    "name": "Service Playlist",
+    "index": 70
+  },
+  "items": [
+    {
+      "id": {
+        "uuid": "e4caf535-3afa-4539-9da8-cdfe0d77bb40",
+        "name": "Presentation 02",
+        "index": 0
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "a7631b9f-1da8-4958-b28e-2a80465ee796",
+        "arrangement_name": "Arrangement 01",
+        "arrangement_uuid": "8ab4be94-db5c-456f-9c0e-73b08b4bcbb3"
+      },
+      "target_uuid": "a7631b9f-1da8-4958-b28e-2a80465ee796",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "88d60418-df9e-4345-9243-4313dced361d",
+        "name": "Header 02",
+        "index": 1
+      },
+      "type": "header",
+      "is_hidden": false,
+      "is_pco": false,
+      "header_color": {
+        "red": 1.0,
+        "green": 0.0,
+        "blue": 0.0,
+        "alpha": 1.0
+      },
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "aaa0c954-62d1-4bcd-b3fe-39497b8c8f22",
+        "name": "Presentation 03",
+        "index": 2
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "2bf84db5-63fc-4dbf-b336-8582f6074990",
+        "arrangement_name": "Arrangement 02",
+        "arrangement_uuid": "842b8057-37a3-4309-9290-e770d8ac400e"
+      },
+      "target_uuid": "2bf84db5-63fc-4dbf-b336-8582f6074990",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "369f0d51-0111-4cf0-9fbe-2187bb9e824b",
+        "name": "Presentation 04",
+        "index": 3
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "1d738fb5-6864-4f1d-ab18-99103a44ebe3",
+        "arrangement_name": "Arrangement 02",
+        "arrangement_uuid": "77cdbab0-a1d8-4c4a-9d1d-0d08c28d44f3"
+      },
+      "target_uuid": "1d738fb5-6864-4f1d-ab18-99103a44ebe3",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "224fce09-bbfc-4533-9000-dde8dffb3803",
+        "name": "Song B",
+        "index": 4
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "ae707301-01ad-4cbb-9a8b-b20ae5b1afd0",
+        "arrangement_name": "Full",
+        "arrangement_uuid": "72c6a585-6834-4b95-b4d6-07f4317a618d"
+      },
+      "target_uuid": "ae707301-01ad-4cbb-9a8b-b20ae5b1afd0",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "89669d01-5a2e-48a0-ae23-806c8fa0a523",
+        "name": "Presentation 05",
+        "index": 5
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "3bf506b1-5949-461a-9870-f285cb9edc33",
+        "arrangement_name": "Arrangement 03",
+        "arrangement_uuid": "bfefe70f-bd6f-4cb8-a640-c33187f12c79"
+      },
+      "target_uuid": "3bf506b1-5949-461a-9870-f285cb9edc33",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "224fce09-bbfc-4533-9000-dde8dffb3803",
+        "name": "Song B",
+        "index": 6
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "ae707301-01ad-4cbb-9a8b-b20ae5b1afd0",
+        "arrangement_name": "Bridge + Chorus",
+        "arrangement_uuid": "6fbd7e89-5d1f-4518-8c7a-bc915ff411aa"
+      },
+      "target_uuid": "ae707301-01ad-4cbb-9a8b-b20ae5b1afd0",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "0a088a8d-7c67-442a-b0a2-b07d39695b47",
+        "name": "Presentation 06",
+        "index": 7
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "bbd123bd-34bf-4356-8373-64d0a7f17208",
+        "arrangement_name": "Arrangement 02",
+        "arrangement_uuid": "7f401f0d-6586-4726-a6c5-a47c1b24064f"
+      },
+      "target_uuid": "bbd123bd-34bf-4356-8373-64d0a7f17208",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "af5f26f2-2f0d-41f0-ba78-b4566a2a7780",
+        "name": "Presentation 02",
+        "index": 8
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "a7631b9f-1da8-4958-b28e-2a80465ee796",
+        "arrangement_name": "Arrangement 04",
+        "arrangement_uuid": "190a86fe-085d-4bb4-9c94-5f1d9e5befc1"
+      },
+      "target_uuid": "a7631b9f-1da8-4958-b28e-2a80465ee796",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "9ceab520-e2a3-42c0-890e-0a26055682c0",
+        "name": "Header 03",
+        "index": 9
+      },
+      "type": "header",
+      "is_hidden": false,
+      "is_pco": false,
+      "header_color": {
+        "red": 0.0,
+        "green": 1.0,
+        "blue": 1.0,
+        "alpha": 1.0
+      },
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "be8816a6-fb1f-4c34-995c-44a66ac19b5e",
+        "name": "Presentation 02",
+        "index": 10
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "a7631b9f-1da8-4958-b28e-2a80465ee796",
+        "arrangement_name": "Arrangement 05",
+        "arrangement_uuid": "5e8e443a-b816-40b3-92b6-1d58da691681"
+      },
+      "target_uuid": "a7631b9f-1da8-4958-b28e-2a80465ee796",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "97975f28-22b5-41cf-bd0a-f86f32dcb845",
+        "name": "Presentation 07",
+        "index": 11
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "63c7c81a-d6da-42a8-9398-19ea9ea44a10",
+        "arrangement_name": "",
+        "arrangement_uuid": "ef6326c1-ab05-4bce-8de3-f0a55790538b"
+      },
+      "target_uuid": "63c7c81a-d6da-42a8-9398-19ea9ea44a10",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "c6c0a8fb-abbf-480e-8c42-2b1a36738089",
+        "name": "Header 04",
+        "index": 12
+      },
+      "type": "header",
+      "is_hidden": false,
+      "is_pco": false,
+      "header_color": {
+        "red": 0.0313725508749485,
+        "green": 0.0,
+        "blue": 1.0,
+        "alpha": 1.0
+      },
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "b7dd10ea-e747-4987-8282-3c6cb0edac9e",
+        "name": "Presentation 08",
+        "index": 13
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "0a84bedd-e8d8-47e8-acd7-234d5d5ecfde",
+        "arrangement_name": "Arrangement 02",
+        "arrangement_uuid": "ed9731c7-c350-4cbc-b16f-52f8e542e0ed"
+      },
+      "target_uuid": "0a84bedd-e8d8-47e8-acd7-234d5d5ecfde",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "f505ae03-6e76-40f1-a052-657c28b8f602",
+        "name": "Presentation 02",
+        "index": 14
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "a7631b9f-1da8-4958-b28e-2a80465ee796",
+        "arrangement_name": "Arrangement 06",
+        "arrangement_uuid": "53a4b26d-58f3-41c6-bb87-472e26d64c1c"
+      },
+      "target_uuid": "a7631b9f-1da8-4958-b28e-2a80465ee796",
+      "destination": "presentation"
+    }
+  ]
+}
