@@ -4,4 +4,5 @@ import kotlinx.serialization.json.Json
 
 internal val ProPresenterJson = Json {
     ignoreUnknownKeys = true
+    coerceInputValues = true
 }

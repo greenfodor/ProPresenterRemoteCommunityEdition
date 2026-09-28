@@ -6,7 +6,7 @@ data class Playlist(
     val items: List<PlaylistItem>
 )
 
-/** Identifies a playlist item by its playlist and its position; item uuids are not unique within a playlist. */
+/** Identifies a playlist item by its playlist uuid and its index within that playlist. */
 data class PlaylistItemKey(
     val playlistUuid: String,
     val index: Int

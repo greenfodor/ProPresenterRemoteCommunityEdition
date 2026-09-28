@@ -35,11 +35,15 @@ STREAMS = [
 FRAME_SEPARATOR = b"\r\n\r\n"
 PLACEHOLDER_IP = "192.0.2.14"
 GROUP_WHITELIST = re.compile(r"^(Intro|Verse|Pre-?Chorus|Chorus|Bridge|Tag|Ending|Loop)( ?\d+)?$", re.IGNORECASE)
-PRIVATE_IP = re.compile(
-    r"\b(?:192\.168(?:\.\d{1,3}){2}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2})\b"
-)
-USER_DIR = "Users"
-USER_PATH = re.compile(r"[A-Za-z]:\\+" + USER_DIR + r"\\+[^\"]*")
+IPV4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
+USER_DIRS = ("Users", "home")
+USER_PATH = re.compile(r"(?:[A-Za-z]:[\\/]+|/)(?:" + "|".join(USER_DIRS) + r")[\\/].*", re.IGNORECASE)
+UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+VERBATIM_ALLOWED = {
+    "presentation", "header", "media", "playlist", "group", "standard", "win", "v1",
+    "ProPresenter 21.4.2", "10.0.26200",
+    "status/slide", "presentation/active", "presentation/slide_index", "playlist/active", "timer/system_time",
+}
 CHUNK_LINE = re.compile(r"^# \+(?P<time>[\d.]+)s chunk (?P<n>\d+) \((?P<size>\d+) B\) tail=.*$")
 TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
 PLACEHOLDER_WORDS = {
@@ -47,8 +51,8 @@ PLACEHOLDER_WORDS = {
     "text", "notes", "item", "host", "song", "full", "chorus", "only", "short", "bridge",
     "service", "test", "+", "·",
 }
-MIN_NAME_SUBSTRING = 5
-MIN_LYRIC_LINE = 8
+MIN_NAME_SUBSTRING = 4
+MIN_LYRIC_LINE = 5
 
 
 class Sanitizer:
@@ -64,6 +68,17 @@ class Sanitizer:
         self.texts = {}
         self.leaked_names = set()
         self.lyric_lines = set()
+        self.input_strings = set()
+        self.kept_names = {
+            name
+            for presentation in self.curated_presentations.values()
+            for original, name in presentation["arrangements"].items()
+            if original == name
+        }
+
+    def remember(self, value):
+        self.input_strings.update(json_strings(value))
+        return value
 
     def generate(self, kind, key):
         if (kind, key) not in self.generated_names:
@@ -211,13 +226,28 @@ def text_key(text):
 
 
 def scrub(text):
-    return USER_PATH.sub("C:\\\\PP", PRIVATE_IP.sub(PLACEHOLDER_IP, text))
+    without_ips = IPV4.sub(lambda match: match[0] if is_documentation_ip(match[0]) else PLACEHOLDER_IP, text)
+    return USER_PATH.sub(lambda match: "/PP" if match[0].startswith("/") else "C:\\PP", without_ips)
+
+
+def is_documentation_ip(address):
+    return address.startswith("192.0.2.")
+
+
+def scrub_value(value):
+    if isinstance(value, dict):
+        return {key: scrub_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [scrub_value(item) for item in value]
+    if isinstance(value, str):
+        return scrub(value)
+    return value
 
 
 def dump(value, pretty):
     if pretty:
-        return scrub(json.dumps(value, ensure_ascii=False, indent=2)) + "\n"
-    return scrub(json.dumps(value, ensure_ascii=False, separators=(",", ":")))
+        return json.dumps(scrub_value(value), ensure_ascii=False, indent=2) + "\n"
+    return json.dumps(scrub_value(value), ensure_ascii=False, separators=(",", ":"))
 
 
 def write_json(path, value):
@@ -230,7 +260,8 @@ def sanitize_stream(sanitizer, source_dir, name, out_dir):
     meta_lines = (source_dir / f"{name}.meta").read_text(encoding="utf-8").splitlines()
     frames = [part for part in raw.split(FRAME_SEPARATOR) if part.strip()]
     sanitized = [
-        dump(sanitizer.frame(json.loads(part)), pretty=False).encode("utf-8") + FRAME_SEPARATOR for part in frames
+        dump(sanitizer.frame(sanitizer.remember(json.loads(part))), pretty=False).encode("utf-8") + FRAME_SEPARATOR
+        for part in frames
     ]
     original_sizes = [len(part) + len(FRAME_SEPARATOR) for part in frames]
 
@@ -287,6 +318,16 @@ def output_strings(path):
         yield from json_strings(json.loads(content))
 
 
+def is_allowed_verbatim(sanitizer, value):
+    return (
+        value.strip() == ""
+        or UUID.match(value) is not None
+        or GROUP_WHITELIST.match(value) is not None
+        or value in sanitizer.kept_names
+        or value in VERBATIM_ALLOWED
+    )
+
+
 def is_placeholder_vocabulary(name):
     return all(word.lower() in PLACEHOLDER_WORDS or word.isdigit() for word in name.split())
 
@@ -304,16 +345,18 @@ def leak_check(sanitizer, out_dir):
         for value in output_strings(path):
             if value in sanitizer.leaked_names:
                 leaks.append(f"{path}: original name as a value")
+            elif value in sanitizer.input_strings and not is_allowed_verbatim(sanitizer, value):
+                leaks.append(f"{path}: input value copied unchanged: {value!r}")
         for name in substring_names:
             if name.lower() in lowered:
                 leaks.append(f"{path}: original name inside the content")
         for line in sanitizer.lyric_lines:
             if line.lower() in lowered:
                 leaks.append(f"{path}: original slide text line")
-        if USER_DIR.lower() + "\\" in lowered:
+        if USER_PATH.search(content):
             leaks.append(f"{path}: user path")
-        if PRIVATE_IP.search(content):
-            leaks.append(f"{path}: private IP address")
+        if any(not is_documentation_ip(address) for address in IPV4.findall(content)):
+            leaks.append(f"{path}: IP address")
     if leaks:
         for leak in sorted(set(leaks)):
             print(f"LEAK {leak}", file=sys.stderr)
@@ -335,7 +378,7 @@ def main():
     sanitizer = Sanitizer(curated)
 
     def load(relative):
-        return json.loads((source_dir / relative).read_text(encoding="utf-8"))
+        return sanitizer.remember(json.loads((source_dir / relative).read_text(encoding="utf-8")))
 
     tree = load(PLAYLIST_TREE)
     for node in tree:

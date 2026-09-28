@@ -69,6 +69,14 @@ class ArrangementExpanderTest {
     }
 
     @Test
+    fun `empty arrangement uuid ignores the arrangement name`() {
+        val result = ArrangementExpander.expand(presentation, ref("", "Full"))
+
+        assertThat(result.choice).isEqualTo(ArrangementChoice.SongOrder)
+        assertThat(result.cues.map { it.slideText }).containsExactly("V1", "V2", "C1", "C2", "B1")
+    }
+
+    @Test
     fun `unknown uuid falls back to the arrangement with the same name`() {
         val result = ArrangementExpander.expand(presentation, ref("a-missing", "Twice"))
 

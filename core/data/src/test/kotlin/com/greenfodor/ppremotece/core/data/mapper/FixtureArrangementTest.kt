@@ -59,6 +59,16 @@ class FixtureArrangementTest {
     }
 
     @Test
+    fun `item pointing at the placeholder arrangement expands in song order`() {
+        val placeholderSong = Fixtures.presentation(Fixtures.PLACEHOLDER_SONG).toDomain()
+
+        val cueList = expand(arrangementTest, 5, placeholderSong)
+
+        assertThat(cueList.choice).isEqualTo(ArrangementChoice.SongOrder)
+        assertThat(cueList.cues.size).isEqualTo(11)
+    }
+
+    @Test
     fun `service items that share one item uuid resolve by index`() {
         val dto = Fixtures.playlist(Fixtures.SERVICE_PLAYLIST)
         assertThat(dto.items.orEmpty()[4].id.uuid).isEqualTo(dto.items.orEmpty()[6].id.uuid)

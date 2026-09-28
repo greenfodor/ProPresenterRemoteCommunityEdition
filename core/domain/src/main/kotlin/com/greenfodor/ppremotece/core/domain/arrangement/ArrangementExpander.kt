@@ -9,8 +9,8 @@ import com.greenfodor.ppremotece.core.domain.model.PresentationRef
 /**
  * Expands a playlist item's arrangement into its cue list.
  *
- * The arrangement is looked up in [Presentation.arrangements] by uuid, then by name. A missing
- * arrangement, an empty uuid and a name miss, or an arrangement with no groups all expand the
+ * The arrangement is looked up in [Presentation.arrangements] by uuid, then by name when the uuid
+ * is not found. An empty uuid, a missing arrangement, or an arrangement with no groups expands the
  * presentation's groups in their stored order.
  */
 object ArrangementExpander {
@@ -28,12 +28,11 @@ object ArrangementExpander {
     }
 
     private fun resolve(presentation: Presentation, ref: PresentationRef): Arrangement? {
-        val byUuid = ref.arrangementUuid.takeIf { it.isNotEmpty() }?.let { uuid ->
-            presentation.arrangements.firstOrNull { it.uuid == uuid }
-        }
-        return byUuid ?: ref.arrangementName.takeIf { it.isNotEmpty() }?.let { name ->
-            presentation.arrangements.firstOrNull { it.name == name }
-        }
+        if (ref.arrangementUuid.isEmpty()) return null
+        return presentation.arrangements.firstOrNull { it.uuid == ref.arrangementUuid }
+            ?: ref.arrangementName.takeIf { it.isNotEmpty() }?.let { name ->
+                presentation.arrangements.firstOrNull { it.name == name }
+            }
     }
 
     private fun cuesOf(groups: List<Group>): List<Cue> =
