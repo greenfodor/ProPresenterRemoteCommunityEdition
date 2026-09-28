@@ -23,6 +23,8 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.slideAspect
 import com.greenfodor.ppremotece.feature.playlist.R
 import com.greenfodor.ppremotece.feature.playlist.toArrangementLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -121,9 +123,12 @@ class SlideGridViewModel(
 
     private fun reload() {
         viewModelScope.launch {
-            val playlistRead = contentRepository.refreshPlaylist(item.playlistUuid)
-            val presentationRead = loaded?.presentation?.uuid?.let { contentRepository.refreshPresentation(it) }
+            val playlistRead = async { contentRepository.refreshPlaylist(item.playlistUuid) }
+            val presentationRead = loaded?.presentation?.uuid?.let {
+                async { contentRepository.refreshPresentation(it) }
+            }
             listOfNotNull(playlistRead, presentationRead)
+                .awaitAll()
                 .firstNotNullOfOrNull { (it as? Result.Failure)?.error }
                 ?.let { _events.send(SlideGridEvent.ShowError(it.toUiText())) }
         }

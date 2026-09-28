@@ -121,6 +121,8 @@ class PlaylistTreeViewModel(
     private fun stopPlaylist(uuid: String) {
         playlistJobs.remove(uuid)?.cancel()
         loadingPlaylists -= uuid
+        val shown = expanded.mapNotNull { playlists[it] }.flatMap { it.presentationUuids() }.toSet()
+        presentationJobs.keys.filterNot { it in shown }.forEach { presentationJobs.remove(it)?.cancel() }
         publish()
     }
 

@@ -2,15 +2,14 @@ package com.greenfodor.ppremotece.feature.playlist.grid
 
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
+import com.greenfodor.ppremotece.core.domain.thumbnail.DEFAULT_SLIDE_ASPECT
 import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
-
-private const val DEFAULT_ASPECT = 16f / 9f
 
 data class SlideGridState(
     val title: String = "",
     val label: ArrangementLabel? = null,
     val cues: List<CueUi> = emptyList(),
-    val aspect: Float = DEFAULT_ASPECT,
+    val aspect: Float = DEFAULT_SLIDE_ASPECT,
     val countMismatch: Boolean = false,
     val liveCueIndex: Int? = null,
     val nextCueIndex: Int? = null,

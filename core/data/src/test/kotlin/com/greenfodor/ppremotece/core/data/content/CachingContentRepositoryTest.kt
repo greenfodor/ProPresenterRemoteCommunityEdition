@@ -44,13 +44,15 @@ class CachingContentRepositoryTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val session = MutableStateFlow<String?>("1@host-a")
     private val reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val restores = AtomicInteger()
     private lateinit var repository: CachingContentRepository
 
     @BeforeEach
     fun setUp() {
         server.dispatcher = host
         val client = KtorProPresenterClient(HttpClientFactory.create(), server.url("/").toString())
-        repository = CachingContentRepository(client, session, reconnects, scope)
+        repository =
+            CachingContentRepository(client, session, reconnects, scope, restore = { restores.incrementAndGet() })
     }
 
     @AfterEach
@@ -143,6 +145,37 @@ class CachingContentRepositoryTest {
         host.failWith = 500
 
         assertThat(repository.playlist(PLAYLIST).first()).isEqualTo(Result.Failure(DataError.Network.SERVER))
+    }
+
+    @Test
+    fun `without a session nothing is read and a restore is requested`() = runBlocking {
+        session.value = null
+
+        repository.playlist(PLAYLIST).test(timeout = 5.seconds) {
+            awaitCondition { restores.get() == 1 }
+            delay(100.milliseconds)
+            expectNoEvents()
+        }
+        assertThat(host.reads(PLAYLIST_PATH)).isEqualTo(0)
+    }
+
+    @Test
+    fun `opening again does not replay a cached failure`() = runBlocking {
+        host.failWith = 500
+        assertThat(repository.playlist(PLAYLIST).first()).isEqualTo(Result.Failure(DataError.Network.SERVER))
+
+        host.failWith = null
+
+        assertThat(repository.playlist(PLAYLIST).first().name()).isEqualTo(ORIGINAL_NAME)
+    }
+
+    @Test
+    fun `a failure repeated on retry is emitted again`() = runBlocking {
+        host.failWith = 500
+        assertThat(repository.playlist(PLAYLIST).first()).isEqualTo(Result.Failure(DataError.Network.SERVER))
+
+        assertThat(repository.playlist(PLAYLIST).first()).isEqualTo(Result.Failure(DataError.Network.SERVER))
+        assertThat(host.reads(PLAYLIST_PATH)).isEqualTo(2)
     }
 
     private fun Result<Playlist, DataError.Network>.name(): String = (this as Result.Success).data.name

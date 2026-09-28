@@ -70,10 +70,9 @@ class ProPresenterSession(
     override suspend fun connect(host: ProPresenterHost): Result<ProPresenterVersion, DataError.Network> {
         val client = KtorProPresenterClient(httpClient, "http://${host.address}:${host.port}/")
         return client.version().onSuccess {
-            close()
             val scope = CoroutineScope(sessionScope.coroutineContext + SupervisorJob(sessionScope.coroutineContext.job))
             val live = StreamingLiveStateRepository(client, scope, onReconnected = { _streamReconnects.tryEmit(Unit) })
-            connection.value = Connection(client, live, scope)
+            connection.getAndUpdate { Connection(client, live, scope) }?.scope?.cancel()
             _sessionKey.value = "${connectCount.incrementAndGet()}@${host.address}:${host.port}"
             try {
                 savedHostStore.save(host)
@@ -84,13 +83,17 @@ class ProPresenterSession(
     }
 
     override suspend fun disconnect() {
-        close()
-        savedHostStore.clear()
+        try {
+            savedHostStore.clear()
+        } finally {
+            connection.getAndUpdate { null }?.scope?.cancel()
+            _sessionKey.value = null
+        }
     }
 
-    private fun close() {
-        connection.getAndUpdate { null }?.scope?.cancel()
-        _sessionKey.value = null
+    /** Reconnects to the saved host when no host is connected. */
+    suspend fun restore() {
+        currentClient()
     }
 
     /** Forwards to the current host's client; with none connected, first reconnects to the saved host. */

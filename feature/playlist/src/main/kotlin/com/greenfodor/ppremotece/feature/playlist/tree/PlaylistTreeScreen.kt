@@ -144,13 +144,17 @@ fun PlaylistTreeScreen(
 
 @Composable
 private fun TreeError(error: UiText, onRetry: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = error.asString(), color = MaterialTheme.colorScheme.error)
-        Button(onClick = onRetry) { Text(stringResource(R.string.playlists_retry)) }
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item {
+            Column(
+                modifier = Modifier.fillParentMaxSize().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = error.asString(), color = MaterialTheme.colorScheme.error)
+                Button(onClick = onRetry) { Text(stringResource(R.string.playlists_retry)) }
+            }
+        }
     }
 }
 

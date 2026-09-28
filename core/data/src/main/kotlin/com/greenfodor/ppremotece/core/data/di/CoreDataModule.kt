@@ -29,7 +29,8 @@ val coreDataModule = module {
             client = session.client,
             session = session.sessionKey,
             staleSignals = session.streamReconnects,
-            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+            restore = session::restore
         )
     }
 }

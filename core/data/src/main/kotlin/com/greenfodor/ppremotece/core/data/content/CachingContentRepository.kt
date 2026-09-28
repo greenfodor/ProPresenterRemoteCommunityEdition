@@ -18,8 +18,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -32,7 +34,8 @@ private typealias Read<T> = Result<T, DataError.Network>
 
 /**
  * [ContentRepository] that caches reads per [session] key: a value is looked up under the current
- * key, and values of other keys are dropped whenever the key changes (null while disconnected).
+ * key, and values of other keys are dropped whenever the key changes. While the key is null the
+ * flows emit nothing and call [restore]. A new collection drops a cached failure before it reads.
  * Concurrent reads of one value share one request, and at most [MAX_PARALLEL_READS] run at once.
  * Each [staleSignals] emission re-reads every value that currently has a collector.
  */
@@ -40,7 +43,8 @@ class CachingContentRepository(
     private val client: ProPresenterClient,
     private val session: StateFlow<String?>,
     staleSignals: Flow<Unit>,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val restore: suspend () -> Unit
 ) : ContentRepository {
     private enum class Kind { PLAYLISTS, PLAYLIST, PRESENTATION }
 
@@ -85,11 +89,13 @@ class CachingContentRepository(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun <T : Any> observe(kind: Kind, uuid: String, read: suspend () -> Read<T>): Flow<Read<T>> =
         session.flatMapLatest { current ->
+            if (current == null) return@flatMapLatest flow { restore() }
             val entry = entry(Key(current, kind, uuid), read)
             entry.value
                 .filterNotNull()
                 .onStart {
                     entry.collectors.incrementAndGet()
+                    entry.dropFailure()
                     scope.launch { entry.read() }
                 }.onCompletion { entry.collectors.decrementAndGet() }
         }
@@ -114,6 +120,10 @@ class CachingContentRepository(
                         .async { reads.withPermit { fetch() }.also(::store) }
                         .also { inFlight = it }
                 }.await()
+
+        fun dropFailure() {
+            value.update { it as? Result.Success }
+        }
 
         private fun store(result: Read<T>) {
             if (result is Result.Success || value.value !is Result.Success) value.value = result
