@@ -13,11 +13,20 @@ import java.io.IOException
 
 private val Context.savedHostDataStore by preferencesDataStore(name = "saved_host")
 
+/** The one saved ProPresenter host. */
+interface SavedHosts {
+    suspend fun read(): ProPresenterHost?
+
+    suspend fun save(host: ProPresenterHost)
+
+    suspend fun clear()
+}
+
 /** Stores the one saved ProPresenter host in DataStore. */
 class SavedHostStore(
     private val context: Context
-) {
-    suspend fun read(): ProPresenterHost? {
+) : SavedHosts {
+    override suspend fun read(): ProPresenterHost? {
         val preferences = context.savedHostDataStore.data
             .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
             .first()
@@ -30,7 +39,7 @@ class SavedHostStore(
         }
     }
 
-    suspend fun save(host: ProPresenterHost) {
+    override suspend fun save(host: ProPresenterHost) {
         context.savedHostDataStore.edit {
             it[NAME] = host.name
             it[ADDRESS] = host.address
@@ -38,7 +47,7 @@ class SavedHostStore(
         }
     }
 
-    suspend fun clear() {
+    override suspend fun clear() {
         context.savedHostDataStore.edit { it.clear() }
     }
 

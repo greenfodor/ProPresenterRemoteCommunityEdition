@@ -9,4 +9,6 @@ android {
 dependencies {
     implementation(project(":core:domain"))
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(platform(libs.coil.bom))
+    implementation(libs.coil.compose)
 }

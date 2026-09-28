@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.core.data.session
 
 import com.greenfodor.ppremotece.core.data.live.StreamingLiveStateRepository
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
+import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailUrl
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
@@ -11,6 +12,11 @@ import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +33,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.job
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -37,14 +44,19 @@ import java.util.concurrent.atomic.AtomicInteger
  * The connection to the current ProPresenter host: its [KtorProPresenterClient] and its
  * [StreamingLiveStateRepository], which lives in a scope that [disconnect] cancels.
  * [sessionKey] names the current connection (`{n}@{address}:{port}`, new on each connect, null
- * while disconnected), and [streamReconnects] emits each time the live stream is reopened.
+ * while disconnected), and [streamReconnects] emits each time the live stream is reopened. Each
+ * successful connect clears the [ThumbnailCache].
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
-    private val savedHostStore: SavedHostStore
+    private val savedHostStore: SavedHosts,
+    private val thumbnailCache: ThumbnailCache
 ) : ConnectionRepository,
-    LiveStateRepository {
+    LiveStateRepository,
+    ThumbnailSource {
     private class Connection(
+        val baseUrl: String,
+        val instanceName: String,
         val client: KtorProPresenterClient,
         val live: StreamingLiveStateRepository,
         val scope: CoroutineScope
@@ -65,15 +77,29 @@ class ProPresenterSession(
     override val liveState: Flow<LiveState> =
         connection.flatMapLatest { it?.live?.liveState ?: flowOf(LiveState.Initial) }
 
+    override val thumbnailRequests: Flow<ThumbnailRequests?> =
+        connection.map { current ->
+            current?.let {
+                ThumbnailRequests { item, presentationUuid, cue ->
+                    ThumbnailRequest(
+                        url = thumbnailUrl(it.baseUrl, item, cue.index),
+                        cacheKey = ThumbnailKey.of(it.instanceName, presentationUuid, cue)
+                    )
+                }
+            }
+        }
+
     override suspend fun savedHost(): ProPresenterHost? = savedHostStore.read()
 
     override suspend fun connect(host: ProPresenterHost): Result<ProPresenterVersion, DataError.Network> {
-        val client = KtorProPresenterClient(httpClient, "http://${host.address}:${host.port}/")
-        return client.version().onSuccess {
+        val baseUrl = "http://${host.address}:${host.port}/"
+        val client = KtorProPresenterClient(httpClient, baseUrl)
+        return client.version().onSuccess { version ->
             val scope = CoroutineScope(sessionScope.coroutineContext + SupervisorJob(sessionScope.coroutineContext.job))
             val live = StreamingLiveStateRepository(client, scope, onReconnected = { _streamReconnects.tryEmit(Unit) })
-            connection.getAndUpdate { Connection(client, live, scope) }?.scope?.cancel()
+            connection.getAndUpdate { Connection(baseUrl, version.name, client, live, scope) }?.scope?.cancel()
             _sessionKey.value = "${connectCount.incrementAndGet()}@${host.address}:${host.port}"
+            thumbnailCache.clear()
             try {
                 savedHostStore.save(host)
             } catch (_: IOException) {
