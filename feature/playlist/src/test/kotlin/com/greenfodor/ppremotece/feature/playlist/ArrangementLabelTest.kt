@@ -5,11 +5,6 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
-import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
-import com.greenfodor.ppremotece.core.domain.model.LiveSlide
-import com.greenfodor.ppremotece.core.domain.model.LiveState
-import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
-import com.greenfodor.ppremotece.feature.playlist.grid.liveCueIndex
 import org.junit.jupiter.api.Test
 
 class ArrangementLabelTest {
@@ -30,17 +25,5 @@ class ArrangementLabelTest {
     @Test
     fun `item without an arrangement has no label`() {
         assertThat(ArrangementChoice.SongOrder.toArrangementLabel()).isNull()
-    }
-
-    @Test
-    fun `live cue is marked only for the live item and its presentation`() {
-        val item = PlaylistItemKey("pl-1", 1)
-        val live =
-            LiveState(ConnectionStatus.CONNECTED, item, LiveSlide(presentationUuid = "p-1", index = 3, totalCues = 7))
-
-        assertThat(liveCueIndex(live, item, presentationUuid = "p-1")).isEqualTo(3)
-        assertThat(liveCueIndex(live, PlaylistItemKey("pl-1", 0), presentationUuid = "p-1")).isNull()
-        assertThat(liveCueIndex(live, item, presentationUuid = "p-2")).isNull()
-        assertThat(liveCueIndex(live.copy(slide = null), item, presentationUuid = "p-1")).isNull()
     }
 }

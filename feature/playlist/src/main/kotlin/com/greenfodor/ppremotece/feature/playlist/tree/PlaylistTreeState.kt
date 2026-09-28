@@ -7,6 +7,7 @@ import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 data class PlaylistTreeState(
     val rows: List<TreeRowUi> = emptyList(),
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val error: UiText? = null
 )
 
@@ -61,6 +62,8 @@ sealed interface PlaylistTreeAction {
     data object OnDisconnectClick : PlaylistTreeAction
 
     data object OnRetryClick : PlaylistTreeAction
+
+    data object OnRefresh : PlaylistTreeAction
 }
 
 sealed interface PlaylistTreeEvent {

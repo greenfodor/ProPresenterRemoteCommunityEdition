@@ -33,7 +33,16 @@ data class ColorDto(
 
 @Serializable
 data class SlideDto(
-    val text: String = ""
+    val text: String = "",
+    val enabled: Boolean = true,
+    val size: SlideSizeDto? = null,
+    val label: String = ""
+)
+
+@Serializable
+data class SlideSizeDto(
+    val width: Int,
+    val height: Int
 )
 
 @Serializable

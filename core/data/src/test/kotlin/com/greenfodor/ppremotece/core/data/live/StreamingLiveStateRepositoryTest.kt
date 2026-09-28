@@ -149,6 +149,28 @@ class StreamingLiveStateRepositoryTest {
     }
 
     @Test
+    fun `a reconnect is reported once the new stream delivers`() = runBlocking {
+        val reconnects = AtomicInteger()
+        val secondDelivered = AtomicInteger()
+        repository = StreamingLiveStateRepository(
+            client = client,
+            scope = scope,
+            watchdogTimeout = WATCHDOG,
+            reconnectDelay = { 10.milliseconds },
+            onReconnected = { reconnects.incrementAndGet() }
+        )
+        fake.enqueueStream(fake.stream("status-updates", StreamEnd.STALL))
+        fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL, delivered = secondDelivered))
+
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitCondition { secondDelivered.get() > 0 }
+            delay(50.milliseconds)
+            assertThat(reconnects.get()).isEqualTo(1)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `failed slide index read is retried on the next chunk`() = runBlocking {
         fake.failSlideIndexReads = 1
         fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL))

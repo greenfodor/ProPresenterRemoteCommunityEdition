@@ -98,9 +98,26 @@
       "presentation_info": {
         "presentation_uuid": "1d6c5bd9-a408-4972-9cc2-c10bb905508a",
         "arrangement_name": "",
-        "arrangement_uuid": "d0fdd007-15a7-455e-a892-1f3cd1c95474"
+        "arrangement_uuid": "01463ac2-faa2-4b54-8b33-beca2126c762"
       },
       "target_uuid": "1d6c5bd9-a408-4972-9cc2-c10bb905508a",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "44a66b34-67ea-496a-9162-52ee38f48525",
+        "name": "Song C",
+        "index": 6
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "44a66b34-67ea-496a-9162-52ee38f48525",
+        "arrangement_name": "A",
+        "arrangement_uuid": "10d18080-5666-49eb-9bc7-f390df5864b9"
+      },
+      "target_uuid": "44a66b34-67ea-496a-9162-52ee38f48525",
       "destination": "presentation"
     }
   ]

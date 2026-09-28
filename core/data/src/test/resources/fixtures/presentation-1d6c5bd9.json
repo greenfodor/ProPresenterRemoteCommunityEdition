@@ -218,7 +218,7 @@
       },
       {
         "id": {
-          "uuid": "d0fdd007-15a7-455e-a892-1f3cd1c95474",
+          "uuid": "01463ac2-faa2-4b54-8b33-beca2126c762",
           "name": "",
           "index": 2
         },
@@ -226,7 +226,7 @@
         "total_cues": 0
       }
     ],
-    "current_arrangement": "d0fdd007-15a7-455e-a892-1f3cd1c95474",
+    "current_arrangement": "01463ac2-faa2-4b54-8b33-beca2126c762",
     "type": "standard",
     "is_authorized": true,
     "total_cues": 11
