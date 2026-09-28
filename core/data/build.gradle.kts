@@ -10,6 +10,16 @@ android {
 dependencies {
     implementation(project(":core:domain"))
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.okhttp)
 
     testImplementation(libs.assertk)
+    testImplementation(libs.turbine)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockwebserver3)
+    testImplementation(libs.mockwebserver3.junit5)
 }
