@@ -43,7 +43,9 @@ features → `domain` + `designsystem`, never `data` and never each other; `:app
 wires Koin modules and navigation. Features own their `@Serializable` `NavKey`s; cross-feature
 navigation goes through callbacks wired in `:app`.
 
-Convention plugins live in `build-logic/convention`. `ppremotece.lint` (detekt + ktlint) is
+`:core:domain` compiles against the JDK 17 API (`-Xjdk-release=17`, javac `--release 17`), and
+animal-sniffer (`animalsnifferMain`, part of `check`) fails the build on any JDK API missing from
+Android API 29 (gummy-bears signatures). Android modules compile against `android.jar`. Convention plugins live in `build-logic/convention`. `ppremotece.lint` (detekt + ktlint) is
 applied by every other plugin; JUnit Jupiter (`useJUnitPlatform()`) is configured in every module.
 Versions come only from `gradle/libs.versions.toml`.
 

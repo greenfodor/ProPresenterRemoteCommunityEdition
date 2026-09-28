@@ -5,7 +5,7 @@ plugins {
 group = "com.greenfodor.ppremotece.buildlogic"
 
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(libs.versions.java.get().toInt())
 }
 
 dependencies {
@@ -14,6 +14,7 @@ dependencies {
     compileOnly(libs.compose.compiler.gradle.plugin)
     compileOnly(libs.detekt.gradle.plugin)
     compileOnly(libs.ktlint.gradle.plugin)
+    compileOnly(libs.animalsniffer.gradle.plugin)
 }
 
 gradlePlugin {
