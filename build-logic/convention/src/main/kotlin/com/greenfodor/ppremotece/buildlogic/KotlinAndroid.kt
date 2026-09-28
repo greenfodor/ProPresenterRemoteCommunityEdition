@@ -22,7 +22,6 @@ internal fun Project.configureKotlinAndroid(extension: CommonExtension) {
         defaultConfig.minSdk = MIN_SDK
         compileOptions.sourceCompatibility = JavaVersion.VERSION_25
         compileOptions.targetCompatibility = JavaVersion.VERSION_25
-        testOptions.unitTests.all { it.useJUnitPlatform() }
     }
     configureKotlinToolchain()
     configureJUnit()
