@@ -1,0 +1,27 @@
+# Built application files
+*.apk
+*.aab
+*.dex
+*.class
+
+# Build output
+build/
+.gradle/
+.kotlin/
+.cxx/
+captures/
+*.log
+
+# Local configuration
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# Keystores
+*.jks
+*.keystore
+
+# graphify
+graphify-out/
