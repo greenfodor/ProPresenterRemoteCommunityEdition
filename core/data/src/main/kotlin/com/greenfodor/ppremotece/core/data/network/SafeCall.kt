@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.core.data.network
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
+import io.ktor.client.call.NoTransformationFoundException
 import io.ktor.client.call.body
 import io.ktor.client.network.sockets.ConnectTimeoutException
 import io.ktor.client.plugins.HttpRequestTimeoutException
@@ -30,6 +31,12 @@ internal suspend inline fun <reified T> safeCall(execute: () -> HttpResponse): R
         Result.Failure(DataError.Network.SERIALIZATION)
     } catch (_: ContentConvertException) {
         Result.Failure(DataError.Network.SERIALIZATION)
+    } catch (_: NoTransformationFoundException) {
+        Result.Failure(DataError.Network.UNKNOWN)
+    } catch (_: IllegalArgumentException) {
+        Result.Failure(DataError.Network.UNKNOWN)
+    } catch (_: IllegalStateException) {
+        Result.Failure(DataError.Network.UNKNOWN)
     }
 
 internal suspend inline fun safeEmptyCall(execute: () -> HttpResponse): EmptyResult<DataError.Network> =
@@ -38,6 +45,10 @@ internal suspend inline fun safeEmptyCall(execute: () -> HttpResponse): EmptyRes
         if (response.status.isSuccess()) Result.Success(Unit) else Result.Failure(response.status.toNetworkError())
     } catch (e: IOException) {
         Result.Failure(e.toNetworkError())
+    } catch (_: IllegalArgumentException) {
+        Result.Failure(DataError.Network.UNKNOWN)
+    } catch (_: IllegalStateException) {
+        Result.Failure(DataError.Network.UNKNOWN)
     }
 
 internal fun HttpStatusCode.toNetworkError(): DataError.Network =

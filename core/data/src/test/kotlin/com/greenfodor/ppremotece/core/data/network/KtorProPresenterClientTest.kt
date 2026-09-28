@@ -3,13 +3,14 @@ package com.greenfodor.ppremotece.core.data.network
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
-import assertk.assertions.isInstanceOf
+import com.greenfodor.ppremotece.core.data.Fixtures
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockWebServer
 import mockwebserver3.junit5.StartStop
@@ -71,19 +72,28 @@ class KtorProPresenterClientTest {
     }
 
     @Test
+    fun `malformed host is unknown`() = runBlocking {
+        val malformed = KtorProPresenterClient(HttpClientFactory.create(), "http://host name:1/")
+
+        assertThat(malformed.version()).isEqualTo(Result.Failure(DataError.Network.UNKNOWN))
+        assertThat(malformed.triggerNext()).isEqualTo(Result.Failure(DataError.Network.UNKNOWN))
+    }
+
+    @Test
     fun `status updates posts the subscriptions and streams the response chunks`() = runBlocking {
-        fake.enqueueStream(StreamReplay.response("status-updates", StreamEnd.EOF, timeScale = 0.0))
+        fake.enqueueStream(fake.stream("status-updates", StreamEnd.EOF, timeScale = 0.0))
 
-        val firstChunk = client.statusUpdates(listOf("status/slide", "timer/system_time")).first()
+        val chunks = client.statusUpdates(listOf("status/slide", "timer/system_time")).toList()
 
-        assertThat(firstChunk.decodeToString()).isInstanceOf<String>()
+        assertThat(chunks.reduce { all, chunk -> all + chunk }.toList())
+            .isEqualTo(Fixtures.bytes("streams/status-updates.raw").toList())
         val post = fake.requests.single { it.method == "POST" }
         assertThat(post.body?.utf8()).isEqualTo("""["status/slide","timer/system_time"]""")
     }
 
     @Test
     fun `every call uses only allowed methods and paths`() = runBlocking {
-        fake.enqueueStream(StreamReplay.response("status-updates", StreamEnd.EOF, timeScale = 0.0))
+        fake.enqueueStream(fake.stream("status-updates", StreamEnd.EOF, timeScale = 0.0))
         val item = PlaylistItemKey(playlistUuid = FakeProPresenter.SERVICE_PLAYLIST_UUID, index = 4)
 
         client.version()

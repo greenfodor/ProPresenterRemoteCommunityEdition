@@ -30,52 +30,58 @@ fun defaultReconnectDelay(attempt: Int): Duration =
     (FIRST_RECONNECT_DELAY * 2.0.pow(attempt)).coerceAtMost(MAX_RECONNECT_DELAY)
 
 /**
- * Keeps one `status/updates` stream open while [liveState] has subscribers. A `status/slide`
- * frame triggers a `slide_index` read, `playlist/active` sets the live item, and any chunk resets
- * the watchdog. When no chunk arrives for [watchdogTimeout], or the stream ends or fails, the
- * stream is closed and reopened after [reconnectDelay] with the same subscriptions, and the
- * slide index is read again.
+ * Keeps one `status/updates` stream open while [liveState] has subscribers and starts from
+ * [LiveState.Initial] each time it is subscribed again. Within each chunk, `playlist/active` sets
+ * the live item first; then, if the chunk held a `status/slide` frame or changed the item, or an
+ * earlier read failed, `slide_index` is read once. Any chunk resets the watchdog. When no chunk
+ * arrives for [watchdogTimeout], or the stream ends or fails, the stream is closed and reopened
+ * after [reconnectDelay] with the same subscriptions, and the slide index is read again.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
     scope: CoroutineScope,
-    private val watchdogTimeout: Duration = 5.seconds,
+    private val watchdogTimeout: Duration = 10.seconds,
     private val reconnectDelay: (attempt: Int) -> Duration = ::defaultReconnectDelay
 ) : LiveStateRepository {
     override val liveState: StateFlow<LiveState> =
         channelFlow {
             var state = LiveState.Initial
-
-            suspend fun update(next: LiveState) {
-                state = next
-                send(next)
-            }
+            send(state)
 
             var attempt = 0
             while (true) {
                 val parser = StatusFrameParser()
+                var slideReadNeeded = true
                 val failure = runCatching {
                     streamChunks().collect { chunk ->
                         attempt = 0
-                        if (state.connection != ConnectionStatus.CONNECTED) {
-                            update(state.copy(connection = ConnectionStatus.CONNECTED))
-                            client.slideIndex().onSuccess { update(state.copy(slide = it)) }
-                        }
+                        var next = state.copy(connection = ConnectionStatus.CONNECTED)
                         for (event in parser.events(chunk)) {
                             when (event) {
-                                StatusEvent.SlideChanged ->
-                                    client.slideIndex().onSuccess { update(state.copy(slide = it)) }
-                                is StatusEvent.PlaylistActive -> update(state.copy(item = event.item))
+                                StatusEvent.SlideChanged -> slideReadNeeded = true
+                                is StatusEvent.PlaylistActive -> if (event.item != next.item) {
+                                    next = next.copy(item = event.item)
+                                    slideReadNeeded = true
+                                }
                                 else -> Unit
                             }
                         }
+                        if (slideReadNeeded) {
+                            client.slideIndex().onSuccess {
+                                next = next.copy(slide = it)
+                                slideReadNeeded = false
+                            }
+                        }
+                        state = next
+                        send(state)
                     }
                 }.exceptionOrNull()
                 if (failure is CancellationException && failure !is TimeoutCancellationException) throw failure
-                update(state.copy(connection = ConnectionStatus.RECONNECTING))
+                state = state.copy(connection = ConnectionStatus.RECONNECTING)
+                send(state)
                 delay(reconnectDelay(attempt++))
             }
-        }.stateIn(scope, SharingStarted.WhileSubscribed(), LiveState.Initial)
+        }.stateIn(scope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), LiveState.Initial)
 
     @OptIn(FlowPreview::class)
     private fun streamChunks() = client.statusUpdates(SUBSCRIPTIONS).timeout(watchdogTimeout)

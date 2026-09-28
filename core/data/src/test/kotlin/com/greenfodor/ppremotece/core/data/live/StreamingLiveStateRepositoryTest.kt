@@ -4,7 +4,9 @@ import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.isBetween
 import assertk.assertions.isEqualTo
+import assertk.assertions.isGreaterThanOrEqualTo
 import com.greenfodor.ppremotece.core.data.network.FakeProPresenter
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
@@ -54,13 +56,14 @@ class StreamingLiveStateRepositoryTest {
 
     @AfterEach
     fun tearDown() {
+        fake.releaseStalls()
         scope.cancel()
     }
 
     @Test
     fun `heartbeats keep one connection alive`() = runBlocking {
         val delivered = AtomicInteger()
-        fake.enqueueStream(StreamReplay.response("su-long", StreamEnd.STALL, delivered = delivered))
+        fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL, delivered = delivered))
 
         repository.liveState.test(timeout = 5.seconds) {
             assertThat(
@@ -78,12 +81,13 @@ class StreamingLiveStateRepositoryTest {
     @Test
     fun `each slide change re-reads the slide index`() = runBlocking {
         val delivered = AtomicInteger()
-        fake.enqueueStream(StreamReplay.response("su-long", StreamEnd.STALL, delivered = delivered))
+        fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL, delivered = delivered))
 
         repository.liveState.test(timeout = 5.seconds) {
-            val expectedReads = 1 + StreamReplay.frameCount("su-long", "status/slide")
+            val slideChanges = StreamReplay.frameCount("su-long", "status/slide")
             awaitCondition { delivered.get() == StreamReplay.chunkCount("su-long") }
-            awaitCondition { fake.count("GET", SLIDE_INDEX) == expectedReads }
+            delay(50.milliseconds)
+            assertThat(fake.count("GET", SLIDE_INDEX)).isBetween(1, slideChanges)
             assertThat(fake.count("POST", "/v1/status/updates")).isEqualTo(1)
             cancelAndIgnoreRemainingEvents()
         }
@@ -91,7 +95,7 @@ class StreamingLiveStateRepositoryTest {
 
     @Test
     fun `silent host is reported as reconnecting`() = runBlocking {
-        fake.enqueueStream(StreamReplay.response("status-updates", StreamEnd.STALL))
+        fake.enqueueStream(fake.stream("status-updates", StreamEnd.STALL))
 
         repository.liveState.test(timeout = 5.seconds) {
             awaitUntil { it.connection == ConnectionStatus.CONNECTED }
@@ -101,16 +105,19 @@ class StreamingLiveStateRepositoryTest {
     }
 
     @Test
-    fun `silent stall reconnects, resubscribes and re-reads the slide index`() = runBlocking {
+    fun `silent stall reconnects after the watchdog, resubscribes and re-reads the slide index`() = runBlocking {
         val firstDelivered = AtomicInteger()
-        fake.enqueueStream(StreamReplay.response("status-updates", StreamEnd.STALL, delivered = firstDelivered))
-        fake.enqueueStream(StreamReplay.response("su-long", StreamEnd.STALL))
+        fake.enqueueStream(fake.stream("status-updates", StreamEnd.STALL, delivered = firstDelivered))
+        fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL))
 
         repository.liveState.test(timeout = 5.seconds) {
             awaitCondition { firstDelivered.get() == StreamReplay.chunkCount("status-updates") }
+            val lastChunkAt = System.nanoTime()
             val readsBeforeStall = fake.count("GET", SLIDE_INDEX)
             awaitCondition { fake.count("POST", "/v1/status/updates") == 2 }
             awaitCondition { fake.count("GET", SLIDE_INDEX) > readsBeforeStall }
+            val secondPostAt = fake.arrivals[fake.requests.indexOfLast { it.method == "POST" }]
+            assertThat((secondPostAt - lastChunkAt) / 1_000_000).isGreaterThanOrEqualTo(250L)
             val bodies = fake.requests.filter { it.method == "POST" }.map { it.body?.utf8() }
             assertThat(bodies).containsExactly(SUBSCRIPTIONS_BODY, SUBSCRIPTIONS_BODY)
             cancelAndIgnoreRemainingEvents()
@@ -120,8 +127,8 @@ class StreamingLiveStateRepositoryTest {
 
     @Test
     fun `end of stream reconnects`() = runBlocking {
-        fake.enqueueStream(StreamReplay.response("status-updates", StreamEnd.EOF))
-        fake.enqueueStream(StreamReplay.response("su-long", StreamEnd.STALL))
+        fake.enqueueStream(fake.stream("status-updates", StreamEnd.EOF))
+        fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL))
 
         repository.liveState.test(timeout = 5.seconds) {
             awaitCondition { fake.count("POST", "/v1/status/updates") == 2 }
@@ -129,6 +136,32 @@ class StreamingLiveStateRepositoryTest {
             cancelAndIgnoreRemainingEvents()
         }
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
+    }
+
+    @Test
+    fun `failed slide index read is retried on the next chunk`() = runBlocking {
+        fake.failSlideIndexReads = 1
+        fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL))
+
+        repository.liveState.test(timeout = 5.seconds) {
+            assertThat(awaitUntil { it.slide != null }.slide).isEqualTo(liveSlide)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `resubscribing after all collectors left starts from the initial state`() = runBlocking {
+        fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL))
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitUntil { it.connection == ConnectionStatus.CONNECTED }
+            cancelAndIgnoreRemainingEvents()
+        }
+        delay(100.milliseconds)
+
+        repository.liveState.test(timeout = 5.seconds) {
+            assertThat(awaitItem()).isEqualTo(LiveState.Initial)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

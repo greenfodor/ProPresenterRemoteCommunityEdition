@@ -14,23 +14,26 @@ import kotlinx.serialization.json.longOrNull
 /**
  * Splits a `status/updates` byte stream into frames separated by `\r\n\r\n` and decodes each
  * frame's `{url, data}` into a [StatusEvent]. Bytes of an incomplete frame are kept until a later
- * chunk completes it. One instance serves one stream connection.
+ * chunk completes it; more than [MAX_PENDING_BYTES] without a separator are dropped. One instance
+ * serves one stream connection.
  */
 class StatusFrameParser {
     private var pending = ByteArray(0)
 
     fun feed(chunk: ByteArray): List<String> {
+        val scanFrom = maxOf(0, pending.size - SEPARATOR.size + 1)
         pending += chunk
         val frames = mutableListOf<String>()
         var start = 0
-        var separator = indexOfSeparator(pending, start)
+        var separator = indexOfSeparator(pending, scanFrom)
         while (separator >= 0) {
             val frame = pending.decodeToString(start, separator)
             if (frame.isNotBlank()) frames += frame
             start = separator + SEPARATOR.size
             separator = indexOfSeparator(pending, start)
         }
-        pending = pending.copyOfRange(start, pending.size)
+        pending =
+            if (pending.size - start > MAX_PENDING_BYTES) ByteArray(0) else pending.copyOfRange(start, pending.size)
         return frames
     }
 
@@ -90,7 +93,8 @@ class StatusFrameParser {
         return -1
     }
 
-    private companion object {
-        val SEPARATOR = "\r\n\r\n".encodeToByteArray()
+    companion object {
+        const val MAX_PENDING_BYTES = 1 shl 20
+        private val SEPARATOR = "\r\n\r\n".encodeToByteArray()
     }
 }

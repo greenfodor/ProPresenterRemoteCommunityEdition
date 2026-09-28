@@ -7,9 +7,9 @@ import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockResponseBody
 import mockwebserver3.RecordedRequest
-import mockwebserver3.SocketEffect
 import okio.BufferedSink
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -18,10 +18,28 @@ class FakeProPresenter(
     private val cueCount: Int = 7
 ) : Dispatcher() {
     val requests = CopyOnWriteArrayList<RecordedRequest>()
+    val arrivals = CopyOnWriteArrayList<Long>()
+
+    @Volatile
+    var failSlideIndexReads = 0
     private val streams = LinkedBlockingQueue<MockResponse>()
+
+    private val stalls = CountDownLatch(1)
 
     fun enqueueStream(response: MockResponse) {
         streams.add(response)
+    }
+
+    /** Replays a captured stream; with [StreamEnd.STALL] the connection stays open and silent until [releaseStalls]. */
+    fun stream(
+        name: String,
+        end: StreamEnd,
+        timeScale: Double = 0.02,
+        delivered: AtomicInteger = AtomicInteger()
+    ): MockResponse = StreamReplay.response(name, end, timeScale, delivered, stalls)
+
+    fun releaseStalls() {
+        stalls.countDown()
     }
 
     fun count(method: String, path: String): Int =
@@ -29,13 +47,23 @@ class FakeProPresenter(
 
     override fun dispatch(request: RecordedRequest): MockResponse {
         requests += request
+        arrivals += System.nanoTime()
         val path = request.url.encodedPath
         return when {
-            request.method == "POST" && path == "/v1/status/updates" ->
-                streams.poll() ?: MockResponse.Builder().onResponseStart(SocketEffect.Stall).build()
-            request.method != "GET" -> status(405)
+            request.method == "POST" && path == "/v1/status/updates" -> streams.poll() ?: StreamReplay.silent(stalls)
+            request.method == "GET" -> dispatchGet(path)
+            else -> status(405)
+        }
+    }
+
+    private fun dispatchGet(path: String): MockResponse =
+        when {
             path == "/version" -> json(Fixtures.text("version.json"))
             path == "/v1/playlists" -> json(Fixtures.text(Fixtures.PLAYLIST_TREE))
+            path == "/v1/presentation/slide_index" && failSlideIndexReads > 0 -> {
+                failSlideIndexReads--
+                status(500)
+            }
             path == "/v1/presentation/slide_index" -> json(SLIDE_INDEX)
             path == "/v1/trigger/next" || path == "/v1/trigger/previous" -> status(204)
             CUE_TRIGGER.matches(path) -> triggerCue(path)
@@ -43,7 +71,6 @@ class FakeProPresenter(
             path.startsWith("/v1/presentation/") -> fixture("presentation", path.removePrefix("/v1/presentation/"))
             else -> status(404)
         }
-    }
 
     private fun triggerCue(path: String): MockResponse {
         val cue = requireNotNull(CUE_TRIGGER.matchEntire(path)).groupValues[1].toInt()
@@ -98,7 +125,8 @@ object StreamReplay {
         name: String,
         end: StreamEnd,
         timeScale: Double = 0.02,
-        delivered: AtomicInteger = AtomicInteger()
+        delivered: AtomicInteger = AtomicInteger(),
+        stall: CountDownLatch = CountDownLatch(0)
     ): MockResponse {
         val raw = Fixtures.bytes("streams/$name.raw")
         val chunkLines = Fixtures.text("streams/$name.meta").lines().mapNotNull { CHUNK_LINE.find(it) }
@@ -115,13 +143,18 @@ object StreamReplay {
             previousSeconds = seconds
             chunk
         }
-        val builder = MockResponse.Builder()
+        return streamResponse(ChunkedReplayBody(chunks, end, delivered, stall))
+    }
+
+    fun silent(stall: CountDownLatch): MockResponse =
+        streamResponse(ChunkedReplayBody(emptyList(), StreamEnd.STALL, AtomicInteger(), stall))
+
+    private fun streamResponse(body: MockResponseBody) =
+        MockResponse.Builder()
             .addHeader("Content-Type", "application/octet-stream")
             .addHeader("Transfer-Encoding", "chunked")
-            .body(ChunkedReplayBody(chunks, end, delivered))
-        if (end == StreamEnd.STALL) builder.onResponseEnd(SocketEffect.Stall)
-        return builder.build()
-    }
+            .body(body)
+            .build()
 
     fun chunkCount(name: String): Int = Fixtures.text("streams/$name.meta").lines().count {
         CHUNK_LINE.containsMatchIn(it)
@@ -141,7 +174,8 @@ class TimedChunk(
 private class ChunkedReplayBody(
     private val chunks: List<TimedChunk>,
     private val end: StreamEnd,
-    private val delivered: AtomicInteger
+    private val delivered: AtomicInteger,
+    private val stall: CountDownLatch
 ) : MockResponseBody {
     override val contentLength: Long = -1L
 
@@ -152,9 +186,12 @@ private class ChunkedReplayBody(
             sink.flush()
             delivered.incrementAndGet()
         }
-        if (end == StreamEnd.EOF) {
-            sink.writeUtf8("0\r\n\r\n")
-            sink.flush()
+        when (end) {
+            StreamEnd.EOF -> {
+                sink.writeUtf8("0\r\n\r\n")
+                sink.flush()
+            }
+            StreamEnd.STALL -> stall.await()
         }
     }
 }

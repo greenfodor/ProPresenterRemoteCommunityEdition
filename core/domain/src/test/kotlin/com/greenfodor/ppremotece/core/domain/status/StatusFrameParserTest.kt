@@ -50,6 +50,22 @@ class StatusFrameParserTest {
     }
 
     @Test
+    fun `separator split across chunks still ends the frame`() {
+        val frame = """{"url":"status/slide","data":{}}"""
+
+        assertThat(parser.feed(bytes("$frame\r\n\r"))).isEmpty()
+        assertThat(parser.feed(bytes("\n"))).containsExactly(frame)
+    }
+
+    @Test
+    fun `unterminated input beyond the buffer limit is dropped`() {
+        parser.feed(ByteArray(StatusFrameParser.MAX_PENDING_BYTES + 1) { 'x'.code.toByte() })
+
+        assertThat(parser.feed(bytes("""{"url":"status/slide","data":{}}""" + SEPARATOR)))
+            .containsExactly("""{"url":"status/slide","data":{}}""")
+    }
+
+    @Test
     fun `blank frames are skipped`() {
         assertThat(parser.feed(bytes(SEPARATOR + " " + SEPARATOR))).isEmpty()
     }
