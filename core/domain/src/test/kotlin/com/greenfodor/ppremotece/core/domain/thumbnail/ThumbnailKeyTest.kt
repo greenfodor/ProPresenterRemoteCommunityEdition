@@ -49,10 +49,18 @@ class ThumbnailKeyTest {
     }
 
     @Test
-    fun `the digest is sha1 of text, width and height`() {
+    fun `the digest is sha1 of text and size with separators`() {
         val key = ThumbnailKey.of("Host 01", "p-1", cue(index = 0, slideIndexInGroup = 0, text = "abc"))
 
-        assertThat(key.substringAfterLast(':')).isEqualTo(sha1Hex("abc" + "1920" + "858"))
+        assertThat(key.substringAfterLast(':')).isEqualTo(sha1Hex("abc\u00001920x858"))
+    }
+
+    @Test
+    fun `text ending in digits does not collide with a different size`() {
+        val first = cue(index = 0, slideIndexInGroup = 0, text = "Verse 1").copy(size = SlideSize(920, 1080))
+        val second = cue(index = 0, slideIndexInGroup = 0, text = "Verse ").copy(size = SlideSize(1920, 1080))
+
+        assertThat(ThumbnailKey.of("Host 01", "p-1", first)).isNotEqualTo(ThumbnailKey.of("Host 01", "p-1", second))
     }
 
     @Test
