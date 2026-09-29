@@ -14,6 +14,8 @@ import com.greenfodor.ppremotece.core.domain.remote.RemoteBox
 import com.greenfodor.ppremotece.core.domain.remote.RemoteCommand
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
 import com.greenfodor.ppremotece.core.domain.remote.RemoteInputs
+import com.greenfodor.ppremotece.core.domain.remote.RemoteStatus
+import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -32,6 +35,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -41,8 +45,9 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * The Remote tab: what [RemoteDisplay] shows for the live state, the last live cue, the item cued
  * with ⏮/⏭ and the media item this app triggered, read through the [ContentRepository]. Taps and
  * buttons send the display's commands; ⏮/⏭ and "Back to live" only change the cued item. A cued
- * item and a triggered media item are dropped once another cue is reported live. Presentations
- * read once stay available to the display, each with its latest read.
+ * item and a triggered media item are dropped once another cue is reported live. Each needed
+ * presentation is read once and stays available with its latest read; a failed read that leaves
+ * the display loading is shown as an error, and retry reads the content again.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RemoteViewModel(
@@ -57,8 +62,15 @@ class RemoteViewModel(
         val since: LiveCue?
     )
 
+    /** The read of playlist [uuid]; a null [result] is not read yet. */
+    private data class PlaylistRead(
+        val uuid: String?,
+        val result: Result<Playlist, DataError.Network>?
+    )
+
     private val cued = MutableStateFlow<Chosen?>(null)
     private val mediaLive = MutableStateFlow<Chosen?>(null)
+    private val retries = MutableStateFlow(0)
 
     private val inputs: Flow<RemoteInputs> =
         combine(liveStateRepository.liveState, liveStateRepository.lastLive, cued, mediaLive) {
@@ -70,38 +82,61 @@ class RemoteViewModel(
             RemoteInputs(
                 live = live,
                 lastLive = last,
-                cued = cued?.takeIf { it.since == last }?.item,
-                mediaLive = media?.takeIf { it.since == last }?.item
+                cued = this.cued.current(cued, last),
+                mediaLive = mediaLive.current(media, last)
             )
         }.distinctUntilChanged()
+            .shareIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), replay = 1)
 
-    private val playlist: Flow<Playlist?> =
-        inputs
-            .map(RemoteDisplay::playlistNeeded)
-            .distinctUntilChanged()
+    private val playlist: Flow<PlaylistRead> =
+        combine(inputs.map(RemoteDisplay::playlistNeeded).distinctUntilChanged(), retries) { uuid, _ -> uuid }
             .flatMapLatest { uuid ->
-                uuid?.let { contentRepository.playlist(it).map { result -> (result as? Result.Success)?.data } }
-                    ?: flowOf(null)
-            }
+                uuid?.let { contentRepository.playlist(it).map { result -> PlaylistRead(uuid, result) } }
+                    ?: flowOf(PlaylistRead(null, null))
+            }.shareIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), replay = 1)
 
-    private val presentations: Flow<Map<String, Presentation>> =
-        combine(inputs, playlist, RemoteDisplay::presentationsNeeded)
-            .distinctUntilChanged()
-            .flatMapLatest(::presentationsOf)
-            .scan(emptyMap<String, Presentation>()) { read, latest -> read + latest }
+    private val presentations: Flow<Map<String, Result<Presentation, DataError.Network>>> =
+        retries.flatMapLatest {
+            channelFlow {
+                val subscribed = mutableSetOf<String>()
+                combine(inputs, playlist) { inputs, read ->
+                    RemoteDisplay.presentationsNeeded(inputs, read.playlistFor(inputs))
+                }.collect { needed ->
+                    (needed - subscribed).forEach { uuid ->
+                        subscribed += uuid
+                        launch { contentRepository.presentation(uuid).collect { send(uuid to it) } }
+                    }
+                }
+            }.scan(emptyMap<String, Result<Presentation, DataError.Network>>()) { read, latest -> read + latest }
+        }
 
     val state: StateFlow<RemoteState> =
         combine(inputs, playlist, presentations, thumbnailSource.thumbnailRequests) {
             inputs,
-            playlist,
-            presentations,
+            playlistRead,
+            presentationReads,
             requests
             ->
+            val playlist = playlistRead.playlistFor(inputs)
+            val presentations = presentationReads.mapNotNull { (uuid, read) ->
+                (read as? Result.Success)?.data?.let {
+                    uuid to
+                        it
+                }
+            }.toMap()
             val display = RemoteDisplay.reduce(inputs, playlist, presentations)
+            val failure = if (display.status == RemoteStatus.LOADING) {
+                (playlistRead.result as? Result.Failure)?.error
+                    ?: RemoteDisplay.presentationsNeeded(inputs, playlist)
+                        .firstNotNullOfOrNull { (presentationReads[it] as? Result.Failure)?.error }
+            } else {
+                null
+            }
             RemoteState(
                 display = display,
                 currentThumbnail = display.current.thumbnail(requests),
-                nextThumbnail = display.next.thumbnail(requests)
+                nextThumbnail = display.next.thumbnail(requests),
+                error = failure?.toUiText()
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), RemoteState())
 
@@ -118,6 +153,7 @@ class RemoteViewModel(
             RemoteAction.OnPreviousItemClick -> display.previousItem?.let { cue(it, display) }
             RemoteAction.OnNextItemClick -> display.nextItem?.let { cue(it, display) }
             RemoteAction.OnBackToLiveClick -> cued.value = null
+            RemoteAction.OnRetryClick -> retries.value++
         }
     }
 
@@ -140,16 +176,16 @@ class RemoteViewModel(
         }
     }
 
-    private fun presentationsOf(uuids: Set<String>): Flow<Map<String, Presentation>> =
-        if (uuids.isEmpty()) {
-            flowOf(emptyMap())
-        } else {
-            combine(
-                uuids.map { uuid ->
-                    contentRepository.presentation(uuid).map { uuid to (it as? Result.Success)?.data }
-                }
-            ) { pairs -> pairs.mapNotNull { (uuid, presentation) -> presentation?.let { uuid to it } }.toMap() }
+    /** The item of [chosen] while [last] is still the cue it was chosen under; otherwise clears it. */
+    private fun MutableStateFlow<Chosen?>.current(chosen: Chosen?, last: LiveCue?): PlaylistItemKey? =
+        chosen?.takeIf { it.since == last }?.item ?: run {
+            chosen?.let { compareAndSet(it, null) }
+            null
         }
+
+    /** The playlist read, when it is the one [inputs] needs. */
+    private fun PlaylistRead.playlistFor(inputs: RemoteInputs): Playlist? =
+        takeIf { it.uuid == RemoteDisplay.playlistNeeded(inputs) }?.let { (it.result as? Result.Success)?.data }
 
     private fun RemoteBox.thumbnail(requests: ThumbnailRequests?): ThumbnailRequest? =
         (this as? RemoteBox.Slide)

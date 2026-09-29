@@ -5,11 +5,12 @@ import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
 import com.greenfodor.ppremotece.core.domain.remote.RemoteStatus
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 
-/** The Remote tab's [display] with the thumbnail requests of its current and next boxes. */
+/** The Remote tab's [display], the thumbnail requests of its current and next boxes, and a read [error]. */
 data class RemoteState(
     val display: RemoteDisplay = RemoteDisplay(status = RemoteStatus.LOADING),
     val currentThumbnail: ThumbnailRequest? = null,
-    val nextThumbnail: ThumbnailRequest? = null
+    val nextThumbnail: ThumbnailRequest? = null,
+    val error: UiText? = null
 )
 
 sealed interface RemoteAction {
@@ -26,6 +27,8 @@ sealed interface RemoteAction {
     data object OnNextItemClick : RemoteAction
 
     data object OnBackToLiveClick : RemoteAction
+
+    data object OnRetryClick : RemoteAction
 }
 
 sealed interface RemoteEvent {

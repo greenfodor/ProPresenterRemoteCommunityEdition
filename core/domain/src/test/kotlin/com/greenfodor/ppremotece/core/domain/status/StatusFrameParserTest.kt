@@ -120,6 +120,16 @@ class StatusFrameParserTest {
     }
 
     @Test
+    fun `playlist active carries the presentation of the live item`() {
+        val frame = """{"url":"playlist/active","data":{"presentation":{""" +
+            """"playlist":{"uuid":"pl-1","name":"List","index":7},"item":{"uuid":"i-1","name":"Song","index":2},""" +
+            """"playlist_item":{"id":{"uuid":"i-1","name":"Song","index":2},"type":"presentation",""" +
+            """"presentation_info":{"presentation_uuid":"p-1","arrangement_name":"A","arrangement_uuid":"a-1"}}}}}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(StatusEvent.PlaylistActive(PlaylistItemKey("pl-1", 2), "p-1"))
+    }
+
+    @Test
     fun `playlist active without a presentation decodes to no live item`() {
         val frame = """{"url":"playlist/active","data":{"presentation":{"playlist":null,"item":null}}}"""
 

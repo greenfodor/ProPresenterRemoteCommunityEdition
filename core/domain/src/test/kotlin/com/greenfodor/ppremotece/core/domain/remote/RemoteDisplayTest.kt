@@ -10,10 +10,15 @@ import assertk.assertions.isTrue
 import assertk.assertions.prop
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementExpander
+import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.Group
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
+import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
+import com.greenfodor.ppremotece.core.domain.model.PresentationRef
+import com.greenfodor.ppremotece.core.domain.model.Slide
 import com.greenfodor.ppremotece.core.domain.model.SlideText
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.PLAYLIST
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.SONG_A
@@ -211,10 +216,35 @@ class RemoteDisplayTest {
     }
 
     @Test
-    fun `a slide reported live replaces an app-triggered media item`() {
-        val display = reduce(RemoteInputs(liveAt(5, SONG_C, 0), lastLive = null, mediaLive = key(4)))
+    fun `an app-triggered media item is live while the stream still reports the previous slide`() {
+        val display =
+            reduce(RemoteInputs(liveAt(1, SONG_A, 1), lastLive = remembered(1, SONG_A, 1), mediaLive = key(4)))
 
-        assertThat(display.current).isEqualTo(cue(5, SONG_C, 0, BoxMark.LIVE))
+        assertThat(display.current).isEqualTo(RemoteBox.ItemCard("Loop", PlaylistItemType.MEDIA, BoxMark.LIVE))
+        assertThat(display.cued).isFalse()
+    }
+
+    @Test
+    fun `a cued item starts at its first enabled cue`() {
+        val songD = songC.copy(
+            groups = songC.groups + Group("d", "Tag", null, listOf(Slide("D a", enabled = false), Slide("D b"))),
+            arrangements = songC.arrangements + Arrangement("d", "D", listOf("d"), totalCues = 2)
+        )
+        val withD = playlist.copy(
+            items =
+                playlist.items +
+                    PlaylistItem(key(8), "Song C", PlaylistItemType.PRESENTATION, PresentationRef(SONG_C, "d", "D"))
+        )
+        val display = RemoteDisplay.reduce(
+            RemoteInputs(liveAt(0, SONG_A, 2), lastLive = null, cued = key(8)),
+            withD,
+            mapOf(SONG_A to songA, SONG_C to songD)
+        )
+
+        assertThat((display.current as RemoteBox.Slide).cue.index).isEqualTo(1)
+        assertThat(display.tapCurrent).isEqualTo(RemoteCommand.TriggerCue(key(8), 1))
+        assertThat(display.nextButton).isEqualTo(RemoteCommand.TriggerCue(key(8), 1))
+        assertThat(display.header?.cueNumber).isEqualTo(2)
     }
 
     @Test

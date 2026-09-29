@@ -7,6 +7,7 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isBetween
 import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThanOrEqualTo
+import assertk.assertions.isNull
 import com.greenfodor.ppremotece.core.data.network.FakeProPresenter
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
@@ -229,6 +230,24 @@ class StreamingLiveStateRepositoryTest {
             cancelAndIgnoreRemainingEvents()
         }
         assertThat(repository.lastLive.value).isEqualTo(lastLiveCue)
+    }
+
+    @Test
+    fun `a live slide of another presentation than the live item's is not remembered`() = runBlocking {
+        fake.enqueueStream(
+            fake.frames(
+                listOf(
+                    FakeProPresenter.playlistActiveFrame(liveItem, "other-presentation"),
+                    FakeProPresenter.SLIDE_FRAME
+                )
+            )
+        )
+
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitUntil { it.slide != null }
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(repository.lastLive.value).isNull()
     }
 
     @Test

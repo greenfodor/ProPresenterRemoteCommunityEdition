@@ -107,11 +107,14 @@ class FakeProPresenter(
             """{"url":"status/slide","data":{"current":{"text":"Text 01","notes":"","uuid":"s-1"},""" +
                 """"next":{"text":"Text 02","notes":"","uuid":"s-2"}}}"""
 
-        /** A `playlist/active` frame naming [item], or no item when null. */
-        fun playlistActiveFrame(item: PlaylistItemKey?): String {
+        /** A `playlist/active` frame naming [item] and the presentation it plays, or no item when null. */
+        fun playlistActiveFrame(item: PlaylistItemKey?, presentationUuid: String = SONG_A_UUID): String {
             val presentation = item?.let {
                 """{"playlist":{"uuid":"${it.playlistUuid}","name":"Playlist 01","index":0},""" +
-                    """"item":{"uuid":"i-${it.index}","name":"Item 01","index":${it.index}}}"""
+                    """"item":{"uuid":"i-${it.index}","name":"Item 01","index":${it.index}},""" +
+                    """"playlist_item":{"id":{"uuid":"i-${it.index}","name":"Item 01","index":${it.index}},""" +
+                    """"type":"presentation","presentation_info":{"presentation_uuid":"$presentationUuid",""" +
+                    """"arrangement_name":"","arrangement_uuid":""}}}"""
             } ?: """{"playlist":null,"item":null}"""
             return """{"url":"playlist/active","data":{"presentation":$presentation,""" +
                 """"announcements":{"playlist":null,"item":null}}}"""

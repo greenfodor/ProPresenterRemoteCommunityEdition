@@ -8,6 +8,7 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
+import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
@@ -189,7 +190,6 @@ class RemoteViewModelTest {
             viewModel.onAction(RemoteAction.OnNextItemClick)
             awaitUntil { it.display.cued }
             viewModel.onAction(RemoteAction.OnCurrentClick)
-            live.clear()
             val media = awaitUntil {
                 it.display.current ==
                     RemoteBox.ItemCard("Loop", PlaylistItemType.MEDIA, BoxMark.LIVE)
@@ -203,6 +203,61 @@ class RemoteViewModelTest {
         }
 
         assertThat(client.sent).containsExactly(RemoteCommand.TriggerItem(key(2)))
+    }
+
+    @Test
+    fun `a cued item does not come back when the live cue returns to the cue it was chosen under`() = runTest {
+        live.goLive(LiveCue(key(0), SONG_A, 1))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            awaitShowing()
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            awaitUntil { it.display.cued }
+            live.goLive(LiveCue(key(0), SONG_A, 2))
+            awaitUntil { it.display.header?.cueNumber == 3 }
+            live.goLive(LiveCue(key(0), SONG_A, 1))
+            val back = awaitUntil { it.display.header?.cueNumber == 2 }
+            assertThat(back.display.cued).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a failed presentation read shows an error and retry reads it again`() = runTest {
+        live.goLive(LiveCue(key(0), SONG_A, 2))
+        content.failing += SONG_A
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            val failed = awaitUntil { it.error != null }
+            assertThat(failed.display.status).isEqualTo(RemoteStatus.LOADING)
+            content.failing.clear()
+            viewModel.onAction(RemoteAction.OnRetryClick)
+            assertThat(awaitShowing().error).isNull()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `item steps read each playlist and presentation once`() = runTest {
+        live.goLive(LiveCue(key(0), SONG_A, 2))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            awaitShowing()
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            awaitUntil { it.display.cued }
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            awaitUntil { it.display.current is RemoteBox.Slide && it.display.cued }
+            viewModel.onAction(RemoteAction.OnBackToLiveClick)
+            awaitUntil { !it.display.cued }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(content.reads.count { it == PLAYLIST }).isEqualTo(1)
+        assertThat(content.reads.count { it == SONG_A }).isEqualTo(1)
+        assertThat(content.reads.count { it == SONG_C }).isEqualTo(1)
     }
 
     @Test

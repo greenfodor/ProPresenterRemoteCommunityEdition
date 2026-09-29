@@ -49,7 +49,13 @@ class StatusFrameParser {
             "presentation/slide_index" -> StatusEvent.SlideIndex(data.child("presentation_index").toLiveSlide())
             "presentation/active" ->
                 StatusEvent.PresentationActive(data.child("presentation").child("id").child("uuid").stringOrNull())
-            "playlist/active" -> StatusEvent.PlaylistActive(data.child("presentation").toPlaylistItemKey())
+            "playlist/active" -> data.child("presentation").let { live ->
+                StatusEvent.PlaylistActive(
+                    item = live.toPlaylistItemKey(),
+                    presentationUuid = live.child("playlist_item").child("presentation_info")
+                        .child("presentation_uuid").stringOrNull()
+                )
+            }
             "timer/system_time" -> (data as? JsonPrimitive)?.longOrNull?.let { StatusEvent.Heartbeat(it) }
                 ?: StatusEvent.Unknown(url)
             else -> StatusEvent.Unknown(url)

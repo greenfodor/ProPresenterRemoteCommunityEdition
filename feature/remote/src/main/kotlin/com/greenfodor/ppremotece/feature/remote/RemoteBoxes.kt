@@ -59,7 +59,7 @@ internal fun LiveBox(
                 groupColor = box.cue.groupColor,
                 fallbackText = box.cue.slideText.ifBlank { box.cue.groupName },
                 aspect = aspect,
-                onClick = onClick ?: {},
+                onClick = onClick,
                 modifier = Modifier.width(
                     fittedWidth(maxWidth - CellFrame, maxHeight - CellChrome, aspect) + CellFrame
                 ),

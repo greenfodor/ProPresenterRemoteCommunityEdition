@@ -38,7 +38,7 @@ internal fun baseOf(inputs: RemoteInputs): Base {
     val slide = live.slide
     val item = live.item
     return when {
-        slide == null && inputs.mediaLive != null -> Base.Media(inputs.mediaLive)
+        inputs.mediaLive != null -> Base.Media(inputs.mediaLive)
         slide != null && item != null -> Base.Cue(LiveCue(item, slide.presentationUuid, slide.index))
         slide != null -> Base.Text
         inputs.lastLive != null -> Base.Cue(inputs.lastLive)
@@ -93,7 +93,7 @@ internal fun itemDisplay(
 
 private fun cuedDisplay(item: PlaylistItem, presentations: Map<String, Presentation>): RemoteDisplay =
     withCues(item, presentations) { presentation, cueList ->
-        val first = cueList.cues.firstOrNull()
+        val first = cueList.cues.firstOrNull { it.enabled }
         val next = first?.let { nextCueIndex(cueList.cues, it.index) }
         val trigger = first?.let { RemoteCommand.TriggerCue(item.key, it.index) }
         RemoteDisplay(

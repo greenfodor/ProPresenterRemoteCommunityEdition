@@ -65,7 +65,8 @@ enum class CueMark {
 /**
  * One cue: a reserved ring slot (LIVE 4 dp `tertiary`, NEXT and CUED 2 dp `secondary`), a 4 dp
  * frame in the group colour, the slide image with its badges at the top, and a 28 dp label strip
- * with "[number]. [groupName]" and the slide [label]. A disabled cue is dimmed, badged and not clickable.
+ * with "[number]. [groupName]" and the slide [label]. A disabled cue is dimmed, badged and not clickable;
+ * with a null [onClick] the cell is not clickable.
  * A new [thumbnailGeneration] loads the image again.
  */
 @Composable
@@ -75,7 +76,7 @@ fun CueCell(
     groupColor: GroupColor?,
     fallbackText: String,
     aspect: Float,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     thumbnail: ThumbnailRequest? = null,
     label: String = "",
@@ -100,7 +101,7 @@ fun CueCell(
             .alpha(if (enabled) 1f else DISABLED_ALPHA)
             .then(ringModifier)
             .clip(RingShape)
-            .clickable(enabled = enabled, onClick = onClick)
+            .then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
             .semantics { selected = mark == CueMark.LIVE }
             .padding(RingSlot + RingGap)
     ) {

@@ -17,6 +17,7 @@ import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 
 /** Records every trigger as the [RemoteCommand] it stands for. */
@@ -68,19 +69,24 @@ class FakeLiveStateRepository : LiveStateRepository {
     }
 }
 
-/** Serves fixed playlists and presentations. */
+/** Serves fixed playlists and presentations, counting each read; uuids in [failing] fail with a server error. */
 class FakeContentRepository(
     private val playlists: Map<String, Playlist>,
     private val presentations: Map<String, Presentation>
 ) : ContentRepository {
+    val reads = mutableListOf<String>()
+    val failing = mutableSetOf<String>()
+
     override fun playlists(): Flow<Result<List<PlaylistTreeNode>, DataError.Network>> = flowOf(
         Result.Success(emptyList())
     )
 
-    override fun playlist(uuid: String): Flow<Result<Playlist, DataError.Network>> = flowOf(served(playlists[uuid]))
+    override fun playlist(uuid: String): Flow<Result<Playlist, DataError.Network>> = flow {
+        emit(read(uuid, playlists[uuid]))
+    }
 
     override fun presentation(uuid: String): Flow<Result<Presentation, DataError.Network>> =
-        flowOf(served(presentations[uuid]))
+        flow { emit(read(uuid, presentations[uuid])) }
 
     override suspend fun refreshPlaylists(): EmptyResult<DataError.Network> = Result.Success(Unit)
 
@@ -88,6 +94,12 @@ class FakeContentRepository(
 
     override suspend fun refreshPresentation(uuid: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
-    private fun <T : Any> served(value: T?): Result<T, DataError.Network> =
-        value?.let { Result.Success(it) } ?: Result.Failure(DataError.Network.NOT_FOUND)
+    private fun <T : Any> read(uuid: String, value: T?): Result<T, DataError.Network> {
+        reads += uuid
+        return when {
+            uuid in failing -> Result.Failure(DataError.Network.SERVER)
+            value != null -> Result.Success(value)
+            else -> Result.Failure(DataError.Network.NOT_FOUND)
+        }
+    }
 }

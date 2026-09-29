@@ -127,7 +127,18 @@ fun RemoteScreen(
             ReconnectingStrip(visible = reconnecting)
             Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(BoxGap)) {
                 when (display.status) {
-                    RemoteStatus.LOADING -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    RemoteStatus.LOADING -> state.error?.let { error ->
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.align(Alignment.Center)
+                        ) {
+                            Text(text = error.asString(), color = MaterialTheme.colorScheme.error)
+                            Button(onClick = { onAction(RemoteAction.OnRetryClick) }) {
+                                Text(stringResource(R.string.remote_retry))
+                            }
+                        }
+                    } ?: CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     RemoteStatus.NOTHING_LIVE -> Text(
                         text = stringResource(R.string.remote_nothing_live),
                         style = MaterialTheme.typography.bodyLarge,

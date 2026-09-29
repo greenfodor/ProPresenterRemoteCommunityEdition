@@ -4,7 +4,9 @@ import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
+import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
+import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import com.greenfodor.ppremotece.core.domain.status.StatusFrameParser
@@ -40,7 +42,7 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * arrives for [watchdogTimeout], or the stream ends or fails, the stream is closed and reopened
  * after [reconnectDelay] with the same subscriptions, and the slide index is read again.
  * [onReconnected] is called when the first chunk of a reopened stream arrives. Each `status/slide`
- * frame sets the slide text; each slide read with a live item sets [lastLive], which outlives
+ * frame sets the slide text; each slide read of the live item's presentation sets [lastLive], which outlives
  * clears, reconnects and resubscriptions.
  */
 class StreamingLiveStateRepository(
@@ -56,6 +58,7 @@ class StreamingLiveStateRepository(
     override val liveState: StateFlow<LiveState> =
         channelFlow {
             var state = LiveState.Initial
+            var itemPresentation: String? = null
             send(state)
 
             var attempt = 0
@@ -73,9 +76,12 @@ class StreamingLiveStateRepository(
                                     next = next.copy(slideText = event.text)
                                     slideReadNeeded = true
                                 }
-                                is StatusEvent.PlaylistActive -> if (event.item != next.item) {
-                                    next = next.copy(item = event.item)
-                                    slideReadNeeded = true
+                                is StatusEvent.PlaylistActive -> {
+                                    itemPresentation = event.presentationUuid
+                                    if (event.item != next.item) {
+                                        next = next.copy(item = event.item)
+                                        slideReadNeeded = true
+                                    }
                                 }
                                 else -> Unit
                             }
@@ -84,10 +90,7 @@ class StreamingLiveStateRepository(
                             client.slideIndex().onSuccess { slide ->
                                 next = next.copy(slide = slide)
                                 slideReadNeeded = false
-                                val item = next.item
-                                if (item != null && slide != null) {
-                                    _lastLive.value = LiveCue(item, slide.presentationUuid, slide.index)
-                                }
+                                remember(next.item, itemPresentation, slide)
                             }
                         }
                         state = next
@@ -100,6 +103,13 @@ class StreamingLiveStateRepository(
                 delay(reconnectDelay(attempt++))
             }
         }.stateIn(scope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), LiveState.Initial)
+
+    /** Sets [lastLive] when [slide] is a slide of the presentation that the live [item] plays. */
+    private fun remember(item: PlaylistItemKey?, itemPresentation: String?, slide: LiveSlide?) {
+        if (item != null && slide != null && slide.presentationUuid == itemPresentation) {
+            _lastLive.value = LiveCue(item, slide.presentationUuid, slide.index)
+        }
+    }
 
     @OptIn(FlowPreview::class)
     private fun streamChunks() = client.statusUpdates(SUBSCRIPTIONS).timeout(watchdogTimeout)
