@@ -47,10 +47,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
+import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
-import com.greenfodor.ppremotece.feature.playlist.ArrangementChip
 import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.R
 import com.greenfodor.ppremotece.feature.playlist.text
@@ -66,6 +67,7 @@ private val ProgressSize = 20.dp
 @Composable
 fun PlaylistTreeRoot(
     openItem: PlaylistItemKey?,
+    reconnecting: Boolean,
     onOpenItem: (PlaylistItemKey) -> Unit,
     onDisconnected: () -> Unit,
     modifier: Modifier = Modifier,
@@ -88,6 +90,7 @@ fun PlaylistTreeRoot(
         state = state,
         onAction = viewModel::onAction,
         openItem = openItem,
+        reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
         modifier = modifier
     )
@@ -100,6 +103,7 @@ fun PlaylistTreeScreen(
     onAction: (PlaylistTreeAction) -> Unit,
     modifier: Modifier = Modifier,
     openItem: PlaylistItemKey? = null,
+    reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -129,19 +133,28 @@ fun PlaylistTreeScreen(
             )
         }
     ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = state.isRefreshing,
-            onRefresh = { onAction(PlaylistTreeAction.OnRefresh) },
-            modifier = Modifier.fillMaxSize().padding(padding).background(MaterialTheme.colorScheme.surfaceContainerLow)
-        ) {
-            when {
-                state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                state.error != null -> TreeError(state.error, onRetry = { onAction(PlaylistTreeAction.OnRetryClick) })
-                else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(state.rows, key = { it.id }) { row ->
-                        TreeRow(row = row, openItem = openItem, onAction = onAction)
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    }
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            ReconnectingStrip(visible = reconnecting)
+            TreeContent(state = state, openItem = openItem, onAction = onAction)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TreeContent(state: PlaylistTreeState, openItem: PlaylistItemKey?, onAction: (PlaylistTreeAction) -> Unit) {
+    PullToRefreshBox(
+        isRefreshing = state.isRefreshing,
+        onRefresh = { onAction(PlaylistTreeAction.OnRefresh) },
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        when {
+            state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            state.error != null -> TreeError(state.error, onRetry = { onAction(PlaylistTreeAction.OnRetryClick) })
+            else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(state.rows, key = { it.id }) { row ->
+                    TreeRow(row = row, openItem = openItem, onAction = onAction)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
         }

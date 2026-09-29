@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">ProPresenter Remote CE</string>
+    <string name="shell_presentation">Presentation</string>
+    <string name="shell_remote">Remote</string>
 </resources>

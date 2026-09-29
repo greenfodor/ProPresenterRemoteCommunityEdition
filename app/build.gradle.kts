@@ -18,6 +18,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":feature:connect"))
     implementation(project(":feature:playlist"))
+    implementation(project(":feature:remote"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -33,4 +34,6 @@ dependencies {
     implementation(libs.koin.compose.navigation3)
     implementation(platform(libs.coil.bom))
     implementation(libs.coil)
+
+    testImplementation(libs.assertk)
 }
