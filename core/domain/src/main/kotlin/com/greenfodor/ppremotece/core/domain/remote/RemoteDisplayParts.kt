@@ -72,15 +72,17 @@ internal fun sidebarOf(
     item: PlaylistItem,
     presentation: Presentation,
     cueList: CueList,
-    current: Pair<Int?, BoxMark>,
+    current: Int?,
+    currentMark: BoxMark,
     next: Int?
 ) = RemoteSidebar(
     item = item.key,
     presentationUuid = presentation.uuid,
     cues = cueList.cues,
     marks = buildMap {
-        current.first?.let { put(it, current.second) }
+        current?.let { put(it, currentMark) }
         next?.let { put(it, BoxMark.NEXT) }
     },
+    focus = current,
     thumbnails = !cueList.countMismatch
 )

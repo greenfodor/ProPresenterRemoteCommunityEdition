@@ -77,6 +77,7 @@ class RemoteDisplayTest {
                 presentationUuid = SONG_C,
                 cues = ArrangementExpander.expand(songC, refOf(5)).cues,
                 marks = mapOf(0 to BoxMark.LIVE, 2 to BoxMark.NEXT),
+                focus = 0,
                 thumbnails = true
             )
         )
@@ -88,6 +89,7 @@ class RemoteDisplayTest {
 
         assertThat(display.sidebar?.item).isEqualTo(key(5))
         assertThat(display.sidebar?.marks).isEqualTo(mapOf(0 to BoxMark.CUED, 2 to BoxMark.NEXT))
+        assertThat(display.sidebar?.focus).isEqualTo(0)
     }
 
     @Test
@@ -98,6 +100,10 @@ class RemoteDisplayTest {
         assertThat(
             reduce(RemoteInputs(cleared, lastLive = remembered(1, SONG_A, 1), mediaLive = key(4))).sidebar
         ).isNull()
+    }
+
+    @Test
+    fun `the sidebar has no thumbnails when the cue count differs from the arrangement's total`() {
         assertThat(reduce(RemoteInputs(liveAt(7, SONG_C, 1), lastLive = null)).sidebar?.thumbnails).isEqualTo(false)
     }
 

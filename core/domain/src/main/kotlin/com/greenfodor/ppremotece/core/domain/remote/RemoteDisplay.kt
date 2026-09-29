@@ -84,14 +84,16 @@ data class NextUp(
 )
 
 /**
- * The cues of the shown item for the cue sidebar, with the mark of each marked cue; [thumbnails] is
- * false when the item's arrangement did not fully resolve.
+ * The cues of the shown item for the cue sidebar, with the mark of each marked cue and the index of
+ * the live or cued cue in [focus]; [thumbnails] is false when the expanded cue count differs from
+ * the arrangement's total.
  */
 data class RemoteSidebar(
     val item: PlaylistItemKey,
     val presentationUuid: String,
     val cues: List<Cue>,
     val marks: Map<Int, BoxMark>,
+    val focus: Int?,
     val thumbnails: Boolean
 )
 

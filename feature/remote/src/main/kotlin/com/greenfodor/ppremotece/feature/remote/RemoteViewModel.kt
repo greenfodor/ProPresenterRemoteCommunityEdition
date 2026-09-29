@@ -138,7 +138,8 @@ class RemoteViewModel(
                 nextThumbnail = display.next.thumbnail(requests),
                 error = failure?.toUiText(),
                 sidebar = display.sidebar?.rows(requests).orEmpty(),
-                sidebarFocus = display.sidebar?.marks?.entries?.firstOrNull { it.value != BoxMark.NEXT }?.key
+                sidebarFocus = display.sidebar?.focus,
+                sidebarItem = display.sidebar?.item
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), RemoteState())
 

@@ -34,6 +34,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -102,7 +103,8 @@ private fun KeepScreenOn() {
 
 /**
  * The Remote tab with its cue sidebar: permanent when [sideBySide], else a modal drawer opened from
- * the top bar and closed by back.
+ * the top bar, closed by back and when the sidebar empties, with its cues composed only while it is
+ * open or opening.
  */
 @Composable
 fun RemoteScreen(
@@ -118,10 +120,19 @@ fun RemoteScreen(
     val sidebar = @Composable {
         CueSidebar(
             cues = state.sidebar,
+            item = state.sidebarItem,
             focus = state.sidebarFocus,
             aspect = state.display.aspect,
             onCueClick = { onAction(RemoteAction.OnSidebarCueClick(it)) }
         )
+    }
+    val sidebarEmpty = state.sidebar.isEmpty()
+    LaunchedEffect(sideBySide, sidebarEmpty) {
+        if (sideBySide) {
+            drawerState.snapTo(DrawerValue.Closed)
+        } else if (sidebarEmpty) {
+            drawerState.close()
+        }
     }
     if (sideBySide) {
         PermanentNavigationDrawer(
@@ -133,7 +144,15 @@ fun RemoteScreen(
     } else {
         BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
         ModalNavigationDrawer(
-            drawerContent = { ModalDrawerSheet(modifier = Modifier.width(CueSidebarWidth)) { sidebar() } },
+            drawerContent = {
+                ModalDrawerSheet(modifier = Modifier.width(CueSidebarWidth)) {
+                    if (drawerState.currentValue == DrawerValue.Open ||
+                        drawerState.targetValue == DrawerValue.Open
+                    ) {
+                        sidebar()
+                    }
+                }
+            },
             drawerState = drawerState,
             gesturesEnabled = drawerState.isOpen,
             modifier = modifier
