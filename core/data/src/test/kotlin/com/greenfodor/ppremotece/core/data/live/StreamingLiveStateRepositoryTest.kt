@@ -13,9 +13,11 @@ import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.data.network.StreamEnd
 import com.greenfodor.ppremotece.core.data.network.StreamReplay
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.SlideText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,6 +46,7 @@ class StreamingLiveStateRepositoryTest {
 
     private val liveItem = PlaylistItemKey(playlistUuid = FakeProPresenter.SERVICE_PLAYLIST_UUID, index = 4)
     private val liveSlide = LiveSlide(presentationUuid = FakeProPresenter.SONG_A_UUID, index = 3, totalCues = 7)
+    private val lastLiveCue = LiveCue(liveItem, FakeProPresenter.SONG_A_UUID, cueIndex = 3)
 
     @BeforeEach
     fun setUp() {
@@ -79,7 +82,9 @@ class StreamingLiveStateRepositoryTest {
                     it.connection == ConnectionStatus.CONNECTED && it.item != null && it.slide != null
                 }
             )
-                .isEqualTo(LiveState(ConnectionStatus.CONNECTED, liveItem, liveSlide))
+                .isEqualTo(
+                    LiveState(ConnectionStatus.CONNECTED, liveItem, liveSlide, SlideText("Chorus · 1", "Chorus · 2"))
+                )
             awaitCondition { delivered.get() == StreamReplay.chunkCount("su-long") }
             assertThat(fake.count("POST", "/v1/status/updates")).isEqualTo(1)
             cancelAndIgnoreRemainingEvents()
@@ -194,6 +199,55 @@ class StreamingLiveStateRepositoryTest {
             assertThat(awaitItem()).isEqualTo(LiveState.Initial)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `slide text from the stream reaches the live state`() = runBlocking {
+        fake.enqueueStream(fake.stream("stage5-status-updates", StreamEnd.STALL))
+
+        repository.liveState.test(timeout = 5.seconds) {
+            assertThat(awaitUntil { it.slideText != null }.slideText)
+                .isEqualTo(SlideText(current = "Text 03", next = "Text 04"))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the last live cue is kept through a clear`() = runBlocking {
+        fake.slideIndexBodies += listOf(FakeProPresenter.SLIDE_INDEX, FakeProPresenter.NO_SLIDE_INDEX)
+        fake.enqueueStream(
+            fake.frames(
+                listOf(FakeProPresenter.playlistActiveFrame(liveItem), FakeProPresenter.SLIDE_FRAME),
+                listOf(FakeProPresenter.playlistActiveFrame(null))
+            )
+        )
+
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitUntil { it.slide != null }
+            assertThat(repository.lastLive.value).isEqualTo(lastLiveCue)
+            awaitUntil { it.item == null && it.slide == null }
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(repository.lastLive.value).isEqualTo(lastLiveCue)
+    }
+
+    @Test
+    fun `the last live cue is kept while nothing collects the live state`() = runBlocking {
+        fake.enqueueStream(
+            fake.frames(listOf(FakeProPresenter.playlistActiveFrame(liveItem), FakeProPresenter.SLIDE_FRAME))
+        )
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitUntil { it.slide != null }
+            cancelAndIgnoreRemainingEvents()
+        }
+        delay(100.milliseconds)
+
+        assertThat(repository.lastLive.value).isEqualTo(lastLiveCue)
+        repository.liveState.test(timeout = 5.seconds) {
+            assertThat(awaitItem()).isEqualTo(LiveState.Initial)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(repository.lastLive.value).isEqualTo(lastLiveCue)
     }
 
     @Test

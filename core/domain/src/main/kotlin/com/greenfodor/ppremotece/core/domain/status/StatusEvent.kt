@@ -2,10 +2,13 @@ package com.greenfodor.ppremotece.core.domain.status
 
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.SlideText
 
 /** A decoded `status/updates` frame. */
 sealed interface StatusEvent {
-    data object SlideChanged : StatusEvent
+    data class SlideChanged(
+        val text: SlideText?
+    ) : StatusEvent
 
     data class SlideIndex(
         val slide: LiveSlide?

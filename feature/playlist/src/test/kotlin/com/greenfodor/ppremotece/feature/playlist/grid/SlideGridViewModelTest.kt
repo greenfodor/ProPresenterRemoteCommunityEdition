@@ -15,6 +15,7 @@ import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.Group
+import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.Playlist
@@ -52,6 +53,7 @@ class SlideGridViewModelTest {
     private val live = MutableStateFlow(LiveState.Initial)
     private val liveStateRepository = object : LiveStateRepository {
         override val liveState = live
+        override val lastLive = MutableStateFlow<LiveCue?>(null)
     }
     private val thumbnailSource = object : ThumbnailSource {
         override val thumbnailRequests = MutableStateFlow<ThumbnailRequests?>(

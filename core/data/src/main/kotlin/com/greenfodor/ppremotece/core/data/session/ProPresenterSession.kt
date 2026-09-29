@@ -6,6 +6,7 @@ import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailUrl
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
@@ -27,12 +28,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -76,6 +79,12 @@ class ProPresenterSession(
     @OptIn(ExperimentalCoroutinesApi::class)
     override val liveState: Flow<LiveState> =
         connection.flatMapLatest { it?.live?.liveState ?: flowOf(LiveState.Initial) }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val lastLive: StateFlow<LiveCue?> =
+        connection
+            .flatMapLatest { it?.live?.lastLive ?: flowOf(null) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val thumbnailRequests: Flow<ThumbnailRequests?> =

@@ -157,7 +157,7 @@ fun AppShell(
                         )
                     }
                     entry<RemoteRoute> {
-                        RemoteRoot(reconnecting = reconnecting)
+                        RemoteRoot(widthClass = widthClass, reconnecting = reconnecting)
                     }
                 }
             )

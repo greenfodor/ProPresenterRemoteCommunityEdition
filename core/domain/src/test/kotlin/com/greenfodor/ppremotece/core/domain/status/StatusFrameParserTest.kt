@@ -6,6 +6,7 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.SlideText
 import org.junit.jupiter.api.Test
 
 class StatusFrameParserTest {
@@ -73,7 +74,17 @@ class StatusFrameParserTest {
     @Test
     fun `status slide decodes to a slide change`() {
         assertThat(parser.decode("""{"url":"status/slide","data":{"current":{"uuid":"s-1"}}}"""))
-            .isEqualTo(StatusEvent.SlideChanged)
+            .isEqualTo(StatusEvent.SlideChanged(SlideText(current = "", next = "")))
+    }
+
+    @Test
+    fun `status slide carries the current and next text`() {
+        val frame = """{"url":"status/slide","data":{"current":{"text":"Text 03","notes":"n","uuid":"s-1"},""" +
+            """"next":{"text":"Text 04","notes":"n","uuid":"s-2"}}}"""
+
+        assertThat(
+            parser.decode(frame)
+        ).isEqualTo(StatusEvent.SlideChanged(SlideText(current = "Text 03", next = "Text 04")))
     }
 
     @Test
@@ -134,7 +145,10 @@ class StatusFrameParserTest {
         val chunk =
             """{"url":"status/slide","data":{}}""" + SEPARATOR + """{"url":"timer/system_time","data":5}""" + SEPARATOR
 
-        assertThat(parser.events(bytes(chunk))).containsExactly(StatusEvent.SlideChanged, StatusEvent.Heartbeat(5))
+        assertThat(parser.events(bytes(chunk))).containsExactly(
+            StatusEvent.SlideChanged(SlideText(current = "", next = "")),
+            StatusEvent.Heartbeat(5)
+        )
     }
 
     private fun bytes(text: String) = text.encodeToByteArray()

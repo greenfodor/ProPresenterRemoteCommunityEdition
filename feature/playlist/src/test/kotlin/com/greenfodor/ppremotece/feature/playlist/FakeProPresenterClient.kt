@@ -30,6 +30,8 @@ class FakeProPresenterClient : ProPresenterClient {
         return Result.Success(Unit)
     }
 
+    override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> = notServed()
+
     override suspend fun triggerNext(): EmptyResult<DataError.Network> = Result.Success(Unit)
 
     override suspend fun triggerPrevious(): EmptyResult<DataError.Network> = Result.Success(Unit)

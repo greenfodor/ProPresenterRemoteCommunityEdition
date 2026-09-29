@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.core.data.live
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
@@ -12,8 +13,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.timeout
@@ -36,7 +39,9 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * earlier read failed, `slide_index` is read once. Any chunk resets the watchdog. When no chunk
  * arrives for [watchdogTimeout], or the stream ends or fails, the stream is closed and reopened
  * after [reconnectDelay] with the same subscriptions, and the slide index is read again.
- * [onReconnected] is called when the first chunk of a reopened stream arrives.
+ * [onReconnected] is called when the first chunk of a reopened stream arrives. Each `status/slide`
+ * frame sets the slide text; each slide read with a live item sets [lastLive], which outlives
+ * clears, reconnects and resubscriptions.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
@@ -45,6 +50,9 @@ class StreamingLiveStateRepository(
     private val reconnectDelay: (attempt: Int) -> Duration = ::defaultReconnectDelay,
     private val onReconnected: () -> Unit = {}
 ) : LiveStateRepository {
+    private val _lastLive = MutableStateFlow<LiveCue?>(null)
+    override val lastLive: StateFlow<LiveCue?> = _lastLive.asStateFlow()
+
     override val liveState: StateFlow<LiveState> =
         channelFlow {
             var state = LiveState.Initial
@@ -61,7 +69,10 @@ class StreamingLiveStateRepository(
                         var next = state.copy(connection = ConnectionStatus.CONNECTED)
                         for (event in parser.events(chunk)) {
                             when (event) {
-                                StatusEvent.SlideChanged -> slideReadNeeded = true
+                                is StatusEvent.SlideChanged -> {
+                                    next = next.copy(slideText = event.text)
+                                    slideReadNeeded = true
+                                }
                                 is StatusEvent.PlaylistActive -> if (event.item != next.item) {
                                     next = next.copy(item = event.item)
                                     slideReadNeeded = true
@@ -70,9 +81,13 @@ class StreamingLiveStateRepository(
                             }
                         }
                         if (slideReadNeeded) {
-                            client.slideIndex().onSuccess {
-                                next = next.copy(slide = it)
+                            client.slideIndex().onSuccess { slide ->
+                                next = next.copy(slide = slide)
                                 slideReadNeeded = false
+                                val item = next.item
+                                if (item != null && slide != null) {
+                                    _lastLive.value = LiveCue(item, slide.presentationUuid, slide.index)
+                                }
                             }
                         }
                         state = next

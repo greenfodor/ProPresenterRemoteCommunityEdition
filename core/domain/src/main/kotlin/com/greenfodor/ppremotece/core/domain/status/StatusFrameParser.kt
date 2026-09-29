@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.core.domain.status
 
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.SlideText
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -44,7 +45,7 @@ class StatusFrameParser {
         val url = (root["url"] as? JsonPrimitive)?.content
         val data = root["data"]
         return when (url) {
-            "status/slide" -> StatusEvent.SlideChanged
+            "status/slide" -> StatusEvent.SlideChanged(data.toSlideText())
             "presentation/slide_index" -> StatusEvent.SlideIndex(data.child("presentation_index").toLiveSlide())
             "presentation/active" ->
                 StatusEvent.PresentationActive(data.child("presentation").child("id").child("uuid").stringOrNull())
@@ -79,6 +80,14 @@ class StatusFrameParser {
             null
         }
     }
+
+    private fun JsonElement?.toSlideText(): SlideText? =
+        (this as? JsonObject)?.let {
+            SlideText(
+                current = child("current").child("text").stringOrNull().orEmpty(),
+                next = child("next").child("text").stringOrNull().orEmpty()
+            )
+        }
 
     private fun JsonElement?.toPlaylistItemKey(): PlaylistItemKey? {
         val playlistUuid = child("playlist").child("uuid").stringOrNull()

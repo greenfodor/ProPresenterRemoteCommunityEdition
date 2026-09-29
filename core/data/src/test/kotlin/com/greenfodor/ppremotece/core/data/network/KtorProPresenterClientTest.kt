@@ -65,6 +65,16 @@ class KtorProPresenterClientTest {
     }
 
     @Test
+    fun `triggering an item gets the item trigger route`() = runBlocking {
+        val item = PlaylistItemKey(playlistUuid = "6f760dbf-04b9-46f2-9bb3-33eeea6a6d90", index = 4)
+
+        assertThat(client.triggerItem(item)).isEqualTo(Result.Success(Unit))
+        assertThat(fake.requests.single().method).isEqualTo("GET")
+        assertThat(fake.requests.single().url.encodedPath)
+            .isEqualTo("/v1/playlist/6f760dbf-04b9-46f2-9bb3-33eeea6a6d90/4/trigger")
+    }
+
+    @Test
     fun `unreachable host is no connection`() = runBlocking {
         val unreachable = KtorProPresenterClient(HttpClientFactory.create(), "http://127.0.0.1:1/")
 
@@ -102,11 +112,12 @@ class KtorProPresenterClientTest {
         client.presentation(FakeProPresenter.SONG_A_UUID)
         client.slideIndex()
         client.triggerCue(item, cueIndex = 2)
+        client.triggerItem(item)
         client.triggerNext()
         client.triggerPrevious()
         client.statusUpdates(listOf("status/slide")).first()
 
-        assertThat(fake.requests.size).isEqualTo(9)
+        assertThat(fake.requests.size).isEqualTo(10)
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
     }
 }

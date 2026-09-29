@@ -35,7 +35,7 @@ import java.io.IOException
 
 /**
  * [ProPresenterClient] for the ProPresenter HTTP API at [baseUrl], plus the `status/updates`
- * stream. Sends only GET reads, the item-cue, next and previous triggers, and the stream POST.
+ * stream. Sends only GET reads, the item-cue, item, next and previous triggers, and the stream POST.
  */
 class KtorProPresenterClient(
     private val httpClient: HttpClient,
@@ -66,6 +66,9 @@ class KtorProPresenterClient(
         safeEmptyCall {
             httpClient.get("$baseUrl/${playlistItemPath(item)}/$cueIndex/trigger")
         }
+
+    override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/${playlistItemPath(item)}/trigger") }
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/trigger/next") }

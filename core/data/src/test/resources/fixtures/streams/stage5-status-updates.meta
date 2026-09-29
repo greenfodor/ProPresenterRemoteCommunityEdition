@@ -1,0 +1,51 @@
+# HTTP/1.1 200 OK  ttfb=330ms  transfer-encoding: chunked; connection: close; content-type: application/octet-stream; vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers; date: Tue, 29 Sep 2026 17:31:30 GMT
+
+# +0.330s chunk 1 (244 B) tail=b'}}\r\n\r\n'
+
+# +0.330s chunk 2 (208 B) tail=b'}}\r\n\r\n'
+
+# +0.330s chunk 3 (697 B) tail=b'}}\r\n\r\n'
+
+# +0.330s chunk 4 (150 B) tail=b'}}\r\n\r\n'
+
+# +0.330s chunk 5 (49 B) tail=b'0}\r\n\r\n'
+
+# +1.262s chunk 6 (49 B) tail=b'1}\r\n\r\n'
+
+# +2.263s chunk 7 (49 B) tail=b'2}\r\n\r\n'
+
+# +3.264s chunk 8 (49 B) tail=b'3}\r\n\r\n'
+
+# +4.262s chunk 9 (49 B) tail=b'4}\r\n\r\n'
+
+# +5.263s chunk 10 (49 B) tail=b'5}\r\n\r\n'
+
+# +6.263s chunk 11 (49 B) tail=b'6}\r\n\r\n'
+
+# +7.264s chunk 12 (49 B) tail=b'7}\r\n\r\n'
+
+# +8.263s chunk 13 (49 B) tail=b'8}\r\n\r\n'
+
+# +9.263s chunk 14 (49 B) tail=b'9}\r\n\r\n'
+
+# +10.262s chunk 15 (49 B) tail=b'0}\r\n\r\n'
+
+# +11.263s chunk 16 (49 B) tail=b'1}\r\n\r\n'
+
+# +12.264s chunk 17 (49 B) tail=b'2}\r\n\r\n'
+
+# +13.266s chunk 18 (49 B) tail=b'3}\r\n\r\n'
+
+# +14.265s chunk 19 (49 B) tail=b'4}\r\n\r\n'
+
+# +15.262s chunk 20 (49 B) tail=b'5}\r\n\r\n'
+
+# +16.263s chunk 21 (49 B) tail=b'6}\r\n\r\n'
+
+# +17.263s chunk 22 (49 B) tail=b'7}\r\n\r\n'
+
+# +18.263s chunk 23 (49 B) tail=b'8}\r\n\r\n'
+
+# +19.267s chunk 24 (49 B) tail=b'9}\r\n\r\n'
+
+# total=2279 B in 20003 ms chunks=24
