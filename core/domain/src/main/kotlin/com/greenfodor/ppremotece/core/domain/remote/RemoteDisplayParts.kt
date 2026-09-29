@@ -67,3 +67,20 @@ internal fun nextUpOf(item: PlaylistItem, presentations: Map<String, Presentatio
         ?.takeIf { it is ArrangementChoice.Resolved }
     return NextUp(item.key, item.name, arrangement)
 }
+
+internal fun sidebarOf(
+    item: PlaylistItem,
+    presentation: Presentation,
+    cueList: CueList,
+    current: Pair<Int?, BoxMark>,
+    next: Int?
+) = RemoteSidebar(
+    item = item.key,
+    presentationUuid = presentation.uuid,
+    cues = cueList.cues,
+    marks = buildMap {
+        current.first?.let { put(it, current.second) }
+        next?.let { put(it, BoxMark.NEXT) }
+    },
+    thumbnails = !cueList.countMismatch
+)

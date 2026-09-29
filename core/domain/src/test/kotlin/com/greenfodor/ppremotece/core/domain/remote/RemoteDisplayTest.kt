@@ -68,6 +68,40 @@ class RemoteDisplayTest {
     }
 
     @Test
+    fun `the sidebar lists the live item's cues with the live and next cues marked`() {
+        val display = reduce(RemoteInputs(liveAt(5, SONG_C, 0), lastLive = null))
+
+        assertThat(display.sidebar).isEqualTo(
+            RemoteSidebar(
+                item = key(5),
+                presentationUuid = SONG_C,
+                cues = ArrangementExpander.expand(songC, refOf(5)).cues,
+                marks = mapOf(0 to BoxMark.LIVE, 2 to BoxMark.NEXT),
+                thumbnails = true
+            )
+        )
+    }
+
+    @Test
+    fun `the sidebar follows the cued item`() {
+        val display = reduce(RemoteInputs(liveAt(0, SONG_A, 2), lastLive = null, cued = key(5)))
+
+        assertThat(display.sidebar?.item).isEqualTo(key(5))
+        assertThat(display.sidebar?.marks).isEqualTo(mapOf(0 to BoxMark.CUED, 2 to BoxMark.NEXT))
+    }
+
+    @Test
+    fun `the sidebar is empty for a text-only slide and a media item`() {
+        val outside = LiveState(ConnectionStatus.CONNECTED, item = null, slide = LiveSlide(SONG_A, 1, 26))
+
+        assertThat(reduce(RemoteInputs(outside, lastLive = null)).sidebar).isNull()
+        assertThat(
+            reduce(RemoteInputs(cleared, lastLive = remembered(1, SONG_A, 1), mediaLive = key(4))).sidebar
+        ).isNull()
+        assertThat(reduce(RemoteInputs(liveAt(7, SONG_C, 1), lastLive = null)).sidebar?.thumbnails).isEqualTo(false)
+    }
+
+    @Test
     fun `next item row names the next item with its arrangement`() {
         val display = reduce(RemoteInputs(liveAt(0, SONG_A, 2), lastLive = null))
 

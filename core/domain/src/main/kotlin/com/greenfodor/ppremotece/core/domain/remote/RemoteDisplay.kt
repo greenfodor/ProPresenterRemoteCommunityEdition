@@ -83,6 +83,18 @@ data class NextUp(
     val arrangement: ArrangementChoice?
 )
 
+/**
+ * The cues of the shown item for the cue sidebar, with the mark of each marked cue; [thumbnails] is
+ * false when the item's arrangement did not fully resolve.
+ */
+data class RemoteSidebar(
+    val item: PlaylistItemKey,
+    val presentationUuid: String,
+    val cues: List<Cue>,
+    val marks: Map<Int, BoxMark>,
+    val thumbnails: Boolean
+)
+
 enum class RemoteStatus {
     NOTHING_LIVE,
     LOADING,
@@ -108,7 +120,8 @@ data class RemoteDisplay(
     val tapCurrent: RemoteCommand? = null,
     val tapNext: RemoteCommand? = null,
     val nextButton: RemoteCommand? = null,
-    val previousButton: RemoteCommand? = null
+    val previousButton: RemoteCommand? = null,
+    val sidebar: RemoteSidebar? = null
 ) {
     companion object {
         /** The playlist [reduce] needs for [inputs], or null when it needs none. */
