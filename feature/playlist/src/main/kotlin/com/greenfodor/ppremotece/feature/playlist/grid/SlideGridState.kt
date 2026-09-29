@@ -1,6 +1,8 @@
 package com.greenfodor.ppremotece.feature.playlist.grid
 
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
+import com.greenfodor.ppremotece.core.domain.layout.GridStep
+import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.thumbnail.DEFAULT_SLIDE_ASPECT
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
@@ -15,6 +17,7 @@ data class SlideGridState(
     val liveCueIndex: Int? = null,
     val nextCueIndex: Int? = null,
     val thumbnailGeneration: Int = 0,
+    val gridStep: GridStep? = null,
     val isLoading: Boolean = true,
     val error: UiText? = null
 )
@@ -41,6 +44,16 @@ sealed interface SlideGridAction {
     data object OnRetryClick : SlideGridAction
 
     data object OnReloadClick : SlideGridAction
+
+    data class OnWidthClassChange(
+        val widthClass: WidthClass
+    ) : SlideGridAction
+
+    data class OnGridStepChange(
+        val step: GridStep
+    ) : SlideGridAction
+
+    data object OnGridStepChangeFinished : SlideGridAction
 }
 
 sealed interface SlideGridEvent {

@@ -7,6 +7,9 @@ import com.greenfodor.ppremotece.core.designsystem.ui.toUiText
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementExpander
 import com.greenfodor.ppremotece.core.domain.arrangement.CueList
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
+import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
+import com.greenfodor.ppremotece.core.domain.layout.GridStep
+import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.liveCueIndex
@@ -54,7 +57,8 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * item and cue index plus next and previous. Disabled cues are not triggered. Each cue carries its
  * thumbnail request, except in an item whose arrangement did not fully resolve; a successful
  * "Reload slides" also evicts the item's thumbnails and loads them again, as does each new host
- * connection.
+ * connection. The slide size step is read for the window's width class; a step being dragged is
+ * shown at once and saved when the drag ends.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SlideGridViewModel(
@@ -63,7 +67,8 @@ class SlideGridViewModel(
     private val client: ProPresenterClient,
     liveStateRepository: LiveStateRepository,
     private val thumbnailSource: ThumbnailSource,
-    private val thumbnailCache: ThumbnailCache
+    private val thumbnailCache: ThumbnailCache,
+    private val gridPreferences: GridPreferences
 ) : ViewModel() {
     private sealed interface Content {
         data object Loading : Content
@@ -81,6 +86,15 @@ class SlideGridViewModel(
 
     private val retries = MutableStateFlow(0)
     private val thumbnailGeneration = MutableStateFlow(0)
+    private val widthClass = MutableStateFlow<WidthClass?>(null)
+    private val draggedStep = MutableStateFlow<GridStep?>(null)
+    private val gridStep: Flow<GridStep?> =
+        combine(widthClass.flatMapLatest { it?.let(gridPreferences::gridStep) ?: flowOf(null) }, draggedStep) {
+            saved,
+            dragged
+            ->
+            dragged ?: saved
+        }
     private var loaded: Content.Loaded? = null
 
     private val content: Flow<Content> =
@@ -107,14 +121,15 @@ class SlideGridViewModel(
         }
 
     val state: StateFlow<SlideGridState> =
-        combine(grid, liveStateRepository.liveState) { (state, loaded), live ->
+        combine(grid, liveStateRepository.liveState, gridStep) { (state, loaded), live, step ->
             if (loaded == null) {
-                state
+                state.copy(gridStep = step)
             } else {
                 val presentationUuid = loaded.presentation.uuid
                 state.copy(
                     liveCueIndex = liveCueIndex(live, item, presentationUuid),
-                    nextCueIndex = nextCueIndex(live, item, presentationUuid, loaded.cueList.cues)
+                    nextCueIndex = nextCueIndex(live, item, presentationUuid, loaded.cueList.cues),
+                    gridStep = step
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), SlideGridState())
@@ -129,6 +144,12 @@ class SlideGridViewModel(
             SlideGridAction.OnPreviousClick -> send { client.triggerPrevious() }
             SlideGridAction.OnRetryClick -> retries.value++
             SlideGridAction.OnReloadClick -> reload()
+            is SlideGridAction.OnWidthClassChange -> {
+                draggedStep.value = null
+                widthClass.value = action.widthClass
+            }
+            is SlideGridAction.OnGridStepChange -> draggedStep.value = action.step
+            SlideGridAction.OnGridStepChangeFinished -> saveDraggedStep()
         }
     }
 
@@ -158,6 +179,15 @@ class SlideGridViewModel(
             thumbnailGeneration = thumbnailGeneration,
             isLoading = false
         )
+    }
+
+    private fun saveDraggedStep() {
+        val step = draggedStep.value ?: return
+        val current = widthClass.value ?: return
+        viewModelScope.launch {
+            gridPreferences.setGridStep(current, step)
+            draggedStep.compareAndSet(step, null)
+        }
     }
 
     private fun isEnabled(cueIndex: Int): Boolean =
