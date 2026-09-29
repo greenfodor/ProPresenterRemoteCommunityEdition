@@ -17,7 +17,7 @@ data class SlideGridState(
     val liveCueIndex: Int? = null,
     val nextCueIndex: Int? = null,
     val thumbnailGeneration: Int = 0,
-    val gridStep: GridStep = GridStep.Default,
+    val gridStep: GridStep? = null,
     val isLoading: Boolean = true,
     val error: UiText? = null
 )
@@ -52,6 +52,8 @@ sealed interface SlideGridAction {
     data class OnGridStepChange(
         val step: GridStep
     ) : SlideGridAction
+
+    data object OnGridStepChangeFinished : SlideGridAction
 }
 
 sealed interface SlideGridEvent {

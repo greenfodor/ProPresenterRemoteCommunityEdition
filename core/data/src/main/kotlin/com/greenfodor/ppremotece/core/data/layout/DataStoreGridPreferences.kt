@@ -20,6 +20,7 @@ private val Context.gridPreferencesDataStore by preferencesDataStore(name = "gri
 /**
  * [GridPreferences] in the `grid_preferences` DataStore, one key per width class
  * (`grid_step_compact`, `grid_step_medium`, `grid_step_expanded`); [GridStep.Default] when unset.
+ * Read and write errors leave the saved step unchanged.
  */
 class DataStoreGridPreferences(
     private val context: Context
@@ -33,7 +34,11 @@ class DataStoreGridPreferences(
             }.distinctUntilChanged()
 
     override suspend fun setGridStep(widthClass: WidthClass, step: GridStep) {
-        context.gridPreferencesDataStore.edit { it[keyOf(widthClass)] = step.name }
+        try {
+            context.gridPreferencesDataStore.edit { it[keyOf(widthClass)] = step.name }
+        } catch (_: IOException) {
+            // The previously saved step stays in place.
+        }
     }
 
     private fun keyOf(widthClass: WidthClass): Preferences.Key<String> =

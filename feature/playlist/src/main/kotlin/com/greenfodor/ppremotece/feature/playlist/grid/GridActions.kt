@@ -39,7 +39,11 @@ internal fun GridActions(gridStep: GridStep, onAction: (SlideGridAction) -> Unit
             Icon(painterResource(DesignR.drawable.ic_grid_view), stringResource(R.string.grid_slide_size))
         }
         DropdownMenu(expanded = sizeOpen, onDismissRequest = { sizeOpen = false }) {
-            SlideSizeControl(gridStep = gridStep, onStepChange = { onAction(SlideGridAction.OnGridStepChange(it)) })
+            SlideSizeControl(
+                gridStep = gridStep,
+                onStepChange = { onAction(SlideGridAction.OnGridStepChange(it)) },
+                onStepChangeFinished = { onAction(SlideGridAction.OnGridStepChangeFinished) }
+            )
         }
     }
     Box {
@@ -60,7 +64,7 @@ internal fun GridActions(gridStep: GridStep, onAction: (SlideGridAction) -> Unit
 }
 
 @Composable
-private fun SlideSizeControl(gridStep: GridStep, onStepChange: (GridStep) -> Unit) {
+private fun SlideSizeControl(gridStep: GridStep, onStepChange: (GridStep) -> Unit, onStepChangeFinished: () -> Unit) {
     val steps = GridStep.entries
     Column(modifier = Modifier.width(SlideSizeMenuWidth).padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -79,6 +83,7 @@ private fun SlideSizeControl(gridStep: GridStep, onStepChange: (GridStep) -> Uni
         Slider(
             value = gridStep.ordinal.toFloat(),
             onValueChange = { value -> steps[value.roundToInt()].takeIf { it != gridStep }?.let(onStepChange) },
+            onValueChangeFinished = onStepChangeFinished,
             valueRange = 0f..(steps.size - 1).toFloat(),
             steps = steps.size - 2
         )

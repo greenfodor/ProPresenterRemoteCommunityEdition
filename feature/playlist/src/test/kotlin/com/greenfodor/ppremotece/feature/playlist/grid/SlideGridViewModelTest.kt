@@ -68,7 +68,10 @@ class SlideGridViewModelTest {
 
         override fun gridStep(widthClass: WidthClass) = steps.map { it[widthClass] ?: GridStep.Default }
 
+        var writes = 0
+
         override suspend fun setGridStep(widthClass: WidthClass, step: GridStep) {
+            writes++
             steps.value += widthClass to step
         }
     }
@@ -221,26 +224,39 @@ class SlideGridViewModelTest {
     }
 
     @Test
-    fun `the slide size follows the width class and is saved for it`() = runTest {
+    fun `the slide size waits for the width class and follows it`() = runTest {
         gridPreferences.steps.value = mapOf(WidthClass.EXPANDED to GridStep.SIZE_280)
         val viewModel = viewModel()
 
         viewModel.state.test {
-            assertThat(awaitItem().gridStep).isEqualTo(GridStep.Default)
-
-            viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
-            viewModel.onAction(SlideGridAction.OnGridStepChange(GridStep.SIZE_120))
-            assertThat(expectMostRecentItem().gridStep).isEqualTo(GridStep.SIZE_120)
+            assertThat(awaitItem().gridStep).isNull()
 
             viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.EXPANDED))
             assertThat(awaitItem().gridStep).isEqualTo(GridStep.SIZE_280)
 
             viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
-            assertThat(awaitItem().gridStep).isEqualTo(GridStep.SIZE_120)
+            assertThat(awaitItem().gridStep).isEqualTo(GridStep.Default)
         }
-        assertThat(gridPreferences.steps.value).isEqualTo(
-            mapOf(WidthClass.EXPANDED to GridStep.SIZE_280, WidthClass.COMPACT to GridStep.SIZE_120)
-        )
+    }
+
+    @Test
+    fun `a dragged step shows at once and is saved once when the drag ends`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
+            assertThat(expectMostRecentItem().gridStep).isEqualTo(GridStep.Default)
+
+            viewModel.onAction(SlideGridAction.OnGridStepChange(GridStep.SIZE_160))
+            viewModel.onAction(SlideGridAction.OnGridStepChange(GridStep.SIZE_120))
+            assertThat(expectMostRecentItem().gridStep).isEqualTo(GridStep.SIZE_120)
+            assertThat(gridPreferences.writes).isEqualTo(0)
+
+            viewModel.onAction(SlideGridAction.OnGridStepChangeFinished)
+            expectNoEvents()
+        }
+        assertThat(gridPreferences.writes).isEqualTo(1)
+        assertThat(gridPreferences.steps.value).isEqualTo(mapOf(WidthClass.COMPACT to GridStep.SIZE_120))
     }
 
     @Test

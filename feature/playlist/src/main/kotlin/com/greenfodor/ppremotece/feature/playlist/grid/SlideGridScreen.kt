@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,7 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridLayoutInfo
 import androidx.compose.foundation.lazy.grid.LazyGridPrefetchScope
@@ -53,8 +54,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -62,13 +61,15 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.SlideThumbnail
 import com.greenfodor.ppremotece.core.designsystem.ui.SyntheticThumbnails
-import com.greenfodor.ppremotece.core.domain.layout.widthClassOf
+import com.greenfodor.ppremotece.core.domain.layout.GridStep
+import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
@@ -82,7 +83,6 @@ import org.koin.core.parameter.parametersOf
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val GridPadding = 8.dp
-private val CompactHeightLimit = 480.dp
 private const val HEADER_KEY = "header"
 private val RingSlot = 4.dp
 private val RingGap = 4.dp
@@ -109,6 +109,8 @@ private object NoPrefetch : LazyGridPrefetchStrategy {
 @Composable
 fun SlideGridRoot(
     item: PlaylistItemKey,
+    widthClass: WidthClass,
+    headerScrollsWithGrid: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SlideGridViewModel = koinViewModel(key = item.toString()) { parametersOf(item) }
@@ -124,16 +126,12 @@ fun SlideGridRoot(
             }
         }
     }
-    val windowSize = LocalWindowInfo.current.containerSize
-    val density = LocalDensity.current
-    val widthClass = widthClassOf(with(density) { windowSize.width.toDp() }.value.toInt())
-    val compactHeight = with(density) { windowSize.height.toDp() } < CompactHeightLimit
     LaunchedEffect(widthClass) { viewModel.onAction(SlideGridAction.OnWidthClassChange(widthClass)) }
     SlideGridScreen(
         state = state,
         onAction = viewModel::onAction,
         onBack = onBack,
-        headerScrollsWithGrid = compactHeight,
+        headerScrollsWithGrid = headerScrollsWithGrid,
         snackbarHostState = snackbarHostState,
         modifier = modifier
     )
@@ -161,7 +159,7 @@ fun SlideGridScreen(
                         Icon(painterResource(DesignR.drawable.ic_arrow_back), stringResource(R.string.grid_back))
                     }
                 },
-                actions = { GridActions(gridStep = state.gridStep, onAction = onAction) },
+                actions = { GridActions(gridStep = state.gridStep ?: GridStep.Default, onAction = onAction) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
@@ -171,7 +169,8 @@ fun SlideGridScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
-                state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                state.isLoading || state.gridStep == null && state.error == null ->
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 state.error != null -> Column(
                     modifier = Modifier.align(Alignment.Center).padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -182,7 +181,12 @@ fun SlideGridScreen(
                         onAction(SlideGridAction.OnRetryClick)
                     }) { Text(stringResource(R.string.playlists_retry)) }
                 }
-                else -> CueGrid(state = state, headerScrollsWithGrid = headerScrollsWithGrid, onAction = onAction)
+                else -> CueGrid(
+                    state = state,
+                    gridStep = state.gridStep ?: GridStep.Default,
+                    headerScrollsWithGrid = headerScrollsWithGrid,
+                    onAction = onAction
+                )
             }
         }
     }
@@ -190,11 +194,16 @@ fun SlideGridScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CueGrid(state: SlideGridState, headerScrollsWithGrid: Boolean, onAction: (SlideGridAction) -> Unit) {
+private fun CueGrid(
+    state: SlideGridState,
+    gridStep: GridStep,
+    headerScrollsWithGrid: Boolean,
+    onAction: (SlideGridAction) -> Unit
+) {
     Column(modifier = Modifier.fillMaxSize()) {
-        if (!headerScrollsWithGrid) GridHeader(state)
+        if (!headerScrollsWithGrid) GridHeader(state, horizontalPadding = GridPadding)
         LazyVerticalGrid(
-            columns = state.gridStep.toGridCells(),
+            columns = gridStep.toGridCells(),
             state = rememberLazyGridState(prefetchStrategy = NoPrefetch),
             contentPadding = PaddingValues(GridPadding),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -202,7 +211,9 @@ private fun CueGrid(state: SlideGridState, headerScrollsWithGrid: Boolean, onAct
             modifier = Modifier.fillMaxSize()
         ) {
             if (headerScrollsWithGrid) {
-                item(key = HEADER_KEY, span = { GridItemSpan(maxLineSpan) }) { GridHeader(state) }
+                item(key = HEADER_KEY, span = { GridItemSpan(maxLineSpan) }) {
+                    GridHeader(state, horizontalPadding = 0.dp)
+                }
             }
             items(state.cues, key = { it.index }) { cue ->
                 CueCell(
@@ -222,13 +233,13 @@ private fun CueGrid(state: SlideGridState, headerScrollsWithGrid: Boolean, onAct
 }
 
 @Composable
-private fun GridHeader(state: SlideGridState) {
+private fun GridHeader(state: SlideGridState, horizontalPadding: Dp) {
     Column {
         val cueCount = state.cues.size
         ArrangementChip(
             text = state.label?.let { pluralStringResource(R.plurals.grid_header_chip, cueCount, it.text(), cueCount) }
                 ?: pluralStringResource(R.plurals.grid_cue_count, cueCount, cueCount),
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 8.dp)
         )
         if (state.countMismatch) CountMismatchLine()
     }
@@ -286,29 +297,32 @@ private fun CueCell(cue: CueUi, aspect: Float, thumbnailGeneration: Int, mark: C
                 }
                 CueBadges(mark = mark, enabled = cue.enabled)
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().height(LabelStripHeight)
-            ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(LabelStripHeight)) {
                 val labelColor = groupColors.labelOn(frameColor)
-                Text(
-                    text = stringResource(R.string.grid_cue_label, cue.index + 1, cue.groupName),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = labelColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                if (cue.label.isNotEmpty()) {
+                val maxLabelWidth = maxWidth / 2
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     Text(
-                        text = cue.label,
+                        text = stringResource(R.string.grid_cue_label, cue.index + 1, cue.groupName),
                         style = MaterialTheme.typography.labelMedium,
                         color = labelColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
+                        modifier = Modifier.weight(1f)
                     )
+                    if (cue.label.isNotEmpty()) {
+                        Text(
+                            text = cue.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = labelColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = maxLabelWidth)
+                        )
+                    }
                 }
             }
         }
