@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.feature.playlist.grid
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.feature.playlist.R
@@ -66,26 +69,28 @@ internal fun GridActions(gridStep: GridStep, onAction: (SlideGridAction) -> Unit
 @Composable
 private fun SlideSizeControl(gridStep: GridStep, onStepChange: (GridStep) -> Unit, onStepChangeFinished: () -> Unit) {
     val steps = GridStep.entries
+    val sizeLabel = stringResource(R.string.grid_slide_size)
     Column(modifier = Modifier.width(SlideSizeMenuWidth).padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.grid_slide_size),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.weight(1f)
+        Text(text = sizeLabel, style = MaterialTheme.typography.titleSmall)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(
+                painter = painterResource(DesignR.drawable.ic_photo_size_select_small),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text(
-                text = gridStep.minCellWidthDp?.let { stringResource(R.string.grid_slide_size_dp, it) }
-                    ?: stringResource(R.string.grid_slide_size_full),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            Slider(
+                value = gridStep.ordinal.toFloat(),
+                onValueChange = { value -> steps[value.roundToInt()].takeIf { it != gridStep }?.let(onStepChange) },
+                onValueChangeFinished = onStepChangeFinished,
+                valueRange = 0f..(steps.size - 1).toFloat(),
+                steps = steps.size - 2,
+                modifier = Modifier.weight(1f).semantics { contentDescription = sizeLabel }
+            )
+            Icon(
+                painter = painterResource(DesignR.drawable.ic_photo_size_select_large),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Slider(
-            value = gridStep.ordinal.toFloat(),
-            onValueChange = { value -> steps[value.roundToInt()].takeIf { it != gridStep }?.let(onStepChange) },
-            onValueChangeFinished = onStepChangeFinished,
-            valueRange = 0f..(steps.size - 1).toFloat(),
-            steps = steps.size - 2
-        )
     }
 }

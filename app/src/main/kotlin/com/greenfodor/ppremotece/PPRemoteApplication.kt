@@ -7,6 +7,7 @@ import coil3.SingletonImageLoader
 import com.greenfodor.ppremotece.core.data.di.coreDataModule
 import com.greenfodor.ppremotece.feature.connect.connectModule
 import com.greenfodor.ppremotece.feature.playlist.playlistModule
+import com.greenfodor.ppremotece.feature.remote.remoteModule
 import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -18,7 +19,7 @@ class PPRemoteApplication :
         super.onCreate()
         startKoin {
             androidContext(this@PPRemoteApplication)
-            modules(coreDataModule, connectModule, playlistModule)
+            modules(coreDataModule, appModule, connectModule, playlistModule, remoteModule)
         }
     }
 

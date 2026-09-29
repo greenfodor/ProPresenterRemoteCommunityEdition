@@ -2,12 +2,8 @@ package com.greenfodor.ppremotece.feature.playlist.grid
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridLayoutInfo
 import androidx.compose.foundation.lazy.grid.LazyGridPrefetchScope
@@ -26,7 +21,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.layout.NestedPrefetchScope
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,36 +38,33 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
+import com.greenfodor.ppremotece.core.designsystem.ui.CueCell
+import com.greenfodor.ppremotece.core.designsystem.ui.CueMark
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
-import com.greenfodor.ppremotece.core.designsystem.ui.SlideThumbnail
+import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.SyntheticThumbnails
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
-import com.greenfodor.ppremotece.feature.playlist.ArrangementChip
 import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.R
 import com.greenfodor.ppremotece.feature.playlist.text
@@ -84,18 +75,7 @@ import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val GridPadding = 8.dp
 private const val HEADER_KEY = "header"
-private val RingSlot = 4.dp
-private val RingGap = 4.dp
-private val LiveRingWidth = 4.dp
-private val NextRingWidth = 2.dp
-private val FrameWidth = 4.dp
-private val FrameCorner = 4.dp
-private val LabelStripHeight = 28.dp
-private val BadgeIconSize = 16.dp
 private val StepButtonHeight = 64.dp
-private const val DISABLED_ALPHA = 0.38f
-
-private enum class CueMark { NONE, LIVE, NEXT }
 
 @OptIn(ExperimentalFoundationApi::class)
 private object NoPrefetch : LazyGridPrefetchStrategy {
@@ -111,6 +91,7 @@ fun SlideGridRoot(
     item: PlaylistItemKey,
     widthClass: WidthClass,
     headerScrollsWithGrid: Boolean,
+    reconnecting: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SlideGridViewModel = koinViewModel(key = item.toString()) { parametersOf(item) }
@@ -132,6 +113,7 @@ fun SlideGridRoot(
         onAction = viewModel::onAction,
         onBack = onBack,
         headerScrollsWithGrid = headerScrollsWithGrid,
+        reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
         modifier = modifier
     )
@@ -145,6 +127,7 @@ fun SlideGridScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     headerScrollsWithGrid: Boolean = false,
+    reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     Scaffold(
@@ -167,27 +150,35 @@ fun SlideGridScreen(
         },
         bottomBar = { StepButtons(onAction = onAction) }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when {
-                state.isLoading || state.gridStep == null && state.error == null ->
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                state.error != null -> Column(
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(text = state.error.asString(), color = MaterialTheme.colorScheme.error)
-                    Button(onClick = {
-                        onAction(SlideGridAction.OnRetryClick)
-                    }) { Text(stringResource(R.string.playlists_retry)) }
-                }
-                else -> CueGrid(
-                    state = state,
-                    gridStep = state.gridStep ?: GridStep.Default,
-                    headerScrollsWithGrid = headerScrollsWithGrid,
-                    onAction = onAction
-                )
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            ReconnectingStrip(visible = reconnecting)
+            GridContent(state = state, headerScrollsWithGrid = headerScrollsWithGrid, onAction = onAction)
+        }
+    }
+}
+
+@Composable
+private fun GridContent(state: SlideGridState, headerScrollsWithGrid: Boolean, onAction: (SlideGridAction) -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            state.isLoading || state.gridStep == null && state.error == null ->
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            state.error != null -> Column(
+                modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(text = state.error.asString(), color = MaterialTheme.colorScheme.error)
+                Button(onClick = {
+                    onAction(SlideGridAction.OnRetryClick)
+                }) { Text(stringResource(R.string.playlists_retry)) }
             }
+            else -> CueGrid(
+                state = state,
+                gridStep = state.gridStep ?: GridStep.Default,
+                headerScrollsWithGrid = headerScrollsWithGrid,
+                onAction = onAction
+            )
         }
     }
 }
@@ -217,15 +208,21 @@ private fun CueGrid(
             }
             items(state.cues, key = { it.index }) { cue ->
                 CueCell(
-                    cue = cue,
+                    number = cue.index + 1,
+                    groupName = cue.groupName,
+                    groupColor = cue.groupColor,
+                    fallbackText = cue.text.ifBlank { cue.groupName },
                     aspect = state.aspect,
+                    onClick = { onAction(SlideGridAction.OnCueClick(cue.index)) },
+                    thumbnail = cue.thumbnail,
+                    label = cue.label,
+                    enabled = cue.enabled,
                     thumbnailGeneration = state.thumbnailGeneration,
                     mark = when (cue.index) {
                         state.liveCueIndex -> CueMark.LIVE
                         state.nextCueIndex -> CueMark.NEXT
                         else -> CueMark.NONE
-                    },
-                    onClick = { onAction(SlideGridAction.OnCueClick(cue.index)) }
+                    }
                 )
             }
         }
@@ -261,123 +258,6 @@ private fun CountMismatchLine() {
 }
 
 @Composable
-private fun CueCell(cue: CueUi, aspect: Float, thumbnailGeneration: Int, mark: CueMark, onClick: () -> Unit) {
-    val groupColors = PPRemoteTheme.groupColors
-    val frameColor = cue.groupColor?.takeIf { it.alpha > 0f }?.toColor() ?: MaterialTheme.colorScheme.outlineVariant
-    val ringModifier = when (mark) {
-        CueMark.LIVE -> Modifier.border(LiveRingWidth, MaterialTheme.colorScheme.tertiary, RingShape)
-        CueMark.NEXT -> Modifier.border(NextRingWidth, MaterialTheme.colorScheme.secondary, RingShape)
-        CueMark.NONE -> Modifier
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .alpha(if (cue.enabled) 1f else DISABLED_ALPHA)
-            .then(ringModifier)
-            .clip(RingShape)
-            .clickable(enabled = cue.enabled, onClick = onClick)
-            .semantics { selected = mark == CueMark.LIVE }
-            .padding(RingSlot + RingGap)
-    ) {
-        Column(
-            modifier = Modifier
-                .clip(RoundedCornerShape(FrameCorner))
-                .background(frameColor)
-                .padding(start = FrameWidth, top = FrameWidth, end = FrameWidth)
-        ) {
-            Box {
-                key(thumbnailGeneration) {
-                    SlideThumbnail(
-                        url = cue.thumbnail?.url,
-                        cacheKey = cue.thumbnail?.cacheKey,
-                        aspect = aspect,
-                        fallbackText = cue.text.ifBlank { cue.groupName },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                CueBadges(mark = mark, enabled = cue.enabled)
-            }
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(LabelStripHeight)) {
-                val labelColor = groupColors.labelOn(frameColor)
-                val maxLabelWidth = maxWidth / 2
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Text(
-                        text = stringResource(R.string.grid_cue_label, cue.index + 1, cue.groupName),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = labelColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (cue.label.isNotEmpty()) {
-                        Text(
-                            text = cue.label,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = labelColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = maxLabelWidth)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private val RingShape = RoundedCornerShape(FrameCorner + RingGap + RingSlot)
-
-@Composable
-private fun BoxScope.CueBadges(mark: CueMark, enabled: Boolean) {
-    when (mark) {
-        CueMark.LIVE -> Badge(
-            text = stringResource(R.string.grid_live),
-            container = MaterialTheme.colorScheme.tertiary,
-            content = MaterialTheme.colorScheme.onTertiary
-        )
-        CueMark.NEXT -> Badge(
-            text = stringResource(R.string.grid_next_badge),
-            container = MaterialTheme.colorScheme.secondary,
-            content = MaterialTheme.colorScheme.onSecondary
-        )
-        CueMark.NONE -> Unit
-    }
-    if (!enabled) {
-        Surface(
-            shape = MaterialTheme.shapes.extraSmall,
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-        ) {
-            Icon(
-                painter = painterResource(DesignR.drawable.ic_visibility_off),
-                contentDescription = stringResource(R.string.grid_disabled),
-                modifier = Modifier.padding(2.dp).size(BadgeIconSize)
-            )
-        }
-    }
-}
-
-@Composable
-private fun BoxScope.Badge(text: String, container: Color, content: Color) {
-    Surface(
-        shape = MaterialTheme.shapes.extraSmall,
-        color = container,
-        modifier = Modifier.align(Alignment.TopStart).padding(4.dp)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = content,
-            modifier = Modifier.padding(horizontal = 4.dp)
-        )
-    }
-}
-
-@Composable
 private fun StepButtons(onAction: (SlideGridAction) -> Unit) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -402,8 +282,6 @@ private fun StepButtons(onAction: (SlideGridAction) -> Unit) {
         }
     }
 }
-
-private fun GroupColor.toColor(): Color = Color(red = red, green = green, blue = blue, alpha = alpha)
 
 @Preview
 @Composable
