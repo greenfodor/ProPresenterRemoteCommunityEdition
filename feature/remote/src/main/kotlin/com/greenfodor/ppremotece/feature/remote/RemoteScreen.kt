@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.feature.remote
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,22 +11,30 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.PermanentDrawerSheet
+import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -92,7 +101,11 @@ private fun KeepScreenOn() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The Remote tab with its cue sidebar: permanent when [sideBySide], else a modal drawer opened from
+ * the top bar, closed by back and when the sidebar empties, with its cues composed only while it is
+ * open or opening.
+ */
 @Composable
 fun RemoteScreen(
     state: RemoteState,
@@ -102,9 +115,72 @@ fun RemoteScreen(
     reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val sidebar = @Composable {
+        CueSidebar(
+            cues = state.sidebar,
+            item = state.sidebarItem,
+            focus = state.sidebarFocus,
+            aspect = state.display.aspect,
+            onCueClick = { onAction(RemoteAction.OnSidebarCueClick(it)) }
+        )
+    }
+    val sidebarEmpty = state.sidebar.isEmpty()
+    LaunchedEffect(sideBySide, sidebarEmpty) {
+        if (sideBySide) {
+            drawerState.snapTo(DrawerValue.Closed)
+        } else if (sidebarEmpty) {
+            drawerState.close()
+        }
+    }
+    if (sideBySide) {
+        PermanentNavigationDrawer(
+            drawerContent = { PermanentDrawerSheet(modifier = Modifier.width(CueSidebarWidth)) { sidebar() } },
+            modifier = modifier
+        ) {
+            RemoteScaffold(state, onAction, reconnecting, snackbarHostState, sideBySide = true, onOpenCues = null)
+        }
+    } else {
+        BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
+        ModalNavigationDrawer(
+            drawerContent = {
+                ModalDrawerSheet(modifier = Modifier.width(CueSidebarWidth)) {
+                    if (drawerState.currentValue == DrawerValue.Open ||
+                        drawerState.targetValue == DrawerValue.Open
+                    ) {
+                        sidebar()
+                    }
+                }
+            },
+            drawerState = drawerState,
+            gesturesEnabled = drawerState.isOpen,
+            modifier = modifier
+        ) {
+            RemoteScaffold(
+                state,
+                onAction,
+                reconnecting,
+                snackbarHostState,
+                sideBySide = false,
+                onOpenCues = { scope.launch { drawerState.open() } }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RemoteScaffold(
+    state: RemoteState,
+    onAction: (RemoteAction) -> Unit,
+    reconnecting: Boolean,
+    snackbarHostState: SnackbarHostState,
+    sideBySide: Boolean,
+    onOpenCues: (() -> Unit)?
+) {
     val display = state.display
     Scaffold(
-        modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -114,6 +190,16 @@ fun RemoteScreen(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                },
+                navigationIcon = {
+                    if (onOpenCues != null) {
+                        IconButton(onClick = onOpenCues, enabled = state.sidebar.isNotEmpty()) {
+                            Icon(
+                                painterResource(DesignR.drawable.ic_left_panel_open),
+                                stringResource(R.string.remote_show_cues)
+                            )
+                        }
+                    }
                 },
                 actions = { HeaderActions(display) },
                 colors = TopAppBarDefaults.topAppBarColors(

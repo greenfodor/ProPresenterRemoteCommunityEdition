@@ -10,10 +10,12 @@ import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.Presentation
+import com.greenfodor.ppremotece.core.domain.remote.BoxMark
 import com.greenfodor.ppremotece.core.domain.remote.RemoteBox
 import com.greenfodor.ppremotece.core.domain.remote.RemoteCommand
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
 import com.greenfodor.ppremotece.core.domain.remote.RemoteInputs
+import com.greenfodor.ppremotece.core.domain.remote.RemoteSidebar
 import com.greenfodor.ppremotece.core.domain.remote.RemoteStatus
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
@@ -47,7 +49,8 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * buttons send the display's commands; ⏮/⏭ and "Back to live" only change the cued item. A cued
  * item and a triggered media item are dropped once another cue is reported live. Each needed
  * presentation is read once and stays available with its latest read; a failed read that leaves
- * the display loading is shown as an error, and retry reads the content again.
+ * the display loading is shown as an error, and retry reads the content again. A tap on an
+ * enabled cue of the sidebar sends its item-cue trigger.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RemoteViewModel(
@@ -118,12 +121,9 @@ class RemoteViewModel(
             requests
             ->
             val playlist = playlistRead.playlistFor(inputs)
-            val presentations = presentationReads.mapNotNull { (uuid, read) ->
-                (read as? Result.Success)?.data?.let {
-                    uuid to
-                        it
-                }
-            }.toMap()
+            val presentations = buildMap {
+                presentationReads.forEach { (uuid, read) -> (read as? Result.Success)?.let { put(uuid, it.data) } }
+            }
             val display = RemoteDisplay.reduce(inputs, playlist, presentations)
             val failure = if (display.status == RemoteStatus.LOADING) {
                 (playlistRead.result as? Result.Failure)?.error
@@ -136,7 +136,10 @@ class RemoteViewModel(
                 display = display,
                 currentThumbnail = display.current.thumbnail(requests),
                 nextThumbnail = display.next.thumbnail(requests),
-                error = failure?.toUiText()
+                error = failure?.toUiText(),
+                sidebar = display.sidebar?.rows(requests).orEmpty(),
+                sidebarFocus = display.sidebar?.focus,
+                sidebarItem = display.sidebar?.item
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), RemoteState())
 
@@ -154,7 +157,15 @@ class RemoteViewModel(
             RemoteAction.OnNextItemClick -> display.nextItem?.let { cue(it, display) }
             RemoteAction.OnBackToLiveClick -> cued.value = null
             RemoteAction.OnRetryClick -> retries.value++
+            is RemoteAction.OnSidebarCueClick -> sendSidebarCue(action.index, display)
         }
+    }
+
+    private fun sendSidebarCue(index: Int, display: RemoteDisplay) {
+        val sidebar = display.sidebar ?: return
+        sidebar.cues
+            .firstOrNull { it.index == index && it.enabled }
+            ?.let { send(RemoteCommand.TriggerCue(sidebar.item, it.index)) }
     }
 
     private fun cue(item: PlaylistItemKey, display: RemoteDisplay) {
@@ -186,6 +197,15 @@ class RemoteViewModel(
     /** The playlist read, when it is the one [inputs] needs. */
     private fun PlaylistRead.playlistFor(inputs: RemoteInputs): Playlist? =
         takeIf { it.uuid == RemoteDisplay.playlistNeeded(inputs) }?.let { (it.result as? Result.Success)?.data }
+
+    private fun RemoteSidebar.rows(requests: ThumbnailRequests?): List<SidebarCueUi> =
+        cues.map { cue ->
+            SidebarCueUi(
+                cue = cue,
+                mark = marks[cue.index] ?: BoxMark.NONE,
+                thumbnail = requests?.takeIf { thumbnails }?.request(item, presentationUuid, cue)
+            )
+        }
 
     private fun RemoteBox.thumbnail(requests: ThumbnailRequests?): ThumbnailRequest? =
         (this as? RemoteBox.Slide)

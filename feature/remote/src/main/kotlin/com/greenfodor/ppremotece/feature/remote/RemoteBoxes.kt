@@ -139,7 +139,7 @@ private fun ItemCard(card: RemoteBox.ItemCard, onClick: (() -> Unit)?, modifier:
     }
 }
 
-private fun BoxMark.toCueMark(): CueMark =
+internal fun BoxMark.toCueMark(): CueMark =
     when (this) {
         BoxMark.NONE -> CueMark.NONE
         BoxMark.LIVE -> CueMark.LIVE

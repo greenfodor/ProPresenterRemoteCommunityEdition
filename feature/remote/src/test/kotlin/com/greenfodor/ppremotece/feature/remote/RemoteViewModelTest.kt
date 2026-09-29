@@ -261,6 +261,64 @@ class RemoteViewModelTest {
     }
 
     @Test
+    fun `the sidebar lists the shown item's cues and follows a cued item`() = runTest {
+        live.goLive(LiveCue(key(0), SONG_A, 2))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            val live = awaitShowing()
+            assertThat(live.sidebar.map { it.cue.index }).containsExactly(0, 1, 2, 3, 4)
+            assertThat(live.sidebar.map { it.mark }).containsExactly(
+                BoxMark.NONE,
+                BoxMark.NONE,
+                BoxMark.LIVE,
+                BoxMark.NEXT,
+                BoxMark.NONE
+            )
+            assertThat(live.sidebarFocus).isEqualTo(2)
+            assertThat(live.sidebar[2].thumbnail).isEqualTo(ThumbnailRequest("http://host/0/2", "k2"))
+
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            val cued = awaitUntil { it.display.cued && it.sidebar.size == 3 }
+            assertThat(cued.sidebar.map { it.mark }).containsExactly(BoxMark.CUED, BoxMark.NONE, BoxMark.NEXT)
+            assertThat(cued.sidebarFocus).isEqualTo(0)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a sidebar tap triggers that cue of the shown item and a disabled cue sends nothing`() = runTest {
+        live.goLive(LiveCue(key(0), SONG_A, 2))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            awaitShowing()
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            awaitUntil { it.display.cued && it.sidebar.size == 3 }
+            viewModel.onAction(RemoteAction.OnSidebarCueClick(1))
+            viewModel.onAction(RemoteAction.OnSidebarCueClick(2))
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.sent).containsExactly(RemoteCommand.TriggerCue(key(4), 2))
+    }
+
+    @Test
+    fun `the sidebar is empty for a slide outside the playlist`() = runTest {
+        live.liveState.value = LiveState(ConnectionStatus.CONNECTED, item = null, slide = LiveSlide(SONG_A, 1, 5))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            val state = awaitShowing()
+            assertThat(state.sidebar).isEmpty()
+            assertThat(state.sidebarFocus == null).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `a slide outside the playlist steps with trigger next and previous`() = runTest {
         live.liveState.value = LiveState(
             ConnectionStatus.CONNECTED,

@@ -104,7 +104,8 @@ private fun cuedDisplay(item: PlaylistItem, presentations: Map<String, Presentat
             aspect = slideAspect(presentation),
             tapCurrent = trigger,
             tapNext = next?.let { RemoteCommand.TriggerCue(item.key, it) },
-            nextButton = trigger
+            nextButton = trigger,
+            sidebar = sidebarOf(item, presentation, cueList, first?.index, BoxMark.CUED, next)
         )
     } ?: cardDisplay(item, BoxMark.CUED)
 
@@ -137,7 +138,8 @@ private fun liveDisplay(
                     RemoteCommand.TriggerPrevious
                 } else {
                     previous?.let { RemoteCommand.TriggerCue(item.key, it) }
-                }
+                },
+                sidebar = sidebarOf(item, presentation, cueList, cueIndex, BoxMark.LIVE, next)
             )
         }
     } ?: textDisplay(text)
