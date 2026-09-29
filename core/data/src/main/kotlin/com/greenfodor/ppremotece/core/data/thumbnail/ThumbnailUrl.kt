@@ -1,11 +1,10 @@
 package com.greenfodor.ppremotece.core.data.thumbnail
 
+import com.greenfodor.ppremotece.core.data.network.playlistItemPath
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
-import io.ktor.http.encodeURLPathPart
 
 private const val THUMBNAIL_QUALITY = 400
 
 /** `GET {baseUrl}/v1/playlist/{pl}/{item}/thumbnail/{cue}?quality=400`. */
 fun thumbnailUrl(baseUrl: String, item: PlaylistItemKey, cueIndex: Int): String =
-    "${baseUrl.trimEnd('/')}/v1/playlist/${item.playlistUuid.encodeURLPathPart()}/${item.index}" +
-        "/thumbnail/$cueIndex?quality=$THUMBNAIL_QUALITY"
+    "${baseUrl.trimEnd('/')}/${playlistItemPath(item)}/thumbnail/$cueIndex?quality=$THUMBNAIL_QUALITY"

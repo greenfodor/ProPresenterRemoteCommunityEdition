@@ -3,16 +3,13 @@ package com.greenfodor.ppremotece.core.data.thumbnail
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isLessThan
-import coil3.intercept.Interceptor
-import coil3.request.ImageRequest
-import coil3.request.ImageResult
-import coil3.size.Size
+import coil3.fetch.FetchResult
+import coil3.fetch.Fetcher
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.data.network.StreamReplay
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.result.Result
-import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
 import kotlinx.coroutines.CompletableDeferred
@@ -26,6 +23,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.withTimeout
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
@@ -52,20 +50,20 @@ class ThumbnailConcurrencyTest {
         scope.cancel()
     }
 
+    private val permits = Semaphore(LimitedFetcherFactory.MAX_IN_FLIGHT)
+
     @Test
-    fun `the interceptor lets at most four requests proceed at once`() = runBlocking {
-        val interceptor = ThumbnailConcurrencyInterceptor()
+    fun `at most four fetches run at once`() = runBlocking {
         val inside = AtomicInteger()
         val maxInside = AtomicInteger()
         val release = CompletableDeferred<Unit>()
-        val chain = FakeChain {
+        val fetcher = limited {
             maxInside.accumulateAndGet(inside.incrementAndGet(), ::maxOf)
             release.await()
             inside.decrementAndGet()
-            throw Proceeded()
         }
 
-        val calls = List(10) { scope.async { runCatching { interceptor.intercept(chain) } } }
+        val calls = List(10) { scope.async { fetcher.fetch() } }
         delay(200.milliseconds)
         assertThat(inside.get()).isEqualTo(4)
         release.complete(Unit)
@@ -75,20 +73,20 @@ class ThumbnailConcurrencyTest {
     }
 
     @Test
-    fun `a permit is released when the request is cancelled`() = runBlocking {
-        val interceptor = ThumbnailConcurrencyInterceptor()
+    fun `a permit is released when a fetch is cancelled`() = runBlocking {
         val started = AtomicInteger()
-        val blocked = FakeChain {
+        val blocked = limited {
             started.incrementAndGet()
             awaitCancellation()
         }
-        val first = List(4) { scope.launch { interceptor.intercept(blocked) } }
+        val first = List(4) { scope.launch { blocked.fetch() } }
         withTimeout(2.seconds) { while (started.get() < 4) delay(10.milliseconds) }
 
         first.forEach { it.cancel() }
-        val next = scope.async { runCatching { interceptor.intercept(FakeChain { throw Proceeded() }) } }
+        val ran = CompletableDeferred<Unit>()
+        scope.launch { limited { ran.complete(Unit) }.fetch() }
 
-        assertThat(withTimeout(2.seconds) { next.await() }.exceptionOrNull() is Proceeded).isEqualTo(true)
+        withTimeout(2.seconds) { ran.await() }
     }
 
     @Test
@@ -102,11 +100,8 @@ class ThumbnailConcurrencyTest {
         scope.launch { runCatching { client.statusUpdates(listOf("status/slide")).collect {} } }
         withTimeout(2.seconds) { while (host.streams.get() < 1) delay(10.milliseconds) }
 
-        val interceptor = ThumbnailConcurrencyInterceptor()
         val thumbnails = List(12) { cue ->
-            scope.async {
-                runCatching { interceptor.intercept(FakeChain { fetch(httpClient, thumbnailUrl(base, item, cue)) }) }
-            }
+            scope.async { limited { httpClient.get(thumbnailUrl(base, item, cue)).readRawBytes() }.fetch() }
         }
         withTimeout(2.seconds) { while (host.openThumbnails.get() < 4) delay(10.milliseconds) }
         val started = System.nanoTime()
@@ -120,25 +115,16 @@ class ThumbnailConcurrencyTest {
         assertThat(host.thumbnailQueries.toSet()).isEqualTo(setOf("quality=400"))
     }
 
-    private suspend fun fetch(httpClient: HttpClient, url: String): Nothing {
-        httpClient.get(url).readRawBytes()
-        throw Proceeded()
-    }
-
-    private class Proceeded : RuntimeException()
-
-    private class FakeChain(
-        private val onProceed: suspend () -> Nothing
-    ) : Interceptor.Chain {
-        override val request: ImageRequest get() = error("not used")
-        override val size: Size get() = error("not used")
-
-        override fun withRequest(request: ImageRequest): Interceptor.Chain = this
-
-        override fun withSize(size: Size): Interceptor.Chain = this
-
-        override suspend fun proceed(): ImageResult = onProceed()
-    }
+    private fun limited(work: suspend () -> Unit): Fetcher =
+        LimitedFetcher(
+            object : Fetcher {
+                override suspend fun fetch(): FetchResult? {
+                    work()
+                    return null
+                }
+            },
+            permits
+        )
 
     private class SlowThumbnailHost(
         private val stall: CountDownLatch

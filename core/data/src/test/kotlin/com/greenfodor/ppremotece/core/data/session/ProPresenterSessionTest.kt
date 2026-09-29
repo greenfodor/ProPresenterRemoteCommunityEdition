@@ -3,16 +3,29 @@ package com.greenfodor.ppremotece.core.data.session
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
+import assertk.assertions.isNull
 import com.greenfodor.ppremotece.core.data.network.FakeProPresenter
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
+import com.greenfodor.ppremotece.core.domain.model.Cue
+import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
+import com.greenfodor.ppremotece.core.domain.model.SlideSize
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import mockwebserver3.MockWebServer
 import mockwebserver3.junit5.StartStop
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class ProPresenterSessionTest {
     @StartStop
@@ -33,9 +46,31 @@ class ProPresenterSessionTest {
         val host = ProPresenterHost(name = "Host 01", address = server.hostName, port = server.port)
 
         assertThat(session.connect(host)).isInstanceOf<Result.Success<*>>()
+        withTimeout(2.seconds) { session.thumbnailRequests.filterNotNull().first() }
         assertThat(session.connect(host)).isInstanceOf<Result.Success<*>>()
+        withTimeout(2.seconds) { session.thumbnailRequests.filterNotNull().first() }
 
-        assertThat(cache.clears).isEqualTo(2)
+        assertThat(cache.clears.get()).isEqualTo(2)
+    }
+
+    @Test
+    fun `connect does not wait for the clear and thumbnails are published after it`() = runBlocking {
+        val host = ProPresenterHost(name = "Host 01", address = server.hostName, port = server.port)
+        cache.gate = CompletableDeferred()
+
+        assertThat(withTimeout(2.seconds) { session.connect(host) }).isInstanceOf<Result.Success<*>>()
+        withTimeout(2.seconds) { while (cache.clears.get() < 1) delay(10.milliseconds) }
+        assertThat(session.thumbnailRequests.first()).isNull()
+
+        cache.gate.complete(Unit)
+
+        val requests = withTimeout(2.seconds) { session.thumbnailRequests.filterNotNull().first() }
+        val cue = Cue(3, "g-1", "Chorus", null, 0, "Chorus · 1", enabled = true, size = SlideSize(1920, 858))
+        val request = requests.request(PlaylistItemKey("pl-1", 1), "p-1", cue)
+        assertThat(
+            request.url
+        ).isEqualTo("http://${server.hostName}:${server.port}/v1/playlist/pl-1/1/thumbnail/3?quality=400")
+        assertThat(request.cacheKey).isEqualTo(ThumbnailKey.of("Host 01", "p-1", cue))
     }
 
     @Test
@@ -44,15 +79,19 @@ class ProPresenterSessionTest {
 
         assertThat(session.connect(unreachable)).isInstanceOf<Result.Failure<*>>()
 
-        assertThat(cache.clears).isEqualTo(0)
+        assertThat(cache.clears.get()).isEqualTo(0)
     }
 
     private class FakeThumbnailCache : ThumbnailCache {
-        var clears = 0
+        val clears = AtomicInteger()
         val removed = mutableListOf<String>()
 
+        @Volatile
+        var gate: CompletableDeferred<Unit> = CompletableDeferred(Unit)
+
         override suspend fun clear() {
-            clears++
+            clears.incrementAndGet()
+            gate.await()
         }
 
         override suspend fun remove(keys: Collection<String>) {

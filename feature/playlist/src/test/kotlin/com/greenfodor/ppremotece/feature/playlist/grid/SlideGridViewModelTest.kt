@@ -193,6 +193,21 @@ class SlideGridViewModelTest {
     }
 
     @Test
+    fun `a new host connection loads the thumbnails again`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitItem().thumbnailGeneration).isEqualTo(0)
+
+            thumbnailSource.thumbnailRequests.value = ThumbnailRequests { item, presentationUuid, cue ->
+                ThumbnailRequest("http://other/${item.index}/${cue.index}", "$presentationUuid:${cue.index}")
+            }
+
+            assertThat(awaitItem().thumbnailGeneration).isEqualTo(1)
+        }
+    }
+
+    @Test
     fun `a failed reload keeps the slides and reports the error`() = runTest {
         val viewModel = viewModel()
 
@@ -204,10 +219,9 @@ class SlideGridViewModelTest {
 
                 assertThat(awaitItem()).isInstanceOf<SlideGridEvent.ShowError>()
             }
-            val state = awaitItem()
-            assertThat(state.cues.size).isEqualTo(8)
-            assertThat(state.error).isNull()
+            expectNoEvents()
         }
+        assertThat(thumbnailCache.removed).isEmpty()
     }
 
     @Test
@@ -218,8 +232,14 @@ class SlideGridViewModelTest {
         val viewModel = viewModel()
 
         viewModel.state.test {
-            assertThat(awaitItem().countMismatch).isTrue()
+            val state = awaitItem()
+            assertThat(state.countMismatch).isTrue()
+            assertThat(state.cues.mapNotNull { it.thumbnail }).isEmpty()
+
+            viewModel.onAction(SlideGridAction.OnReloadClick)
+            expectNoEvents()
         }
+        assertThat(thumbnailCache.removed).isEmpty()
     }
 
     private fun viewModel() =

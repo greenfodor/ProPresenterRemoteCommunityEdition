@@ -33,8 +33,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.IOException
@@ -45,7 +45,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * [StreamingLiveStateRepository], which lives in a scope that [disconnect] cancels.
  * [sessionKey] names the current connection (`{n}@{address}:{port}`, new on each connect, null
  * while disconnected), and [streamReconnects] emits each time the live stream is reopened. Each
- * successful connect clears the [ThumbnailCache].
+ * successful connect clears the [ThumbnailCache] in the background; the connection's
+ * [thumbnailRequests] are null until that clear has finished.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
@@ -55,10 +56,9 @@ class ProPresenterSession(
     LiveStateRepository,
     ThumbnailSource {
     private class Connection(
-        val baseUrl: String,
-        val instanceName: String,
         val client: KtorProPresenterClient,
         val live: StreamingLiveStateRepository,
+        val thumbnails: StateFlow<ThumbnailRequests?>,
         val scope: CoroutineScope
     )
 
@@ -77,17 +77,9 @@ class ProPresenterSession(
     override val liveState: Flow<LiveState> =
         connection.flatMapLatest { it?.live?.liveState ?: flowOf(LiveState.Initial) }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override val thumbnailRequests: Flow<ThumbnailRequests?> =
-        connection.map { current ->
-            current?.let {
-                ThumbnailRequests { item, presentationUuid, cue ->
-                    ThumbnailRequest(
-                        url = thumbnailUrl(it.baseUrl, item, cue.index),
-                        cacheKey = ThumbnailKey.of(it.instanceName, presentationUuid, cue)
-                    )
-                }
-            }
-        }
+        connection.flatMapLatest { it?.thumbnails ?: flowOf(null) }
 
     override suspend fun savedHost(): ProPresenterHost? = savedHostStore.read()
 
@@ -97,9 +89,13 @@ class ProPresenterSession(
         return client.version().onSuccess { version ->
             val scope = CoroutineScope(sessionScope.coroutineContext + SupervisorJob(sessionScope.coroutineContext.job))
             val live = StreamingLiveStateRepository(client, scope, onReconnected = { _streamReconnects.tryEmit(Unit) })
-            connection.getAndUpdate { Connection(baseUrl, version.name, client, live, scope) }?.scope?.cancel()
+            val thumbnails = MutableStateFlow<ThumbnailRequests?>(null)
+            connection.getAndUpdate { Connection(client, live, thumbnails, scope) }?.scope?.cancel()
             _sessionKey.value = "${connectCount.incrementAndGet()}@${host.address}:${host.port}"
-            thumbnailCache.clear()
+            scope.launch {
+                thumbnailCache.clear()
+                thumbnails.value = thumbnailRequests(baseUrl, version.name)
+            }
             try {
                 savedHostStore.save(host)
             } catch (_: IOException) {
@@ -116,6 +112,14 @@ class ProPresenterSession(
             _sessionKey.value = null
         }
     }
+
+    private fun thumbnailRequests(baseUrl: String, instanceName: String) =
+        ThumbnailRequests { item, presentationUuid, cue ->
+            ThumbnailRequest(
+                url = thumbnailUrl(baseUrl, item, cue.index),
+                cacheKey = ThumbnailKey.of(instanceName, presentationUuid, cue)
+            )
+        }
 
     /** Reconnects to the saved host when no host is connected. */
     suspend fun restore() {

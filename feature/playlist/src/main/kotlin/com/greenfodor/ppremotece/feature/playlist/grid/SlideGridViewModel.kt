@@ -20,6 +20,7 @@ import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.map
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import com.greenfodor.ppremotece.core.domain.thumbnail.slideAspect
 import com.greenfodor.ppremotece.feature.playlist.R
@@ -42,6 +43,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.withIndex
 import kotlinx.coroutines.launch
 
 private const val STOP_TIMEOUT_MILLIS = 5_000L
@@ -50,7 +52,9 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * Slide grid for one playlist item: its cues in the item's arrangement, read through the
  * [ContentRepository], the live and next cues while ProPresenter shows this item, and triggers by
  * item and cue index plus next and previous. Disabled cues are not triggered. Each cue carries its
- * thumbnail request; "Reload slides" also evicts the item's thumbnails and loads them again.
+ * thumbnail request, except in an item whose arrangement did not fully resolve; a successful
+ * "Reload slides" also evicts the item's thumbnails and loads them again, as does each new host
+ * connection.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SlideGridViewModel(
@@ -89,40 +93,29 @@ class SlideGridViewModel(
                 .onStart { emit(Content.Loading) }
         }.onEach { loaded = it as? Content.Loaded }
 
-    val state: StateFlow<SlideGridState> =
-        combine(
+    private val grid: Flow<Pair<SlideGridState, Content.Loaded?>> =
+        combine(content, thumbnailSource.thumbnailRequests.withIndex(), thumbnailGeneration) {
             content,
-            thumbnailSource.thumbnailRequests,
-            thumbnailGeneration,
-            liveStateRepository.liveState
-        ) { content, requests, generation, live ->
+            requests,
+            reloads
+            ->
             when (content) {
-                Content.Loading -> SlideGridState(isLoading = true)
-                is Content.Failed -> SlideGridState(isLoading = false, error = content.error)
-                is Content.Loaded -> {
-                    val presentationUuid = content.presentation.uuid
-                    SlideGridState(
-                        title = content.item.name,
-                        label = content.cueList.choice.toArrangementLabel(),
-                        cues = content.cueList.cues.map { cue ->
-                            CueUi(
-                                index = cue.index,
-                                groupName = cue.groupName,
-                                groupColor = cue.groupColor,
-                                text = cue.slideText,
-                                label = cue.slideLabel,
-                                enabled = cue.enabled,
-                                thumbnail = requests?.request(item, presentationUuid, cue)
-                            )
-                        },
-                        aspect = slideAspect(content.presentation),
-                        countMismatch = content.cueList.countMismatch,
-                        liveCueIndex = liveCueIndex(live, item, presentationUuid),
-                        nextCueIndex = nextCueIndex(live, item, presentationUuid, content.cueList.cues),
-                        thumbnailGeneration = generation,
-                        isLoading = false
-                    )
-                }
+                Content.Loading -> SlideGridState(isLoading = true) to null
+                is Content.Failed -> SlideGridState(isLoading = false, error = content.error) to null
+                is Content.Loaded -> gridState(content, requests.value, reloads + requests.index) to content
+            }
+        }
+
+    val state: StateFlow<SlideGridState> =
+        combine(grid, liveStateRepository.liveState) { (state, loaded), live ->
+            if (loaded == null) {
+                state
+            } else {
+                val presentationUuid = loaded.presentation.uuid
+                state.copy(
+                    liveCueIndex = liveCueIndex(live, item, presentationUuid),
+                    nextCueIndex = nextCueIndex(live, item, presentationUuid, loaded.cueList.cues)
+                )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), SlideGridState())
 
@@ -139,6 +132,34 @@ class SlideGridViewModel(
         }
     }
 
+    private fun gridState(
+        content: Content.Loaded,
+        requests: ThumbnailRequests?,
+        thumbnailGeneration: Int
+    ): SlideGridState {
+        val presentationUuid = content.presentation.uuid
+        val thumbnails = requests.takeUnless { content.cueList.countMismatch }
+        return SlideGridState(
+            title = content.item.name,
+            label = content.cueList.choice.toArrangementLabel(),
+            cues = content.cueList.cues.map { cue ->
+                CueUi(
+                    index = cue.index,
+                    groupName = cue.groupName,
+                    groupColor = cue.groupColor,
+                    text = cue.slideText,
+                    label = cue.slideLabel,
+                    enabled = cue.enabled,
+                    thumbnail = thumbnails?.request(item, presentationUuid, cue)
+                )
+            },
+            aspect = slideAspect(content.presentation),
+            countMismatch = content.cueList.countMismatch,
+            thumbnailGeneration = thumbnailGeneration,
+            isLoading = false
+        )
+    }
+
     private fun isEnabled(cueIndex: Int): Boolean =
         loaded?.cueList?.cues?.firstOrNull { it.index == cueIndex }?.enabled == true
 
@@ -148,16 +169,19 @@ class SlideGridViewModel(
             val presentationRead = loaded?.presentation?.uuid?.let {
                 async { contentRepository.refreshPresentation(it) }
             }
-            listOfNotNull(playlistRead, presentationRead)
+            val error = listOfNotNull(playlistRead, presentationRead)
                 .awaitAll()
                 .firstNotNullOfOrNull { (it as? Result.Failure)?.error }
-                ?.let { _events.send(SlideGridEvent.ShowError(it.toUiText())) }
-            evictThumbnails()
+            if (error != null) {
+                _events.send(SlideGridEvent.ShowError(error.toUiText()))
+            } else {
+                evictThumbnails()
+            }
         }
     }
 
     private suspend fun evictThumbnails() {
-        val content = loaded ?: return
+        val content = loaded?.takeUnless { it.cueList.countMismatch } ?: return
         val requests = thumbnailSource.thumbnailRequests.first() ?: return
         thumbnailCache.remove(
             content.cueList.cues.map { requests.request(item, content.presentation.uuid, it).cacheKey }.distinct()
