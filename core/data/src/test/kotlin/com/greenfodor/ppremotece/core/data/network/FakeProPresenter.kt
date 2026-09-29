@@ -3,11 +3,13 @@ package com.greenfodor.ppremotece.core.data.network
 import assertk.assertThat
 import assertk.assertions.isEmpty
 import com.greenfodor.ppremotece.core.data.Fixtures
+import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockResponseBody
 import mockwebserver3.RecordedRequest
 import okio.BufferedSink
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
@@ -22,6 +24,9 @@ class FakeProPresenter(
 
     @Volatile
     var failSlideIndexReads = 0
+
+    /** Bodies served by the next `slide_index` reads, in order, before [SLIDE_INDEX]. */
+    val slideIndexBodies = ConcurrentLinkedQueue<String>()
     private val streams = LinkedBlockingQueue<MockResponse>()
 
     private val stalls = CountDownLatch(1)
@@ -37,6 +42,10 @@ class FakeProPresenter(
         timeScale: Double = 0.02,
         delivered: AtomicInteger = AtomicInteger()
     ): MockResponse = StreamReplay.response(name, end, timeScale, delivered, stalls)
+
+    /** A stream that sends each of [chunks] (frames without their separators) [delayMillis] apart. */
+    fun frames(vararg chunks: List<String>, delayMillis: Long = 50, end: StreamEnd = StreamEnd.STALL): MockResponse =
+        StreamReplay.frames(chunks.toList(), delayMillis, end, stalls)
 
     fun releaseStalls() {
         stalls.countDown()
@@ -64,9 +73,10 @@ class FakeProPresenter(
                 failSlideIndexReads--
                 status(500)
             }
-            path == "/v1/presentation/slide_index" -> json(SLIDE_INDEX)
+            path == "/v1/presentation/slide_index" -> json(slideIndexBodies.poll() ?: SLIDE_INDEX)
             path == "/v1/trigger/next" || path == "/v1/trigger/previous" -> status(204)
             CUE_TRIGGER.matches(path) -> triggerCue(path)
+            ITEM_TRIGGER.matches(path) -> status(204)
             path.startsWith("/v1/playlist/") -> fixture("playlist", path.removePrefix("/v1/playlist/"))
             path.startsWith("/v1/presentation/") -> fixture("presentation", path.removePrefix("/v1/presentation/"))
             else -> status(404)
@@ -91,6 +101,24 @@ class FakeProPresenter(
         const val SLIDE_INDEX = """{"presentation_index":{"index":3,"presentation_id":""" +
             """{"uuid":"$SONG_A_UUID","name":"Song A","index":0},"total_cues":7,"remaining_cues":3}}"""
         private val CUE_TRIGGER = Regex("^/v1/playlist/[0-9a-f-]+/\\d+/(\\d+)/trigger$")
+        private val ITEM_TRIGGER = Regex("^/v1/playlist/[0-9a-f-]+/\\d+/trigger$")
+        const val NO_SLIDE_INDEX = """{"presentation_index":null}"""
+        const val SLIDE_FRAME =
+            """{"url":"status/slide","data":{"current":{"text":"Text 01","notes":"","uuid":"s-1"},""" +
+                """"next":{"text":"Text 02","notes":"","uuid":"s-2"}}}"""
+
+        /** A `playlist/active` frame naming [item] and the presentation it plays, or no item when null. */
+        fun playlistActiveFrame(item: PlaylistItemKey?, presentationUuid: String = SONG_A_UUID): String {
+            val presentation = item?.let {
+                """{"playlist":{"uuid":"${it.playlistUuid}","name":"Playlist 01","index":0},""" +
+                    """"item":{"uuid":"i-${it.index}","name":"Item 01","index":${it.index}},""" +
+                    """"playlist_item":{"id":{"uuid":"i-${it.index}","name":"Item 01","index":${it.index}},""" +
+                    """"type":"presentation","presentation_info":{"presentation_uuid":"$presentationUuid",""" +
+                    """"arrangement_name":"","arrangement_uuid":""}}}"""
+            } ?: """{"playlist":null,"item":null}"""
+            return """{"url":"playlist/active","data":{"presentation":$presentation,""" +
+                """"announcements":{"playlist":null,"item":null}}}"""
+        }
 
         private val ALLOWED = listOf(
             "GET" to Regex("^/version$"),
@@ -99,6 +127,7 @@ class FakeProPresenter(
             "GET" to Regex("^/v1/presentation/[0-9a-f-]+$"),
             "GET" to Regex("^/v1/presentation/slide_index$"),
             "GET" to Regex("^/v1/playlist/[0-9a-f-]+/\\d+/\\d+/trigger$"),
+            "GET" to Regex("^/v1/playlist/[0-9a-f-]+/\\d+/trigger$"),
             "GET" to Regex("^/v1/trigger/(next|previous)$"),
             "POST" to Regex("^/v1/status/updates$")
         )
@@ -145,6 +174,18 @@ object StreamReplay {
         }
         return streamResponse(ChunkedReplayBody(chunks, end, delivered, stall))
     }
+
+    fun frames(chunks: List<List<String>>, delayMillis: Long, end: StreamEnd, stall: CountDownLatch): MockResponse =
+        streamResponse(
+            ChunkedReplayBody(
+                chunks.map { frames ->
+                    TimedChunk(delayMillis, frames.joinToString("") { "$it\r\n\r\n" }.encodeToByteArray())
+                },
+                end,
+                AtomicInteger(),
+                stall
+            )
+        )
 
     fun silent(stall: CountDownLatch): MockResponse =
         streamResponse(ChunkedReplayBody(emptyList(), StreamEnd.STALL, AtomicInteger(), stall))

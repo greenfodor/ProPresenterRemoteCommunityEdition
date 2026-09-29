@@ -37,6 +37,7 @@ MVI presentation (State / Action / Event, `XxxRoot` / `XxxScreen`, `UiText`).
 | `:core:designsystem` | `ppremotece.android.library.compose` | Dark-only `PPRemoteTheme`, `GroupColors`, icons, `UiText`, `ObserveAsEvents`     |
 | `:feature:connect`   | `ppremotece.android.feature`         | Discovery / manual host, connect screen, `ConnectRoute`                          |
 | `:feature:playlist`  | `ppremotece.android.feature`         | Playlist tree + slide grid                                                       |
+| `:feature:remote`    | `ppremotece.android.feature`         | Remote tab: live and next boxes, item steps, Prev/Next                           |
 
 **Dependency rules:** `domain` depends on nothing; `data` → `domain`; `designsystem` → `domain`;
 features → `domain` + `designsystem`, never `data` and never each other; `:app` → everything and
@@ -52,12 +53,14 @@ Versions come only from `gradle/libs.versions.toml`.
 ## ProPresenter network rule (P-10)
 
 The app talks to ProPresenter's HTTP `/v1` API and sends only:
-- `GET` reads, the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`,
-  `GET /v1/trigger/next`, `GET /v1/trigger/previous` and the clear calls;
+- `GET` reads, the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
+  trigger `GET /v1/playlist/{pl}/{item}/trigger`, `GET /v1/trigger/next`,
+  `GET /v1/trigger/previous` and the clear calls;
 - one `POST /v1/status/updates` stream.
 
 Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content) is out of bounds.
-Inside a playlist, trigger by `(playlist uuid, item index, cue index)` only;
+Inside a playlist, trigger by `(playlist uuid, item index, cue index)`, or by
+`(playlist uuid, item index)` for the item trigger, only;
 `/v1/presentation/active/{n}/trigger`, `/v1/presentation/{uuid}/{n}/trigger` and
 `/v1/presentation/active/next|previous/trigger` switch to the presentation's own arrangement.
 

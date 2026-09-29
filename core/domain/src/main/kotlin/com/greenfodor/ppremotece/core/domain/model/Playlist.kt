@@ -21,8 +21,11 @@ data class PlaylistItem(
 
 enum class PlaylistItemType {
     PRESENTATION,
+    PLACEHOLDER,
     HEADER,
     MEDIA,
+    AUDIO,
+    LIVE_VIDEO,
     OTHER
 }
 

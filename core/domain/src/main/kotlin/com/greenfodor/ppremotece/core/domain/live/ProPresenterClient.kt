@@ -24,6 +24,9 @@ interface ProPresenterClient {
 
     suspend fun triggerCue(item: PlaylistItemKey, cueIndex: Int): EmptyResult<DataError.Network>
 
+    /** Triggers a playlist item: a presentation at its first cue, a media or audio item as a whole. */
+    suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network>
+
     suspend fun triggerNext(): EmptyResult<DataError.Network>
 
     suspend fun triggerPrevious(): EmptyResult<DataError.Network>

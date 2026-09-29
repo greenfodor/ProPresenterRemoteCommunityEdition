@@ -36,6 +36,9 @@ private fun PlaylistItemDto.toDomain(playlistUuid: String): PlaylistItem =
             "presentation" -> PlaylistItemType.PRESENTATION
             "header" -> PlaylistItemType.HEADER
             "media" -> PlaylistItemType.MEDIA
+            "placeholder" -> PlaylistItemType.PLACEHOLDER
+            "audio" -> PlaylistItemType.AUDIO
+            "livevideo" -> PlaylistItemType.LIVE_VIDEO
             else -> PlaylistItemType.OTHER
         },
         presentation = presentationInfo?.let {

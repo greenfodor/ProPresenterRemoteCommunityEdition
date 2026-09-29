@@ -59,6 +59,21 @@ class LiveCueTest {
         assertThat(nextCueIndex(liveAt(2), item, "p-2", cues)).isNull()
     }
 
+    @Test
+    fun `next and previous over a cue list skip disabled cues`() {
+        assertThat(nextCueIndex(cues, after = 0)).isEqualTo(2)
+        assertThat(nextCueIndex(cues, after = 5)).isEqualTo(7)
+        assertThat(previousCueIndex(cues, before = 2)).isEqualTo(0)
+        assertThat(previousCueIndex(cues, before = 7)).isEqualTo(5)
+    }
+
+    @Test
+    fun `no next after the last cue and no previous before the first`() {
+        assertThat(nextCueIndex(cues, after = 7)).isNull()
+        assertThat(previousCueIndex(cues, before = 0)).isNull()
+        assertThat(previousCueIndex(cues.map { it.copy(enabled = it.index != 0) }, before = 1)).isNull()
+    }
+
     private fun liveAt(index: Int) =
         LiveState(ConnectionStatus.CONNECTED, item, LiveSlide(presentationUuid = "p-1", index = index, totalCues = 8))
 

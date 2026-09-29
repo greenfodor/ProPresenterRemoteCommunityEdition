@@ -35,6 +35,9 @@ internal class CurrentHostClient(
     override suspend fun triggerCue(item: PlaylistItemKey, cueIndex: Int): EmptyResult<DataError.Network> =
         current()?.triggerCue(item, cueIndex) ?: notConnected()
 
+    override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> =
+        current()?.triggerItem(item) ?: notConnected()
+
     override suspend fun triggerNext(): EmptyResult<DataError.Network> = current()?.triggerNext() ?: notConnected()
 
     override suspend fun triggerPrevious(): EmptyResult<DataError.Network> =

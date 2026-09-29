@@ -6,6 +6,7 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.SlideText
 import org.junit.jupiter.api.Test
 
 class StatusFrameParserTest {
@@ -73,7 +74,17 @@ class StatusFrameParserTest {
     @Test
     fun `status slide decodes to a slide change`() {
         assertThat(parser.decode("""{"url":"status/slide","data":{"current":{"uuid":"s-1"}}}"""))
-            .isEqualTo(StatusEvent.SlideChanged)
+            .isEqualTo(StatusEvent.SlideChanged(SlideText(current = "", next = "")))
+    }
+
+    @Test
+    fun `status slide carries the current and next text`() {
+        val frame = """{"url":"status/slide","data":{"current":{"text":"Text 03","notes":"n","uuid":"s-1"},""" +
+            """"next":{"text":"Text 04","notes":"n","uuid":"s-2"}}}"""
+
+        assertThat(
+            parser.decode(frame)
+        ).isEqualTo(StatusEvent.SlideChanged(SlideText(current = "Text 03", next = "Text 04")))
     }
 
     @Test
@@ -109,6 +120,16 @@ class StatusFrameParserTest {
     }
 
     @Test
+    fun `playlist active carries the presentation of the live item`() {
+        val frame = """{"url":"playlist/active","data":{"presentation":{""" +
+            """"playlist":{"uuid":"pl-1","name":"List","index":7},"item":{"uuid":"i-1","name":"Song","index":2},""" +
+            """"playlist_item":{"id":{"uuid":"i-1","name":"Song","index":2},"type":"presentation",""" +
+            """"presentation_info":{"presentation_uuid":"p-1","arrangement_name":"A","arrangement_uuid":"a-1"}}}}}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(StatusEvent.PlaylistActive(PlaylistItemKey("pl-1", 2), "p-1"))
+    }
+
+    @Test
     fun `playlist active without a presentation decodes to no live item`() {
         val frame = """{"url":"playlist/active","data":{"presentation":{"playlist":null,"item":null}}}"""
 
@@ -134,7 +155,10 @@ class StatusFrameParserTest {
         val chunk =
             """{"url":"status/slide","data":{}}""" + SEPARATOR + """{"url":"timer/system_time","data":5}""" + SEPARATOR
 
-        assertThat(parser.events(bytes(chunk))).containsExactly(StatusEvent.SlideChanged, StatusEvent.Heartbeat(5))
+        assertThat(parser.events(bytes(chunk))).containsExactly(
+            StatusEvent.SlideChanged(SlideText(current = "", next = "")),
+            StatusEvent.Heartbeat(5)
+        )
     }
 
     private fun bytes(text: String) = text.encodeToByteArray()

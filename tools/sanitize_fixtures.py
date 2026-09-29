@@ -28,10 +28,11 @@ PRESENTATIONS = [
 ]
 VERSION = "t/version.json"
 STREAMS = [
-    "status-updates",
-    "su-long",
-    "session1-status-updates",
-    "session2-status-updates",
+    "streams/status-updates",
+    "streams/su-long",
+    "streams/session1-status-updates",
+    "streams/session2-status-updates",
+    "../stage5-device/streams/stage5-status-updates",
 ]
 
 FRAME_SEPARATOR = b"\r\n\r\n"
@@ -45,6 +46,7 @@ VERBATIM_ALLOWED = {
     "presentation", "header", "media", "playlist", "group", "standard", "win", "v1",
     "ProPresenter 21.4.2", "10.0.26200",
     "status/slide", "presentation/active", "presentation/slide_index", "playlist/active", "timer/system_time",
+    "status/layers",
 }
 CHUNK_LINE = re.compile(r"^# \+(?P<time>[\d.]+)s chunk (?P<n>\d+) \((?P<size>\d+) B\) tail=.*$")
 TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
@@ -220,6 +222,9 @@ class Sanitizer:
                     item["name"] = self.replaced(
                         item["name"], self.item_names.get(item["uuid"]) or self.generate("Item", item["uuid"])
                     )
+        elif url == "status/layers":
+            if not all(isinstance(value, bool) for value in data.values()):
+                raise ValueError("status/layers frame with a non-boolean value")
         elif url != "timer/system_time":
             raise ValueError(f"no sanitising rule for stream url {url}")
         return frame
@@ -259,9 +264,10 @@ def write_json(path, value):
     path.write_text(dump(value, pretty=True), encoding="utf-8")
 
 
-def sanitize_stream(sanitizer, source_dir, name, out_dir):
-    raw = (source_dir / f"{name}.raw").read_bytes()
-    meta_lines = (source_dir / f"{name}.meta").read_text(encoding="utf-8").splitlines()
+def sanitize_stream(sanitizer, source, out_dir):
+    name = source.name
+    raw = source.with_name(f"{name}.raw").read_bytes()
+    meta_lines = source.with_name(f"{name}.meta").read_text(encoding="utf-8").splitlines()
     frames = [part for part in raw.split(FRAME_SEPARATOR) if part.strip()]
     sanitized = [
         dump(sanitizer.frame(sanitizer.remember(json.loads(part))), pretty=False).encode("utf-8") + FRAME_SEPARATOR
@@ -406,8 +412,8 @@ def main():
     version["name"] = sanitizer.replaced(version["name"], sanitizer.generate("Host", version["name"]))
     write_json(out_dir / "version.json", version)
 
-    for name in STREAMS:
-        sanitize_stream(sanitizer, source_dir / "streams", name, out_dir)
+    for relative in STREAMS:
+        sanitize_stream(sanitizer, source_dir / relative, out_dir)
 
     return 0 if leak_check(sanitizer, out_dir) else 1
 
