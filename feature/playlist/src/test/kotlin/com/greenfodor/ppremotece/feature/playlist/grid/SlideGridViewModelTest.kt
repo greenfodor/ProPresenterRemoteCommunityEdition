@@ -23,6 +23,10 @@ import com.greenfodor.ppremotece.core.domain.model.PresentationRef
 import com.greenfodor.ppremotece.core.domain.model.Slide
 import com.greenfodor.ppremotece.core.domain.model.SlideSize
 import com.greenfodor.ppremotece.core.domain.result.DataError
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import com.greenfodor.ppremotece.feature.playlist.FakeContentRepository
 import com.greenfodor.ppremotece.feature.playlist.FakeProPresenterClient
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +48,25 @@ class SlideGridViewModelTest {
     private val live = MutableStateFlow(LiveState.Initial)
     private val liveStateRepository = object : LiveStateRepository {
         override val liveState = live
+    }
+    private val thumbnailSource = object : ThumbnailSource {
+        override val thumbnailRequests = MutableStateFlow<ThumbnailRequests?>(
+            ThumbnailRequests { item, presentationUuid, cue ->
+                ThumbnailRequest(
+                    url = "http://host/${item.playlistUuid}/${item.index}/thumbnail/${cue.index}",
+                    cacheKey = "$presentationUuid:${cue.groupUuid}:${cue.slideIndexInGroup}"
+                )
+            }
+        )
+    }
+    private val thumbnailCache = object : ThumbnailCache {
+        val removed = mutableListOf<List<String>>()
+
+        override suspend fun clear() = Unit
+
+        override suspend fun remove(keys: Collection<String>) {
+            removed += keys.toList()
+        }
     }
 
     @BeforeEach
@@ -141,6 +164,50 @@ class SlideGridViewModelTest {
     }
 
     @Test
+    fun `each cue carries its thumbnail request and repeats share a cache key`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            val cues = awaitItem().cues
+            assertThat(cues[0].thumbnail?.url).isEqualTo("http://host/$PLAYLIST/6/thumbnail/0")
+            assertThat(cues[5].thumbnail?.cacheKey).isEqualTo(cues[0].thumbnail?.cacheKey)
+            assertThat(cues.mapNotNull { it.thumbnail?.cacheKey }.distinct().size).isEqualTo(5)
+        }
+    }
+
+    @Test
+    fun `reload evicts the item's thumbnails once per key and loads them again`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitItem().thumbnailGeneration).isEqualTo(0)
+
+            viewModel.onAction(SlideGridAction.OnReloadClick)
+
+            assertThat(awaitItem().thumbnailGeneration).isEqualTo(1)
+            assertThat(thumbnailCache.removed.single().size).isEqualTo(5)
+            assertThat(thumbnailCache.removed.single()).isEqualTo(
+                listOf("p-c:g-verse:0", "p-c:g-verse:1", "p-c:g-verse:2", "p-c:g-chorus:0", "p-c:g-chorus:1")
+            )
+        }
+    }
+
+    @Test
+    fun `a new host connection loads the thumbnails again`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitItem().thumbnailGeneration).isEqualTo(0)
+
+            thumbnailSource.thumbnailRequests.value = ThumbnailRequests { item, presentationUuid, cue ->
+                ThumbnailRequest("http://other/${item.index}/${cue.index}", "$presentationUuid:${cue.index}")
+            }
+
+            assertThat(awaitItem().thumbnailGeneration).isEqualTo(1)
+        }
+    }
+
+    @Test
     fun `a failed reload keeps the slides and reports the error`() = runTest {
         val viewModel = viewModel()
 
@@ -154,6 +221,7 @@ class SlideGridViewModelTest {
             }
             expectNoEvents()
         }
+        assertThat(thumbnailCache.removed).isEmpty()
     }
 
     @Test
@@ -164,11 +232,18 @@ class SlideGridViewModelTest {
         val viewModel = viewModel()
 
         viewModel.state.test {
-            assertThat(awaitItem().countMismatch).isTrue()
+            val state = awaitItem()
+            assertThat(state.countMismatch).isTrue()
+            assertThat(state.cues.mapNotNull { it.thumbnail }).isEmpty()
+
+            viewModel.onAction(SlideGridAction.OnReloadClick)
+            expectNoEvents()
         }
+        assertThat(thumbnailCache.removed).isEmpty()
     }
 
-    private fun viewModel() = SlideGridViewModel(item, content, client, liveStateRepository)
+    private fun viewModel() =
+        SlideGridViewModel(item, content, client, liveStateRepository, thumbnailSource, thumbnailCache)
 
     private fun songC(chorusText: String): Presentation {
         val size = SlideSize(1920, 858)

@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.feature.playlist.grid
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.thumbnail.DEFAULT_SLIDE_ASPECT
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 
 data class SlideGridState(
@@ -13,6 +14,7 @@ data class SlideGridState(
     val countMismatch: Boolean = false,
     val liveCueIndex: Int? = null,
     val nextCueIndex: Int? = null,
+    val thumbnailGeneration: Int = 0,
     val isLoading: Boolean = true,
     val error: UiText? = null
 )
@@ -23,7 +25,8 @@ data class CueUi(
     val groupColor: GroupColor?,
     val text: String,
     val label: String,
-    val enabled: Boolean
+    val enabled: Boolean,
+    val thumbnail: ThumbnailRequest? = null
 )
 
 sealed interface SlideGridAction {

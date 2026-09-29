@@ -64,9 +64,7 @@ class KtorProPresenterClient(
 
     override suspend fun triggerCue(item: PlaylistItemKey, cueIndex: Int): EmptyResult<DataError.Network> =
         safeEmptyCall {
-            httpClient.get(
-                "$baseUrl/v1/playlist/${item.playlistUuid.encodeURLPathPart()}/${item.index}/$cueIndex/trigger"
-            )
+            httpClient.get("$baseUrl/${playlistItemPath(item)}/$cueIndex/trigger")
         }
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> =

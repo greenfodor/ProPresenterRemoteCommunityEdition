@@ -31,4 +31,6 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
     implementation(libs.koin.compose.navigation3)
+    implementation(platform(libs.coil.bom))
+    implementation(libs.coil)
 }

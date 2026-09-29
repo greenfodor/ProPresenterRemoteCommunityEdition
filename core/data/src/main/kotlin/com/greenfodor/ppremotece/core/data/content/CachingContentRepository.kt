@@ -106,7 +106,10 @@ class CachingContentRepository(
     private fun <T : Any> entry(key: Key, read: suspend () -> Read<T>): Entry<T> =
         entries.getOrPut(key) { Entry(read) } as Entry<T>
 
-    /** One cached value; a failed read replaces it only while no successful read is cached. */
+    /**
+     * One cached value; a failed read replaces it only while no successful read is cached. A read
+     * started after a value is stored always makes a new request.
+     */
     private inner class Entry<T : Any>(
         private val fetch: suspend () -> Read<T>
     ) {
@@ -119,8 +122,14 @@ class CachingContentRepository(
             mutex
                 .withLock {
                     inFlight?.takeIf { it.isActive } ?: scope
-                        .async { reads.withPermit { fetchOrFailure() }.also(::store) }
-                        .also { inFlight = it }
+                        .async {
+                            val result = reads.withPermit { fetchOrFailure() }
+                            mutex.withLock {
+                                inFlight = null
+                                store(result)
+                            }
+                            result
+                        }.also { inFlight = it }
                 }.await()
 
         private suspend fun fetchOrFailure(): Read<T> =

@@ -19,6 +19,9 @@ dependencies {
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
     implementation(libs.androidx.datastore.preferences)
+    api(platform(libs.coil.bom))
+    api(libs.coil.core)
+    implementation(libs.coil.network.ktor3)
 
     testImplementation(libs.assertk)
     testImplementation(libs.turbine)
