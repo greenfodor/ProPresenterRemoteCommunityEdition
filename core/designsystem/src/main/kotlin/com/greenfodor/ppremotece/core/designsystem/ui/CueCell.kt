@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -65,6 +66,7 @@ enum class CueMark {
  * One cue: a reserved ring slot (LIVE 4 dp `tertiary`, NEXT and CUED 2 dp `secondary`), a 4 dp
  * frame in the group colour, the slide image with its badges at the top, and a 28 dp label strip
  * with "[number]. [groupName]" and the slide [label]. A disabled cue is dimmed, badged and not clickable.
+ * A new [thumbnailGeneration] loads the image again.
  */
 @Composable
 fun CueCell(
@@ -78,7 +80,8 @@ fun CueCell(
     thumbnail: ThumbnailRequest? = null,
     label: String = "",
     enabled: Boolean = true,
-    mark: CueMark = CueMark.NONE
+    mark: CueMark = CueMark.NONE,
+    thumbnailGeneration: Int = 0
 ) {
     val groupColors = PPRemoteTheme.groupColors
     val frameColor = groupColor?.takeIf { it.alpha > 0f }?.toColor() ?: MaterialTheme.colorScheme.outlineVariant
@@ -108,13 +111,15 @@ fun CueCell(
                 .padding(start = FrameWidth, top = FrameWidth, end = FrameWidth)
         ) {
             Box {
-                SlideThumbnail(
-                    url = thumbnail?.url,
-                    cacheKey = thumbnail?.cacheKey,
-                    aspect = aspect,
-                    fallbackText = fallbackText,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                key(thumbnailGeneration) {
+                    SlideThumbnail(
+                        url = thumbnail?.url,
+                        cacheKey = thumbnail?.cacheKey,
+                        aspect = aspect,
+                        fallbackText = fallbackText,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 CueBadges(mark = mark, enabled = enabled)
             }
             BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(LabelStripHeight)) {

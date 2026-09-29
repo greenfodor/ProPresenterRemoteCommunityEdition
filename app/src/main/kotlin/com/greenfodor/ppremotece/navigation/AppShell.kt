@@ -167,7 +167,10 @@ fun AppShell(
 
 @Composable
 private fun ShellRail(current: ShellTab, onSelect: (ShellTab) -> Unit) {
-    NavigationRail(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest) {
+    NavigationRail(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.Start)
+    ) {
         ShellDestination.entries.forEach { destination ->
             NavigationRailItem(
                 selected = current == destination.tab,

@@ -38,7 +38,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -208,24 +207,23 @@ private fun CueGrid(
                 }
             }
             items(state.cues, key = { it.index }) { cue ->
-                key(state.thumbnailGeneration) {
-                    CueCell(
-                        number = cue.index + 1,
-                        groupName = cue.groupName,
-                        groupColor = cue.groupColor,
-                        fallbackText = cue.text.ifBlank { cue.groupName },
-                        aspect = state.aspect,
-                        onClick = { onAction(SlideGridAction.OnCueClick(cue.index)) },
-                        thumbnail = cue.thumbnail,
-                        label = cue.label,
-                        enabled = cue.enabled,
-                        mark = when (cue.index) {
-                            state.liveCueIndex -> CueMark.LIVE
-                            state.nextCueIndex -> CueMark.NEXT
-                            else -> CueMark.NONE
-                        }
-                    )
-                }
+                CueCell(
+                    number = cue.index + 1,
+                    groupName = cue.groupName,
+                    groupColor = cue.groupColor,
+                    fallbackText = cue.text.ifBlank { cue.groupName },
+                    aspect = state.aspect,
+                    onClick = { onAction(SlideGridAction.OnCueClick(cue.index)) },
+                    thumbnail = cue.thumbnail,
+                    label = cue.label,
+                    enabled = cue.enabled,
+                    thumbnailGeneration = state.thumbnailGeneration,
+                    mark = when (cue.index) {
+                        state.liveCueIndex -> CueMark.LIVE
+                        state.nextCueIndex -> CueMark.NEXT
+                        else -> CueMark.NONE
+                    }
+                )
             }
         }
     }
