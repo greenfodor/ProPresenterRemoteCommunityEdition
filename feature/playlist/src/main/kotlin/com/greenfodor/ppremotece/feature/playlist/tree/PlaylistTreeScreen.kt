@@ -36,9 +36,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -62,6 +65,7 @@ private val ProgressSize = 20.dp
 
 @Composable
 fun PlaylistTreeRoot(
+    openItem: PlaylistItemKey?,
     onOpenItem: (PlaylistItemKey) -> Unit,
     onDisconnected: () -> Unit,
     modifier: Modifier = Modifier,
@@ -83,6 +87,7 @@ fun PlaylistTreeRoot(
     PlaylistTreeScreen(
         state = state,
         onAction = viewModel::onAction,
+        openItem = openItem,
         snackbarHostState = snackbarHostState,
         modifier = modifier
     )
@@ -94,6 +99,7 @@ fun PlaylistTreeScreen(
     state: PlaylistTreeState,
     onAction: (PlaylistTreeAction) -> Unit,
     modifier: Modifier = Modifier,
+    openItem: PlaylistItemKey? = null,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -133,7 +139,7 @@ fun PlaylistTreeScreen(
                 state.error != null -> TreeError(state.error, onRetry = { onAction(PlaylistTreeAction.OnRetryClick) })
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(state.rows, key = { it.id }) { row ->
-                        TreeRow(row = row, onAction = onAction)
+                        TreeRow(row = row, openItem = openItem, onAction = onAction)
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
@@ -159,7 +165,7 @@ private fun TreeError(error: UiText, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun TreeRow(row: TreeRowUi, onAction: (PlaylistTreeAction) -> Unit) {
+private fun TreeRow(row: TreeRowUi, openItem: PlaylistItemKey?, onAction: (PlaylistTreeAction) -> Unit) {
     when (row) {
         is TreeRowUi.Folder -> ExpandableRow(
             depth = row.depth,
@@ -184,7 +190,11 @@ private fun TreeRow(row: TreeRowUi, onAction: (PlaylistTreeAction) -> Unit) {
                 .heightIn(min = HeaderHeight)
                 .padding(start = DepthIndent * row.depth + 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
         )
-        is TreeRowUi.Item -> ItemRow(row = row, onClick = { onAction(PlaylistTreeAction.OnItemClick(row.key)) })
+        is TreeRowUi.Item -> ItemRow(
+            row = row,
+            selected = row.key == openItem,
+            onClick = { onAction(PlaylistTreeAction.OnItemClick(row.key)) }
+        )
     }
 }
 
@@ -219,23 +229,25 @@ private fun ExpandableRow(depth: Int, name: String, expanded: Boolean, isLoading
 }
 
 @Composable
-private fun ItemRow(row: TreeRowUi.Item, onClick: () -> Unit) {
+private fun ItemRow(row: TreeRowUi.Item, selected: Boolean, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = RowHeight)
+            .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+            .semantics { this.selected = selected }
             .clickable(enabled = row.opensSlides, onClick = onClick)
             .padding(start = DepthIndent * row.depth + 16.dp, end = 16.dp)
     ) {
         Text(
             text = row.name,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (row.opensSlides) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
+            color = when {
+                selected -> MaterialTheme.colorScheme.onSecondaryContainer
+                row.opensSlides -> MaterialTheme.colorScheme.onSurface
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
             },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

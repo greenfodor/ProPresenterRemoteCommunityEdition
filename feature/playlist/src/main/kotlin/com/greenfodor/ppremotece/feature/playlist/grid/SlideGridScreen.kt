@@ -16,7 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridLayoutInfo
 import androidx.compose.foundation.lazy.grid.LazyGridPrefetchScope
 import androidx.compose.foundation.lazy.grid.LazyGridPrefetchStrategy
@@ -27,8 +28,6 @@ import androidx.compose.foundation.lazy.layout.NestedPrefetchScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -42,9 +41,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -54,6 +53,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -67,6 +68,7 @@ import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.SlideThumbnail
 import com.greenfodor.ppremotece.core.designsystem.ui.SyntheticThumbnails
+import com.greenfodor.ppremotece.core.domain.layout.widthClassOf
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
@@ -79,7 +81,9 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
-private val CellMinWidth = 200.dp
+private val GridPadding = 8.dp
+private val CompactHeightLimit = 480.dp
+private const val HEADER_KEY = "header"
 private val RingSlot = 4.dp
 private val RingGap = 4.dp
 private val LiveRingWidth = 4.dp
@@ -120,10 +124,16 @@ fun SlideGridRoot(
             }
         }
     }
+    val windowSize = LocalWindowInfo.current.containerSize
+    val density = LocalDensity.current
+    val widthClass = widthClassOf(with(density) { windowSize.width.toDp() }.value.toInt())
+    val compactHeight = with(density) { windowSize.height.toDp() } < CompactHeightLimit
+    LaunchedEffect(widthClass) { viewModel.onAction(SlideGridAction.OnWidthClassChange(widthClass)) }
     SlideGridScreen(
         state = state,
         onAction = viewModel::onAction,
         onBack = onBack,
+        headerScrollsWithGrid = compactHeight,
         snackbarHostState = snackbarHostState,
         modifier = modifier
     )
@@ -136,11 +146,12 @@ fun SlideGridScreen(
     onAction: (SlideGridAction) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    headerScrollsWithGrid: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -150,23 +161,7 @@ fun SlideGridScreen(
                         Icon(painterResource(DesignR.drawable.ic_arrow_back), stringResource(R.string.grid_back))
                     }
                 },
-                actions = {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(painterResource(DesignR.drawable.ic_more_vert), stringResource(R.string.playlists_more))
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.grid_reload)) },
-                            leadingIcon = {
-                                Icon(painterResource(DesignR.drawable.ic_refresh), contentDescription = null)
-                            },
-                            onClick = {
-                                menuOpen = false
-                                onAction(SlideGridAction.OnReloadClick)
-                            }
-                        )
-                    }
-                },
+                actions = { GridActions(gridStep = state.gridStep, onAction = onAction) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
@@ -187,7 +182,7 @@ fun SlideGridScreen(
                         onAction(SlideGridAction.OnRetryClick)
                     }) { Text(stringResource(R.string.playlists_retry)) }
                 }
-                else -> CueGrid(state = state, onAction = onAction)
+                else -> CueGrid(state = state, headerScrollsWithGrid = headerScrollsWithGrid, onAction = onAction)
             }
         }
     }
@@ -195,23 +190,20 @@ fun SlideGridScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CueGrid(state: SlideGridState, onAction: (SlideGridAction) -> Unit) {
+private fun CueGrid(state: SlideGridState, headerScrollsWithGrid: Boolean, onAction: (SlideGridAction) -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
-        val cueCount = state.cues.size
-        ArrangementChip(
-            text = state.label?.let { pluralStringResource(R.plurals.grid_header_chip, cueCount, it.text(), cueCount) }
-                ?: pluralStringResource(R.plurals.grid_cue_count, cueCount, cueCount),
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-        )
-        if (state.countMismatch) CountMismatchLine()
+        if (!headerScrollsWithGrid) GridHeader(state)
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(CellMinWidth),
+            columns = state.gridStep.toGridCells(),
             state = rememberLazyGridState(prefetchStrategy = NoPrefetch),
-            contentPadding = PaddingValues(12.dp),
+            contentPadding = PaddingValues(GridPadding),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize()
         ) {
+            if (headerScrollsWithGrid) {
+                item(key = HEADER_KEY, span = { GridItemSpan(maxLineSpan) }) { GridHeader(state) }
+            }
             items(state.cues, key = { it.index }) { cue ->
                 CueCell(
                     cue = cue,
@@ -226,6 +218,19 @@ private fun CueGrid(state: SlideGridState, onAction: (SlideGridAction) -> Unit) 
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun GridHeader(state: SlideGridState) {
+    Column {
+        val cueCount = state.cues.size
+        ArrangementChip(
+            text = state.label?.let { pluralStringResource(R.plurals.grid_header_chip, cueCount, it.text(), cueCount) }
+                ?: pluralStringResource(R.plurals.grid_cue_count, cueCount, cueCount),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        )
+        if (state.countMismatch) CountMismatchLine()
     }
 }
 
@@ -301,7 +306,8 @@ private fun CueCell(cue: CueUi, aspect: Float, thumbnailGeneration: Int, mark: C
                         style = MaterialTheme.typography.labelMedium,
                         color = labelColor,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                 }
             }

@@ -8,6 +8,9 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
+import com.greenfodor.ppremotece.core.domain.layout.GridStep
+import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
@@ -32,6 +35,7 @@ import com.greenfodor.ppremotece.feature.playlist.FakeProPresenterClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -58,6 +62,15 @@ class SlideGridViewModelTest {
                 )
             }
         )
+    }
+    private val gridPreferences = object : GridPreferences {
+        val steps = MutableStateFlow(mapOf<WidthClass, GridStep>())
+
+        override fun gridStep(widthClass: WidthClass) = steps.map { it[widthClass] ?: GridStep.Default }
+
+        override suspend fun setGridStep(widthClass: WidthClass, step: GridStep) {
+            steps.value += widthClass to step
+        }
     }
     private val thumbnailCache = object : ThumbnailCache {
         val removed = mutableListOf<List<String>>()
@@ -208,6 +221,29 @@ class SlideGridViewModelTest {
     }
 
     @Test
+    fun `the slide size follows the width class and is saved for it`() = runTest {
+        gridPreferences.steps.value = mapOf(WidthClass.EXPANDED to GridStep.SIZE_280)
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitItem().gridStep).isEqualTo(GridStep.Default)
+
+            viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
+            viewModel.onAction(SlideGridAction.OnGridStepChange(GridStep.SIZE_120))
+            assertThat(expectMostRecentItem().gridStep).isEqualTo(GridStep.SIZE_120)
+
+            viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.EXPANDED))
+            assertThat(awaitItem().gridStep).isEqualTo(GridStep.SIZE_280)
+
+            viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
+            assertThat(awaitItem().gridStep).isEqualTo(GridStep.SIZE_120)
+        }
+        assertThat(gridPreferences.steps.value).isEqualTo(
+            mapOf(WidthClass.EXPANDED to GridStep.SIZE_280, WidthClass.COMPACT to GridStep.SIZE_120)
+        )
+    }
+
+    @Test
     fun `a failed reload keeps the slides and reports the error`() = runTest {
         val viewModel = viewModel()
 
@@ -243,7 +279,7 @@ class SlideGridViewModelTest {
     }
 
     private fun viewModel() =
-        SlideGridViewModel(item, content, client, liveStateRepository, thumbnailSource, thumbnailCache)
+        SlideGridViewModel(item, content, client, liveStateRepository, thumbnailSource, thumbnailCache, gridPreferences)
 
     private fun songC(chorusText: String): Presentation {
         val size = SlideSize(1920, 858)
