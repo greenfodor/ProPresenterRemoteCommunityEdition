@@ -1,7 +1,9 @@
 package com.greenfodor.ppremotece.feature.playlist
 
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
@@ -31,6 +33,12 @@ class FakeProPresenterClient : ProPresenterClient {
     }
 
     override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun clearLayer(layer: OutputLayer): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun clearGroups(): Result<List<ClearGroup>, DataError.Network> = notServed()
+
+    override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> = notServed()
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> = Result.Success(Unit)
 

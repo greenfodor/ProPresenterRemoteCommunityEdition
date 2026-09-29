@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.status
 
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
 import kotlinx.serialization.SerializationException
@@ -8,6 +9,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
@@ -56,6 +58,14 @@ class StatusFrameParser {
                         .child("presentation_uuid").stringOrNull()
                 )
             }
+            "status/layers" -> StatusEvent.Layers(
+                (data as? JsonObject)
+                    ?.filterValues { (it as? JsonPrimitive)?.booleanOrNull == true }
+                    ?.keys
+                    ?.mapNotNull(OutputLayer::fromApiName)
+                    ?.toSet()
+                    .orEmpty()
+            )
             "timer/system_time" -> (data as? JsonPrimitive)?.longOrNull?.let { StatusEvent.Heartbeat(it) }
                 ?: StatusEvent.Unknown(url)
             else -> StatusEvent.Unknown(url)

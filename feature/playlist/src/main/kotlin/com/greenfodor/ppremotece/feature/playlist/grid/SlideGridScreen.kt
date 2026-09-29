@@ -74,6 +74,7 @@ import org.koin.core.parameter.parametersOf
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val GridPadding = 8.dp
+private val GridBottomPadding = 88.dp
 private const val HEADER_KEY = "header"
 private val StepButtonHeight = 64.dp
 
@@ -196,7 +197,12 @@ private fun CueGrid(
         LazyVerticalGrid(
             columns = gridStep.toGridCells(),
             state = rememberLazyGridState(prefetchStrategy = NoPrefetch),
-            contentPadding = PaddingValues(GridPadding),
+            contentPadding = PaddingValues(
+                start = GridPadding,
+                top = GridPadding,
+                end = GridPadding,
+                bottom = GridBottomPadding
+            ),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize()

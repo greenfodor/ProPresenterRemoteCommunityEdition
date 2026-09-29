@@ -27,6 +27,12 @@ PRESENTATIONS = [
     "stage4/pres-disabled.json",
 ]
 VERSION = "t/version.json"
+CLEAR_GROUPS = "../stage5/v1_clear_groups.json"
+CLEAR_GROUP_LAYERS = {
+    "music", "audio_effects", "messages", "props", "announcements", "presentation", "presentation_media",
+    "video_input",
+}
+CLEAR_GROUP_ICONS = {"All"}
 STREAMS = [
     "streams/status-updates",
     "streams/su-long",
@@ -47,7 +53,7 @@ VERBATIM_ALLOWED = {
     "ProPresenter 21.4.2", "10.0.26200",
     "status/slide", "presentation/active", "presentation/slide_index", "playlist/active", "timer/system_time",
     "status/layers",
-}
+} | CLEAR_GROUP_LAYERS | CLEAR_GROUP_ICONS
 CHUNK_LINE = re.compile(r"^# \+(?P<time>[\d.]+)s chunk (?P<n>\d+) \((?P<size>\d+) B\) tail=.*$")
 TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
 PLACEHOLDER_WORDS = {
@@ -192,6 +198,12 @@ class Sanitizer:
             arrangement["id"]["name"] = self.arrangement_name(uuid, arrangement["id"]["name"])
         if presentation.get("presentation_path"):
             presentation["presentation_path"] = self.replaced(presentation["presentation_path"], f"C:\\PP\\{name}.pro")
+
+    def clear_group(self, group):
+        group["id"]["name"] = self.replaced(group["id"]["name"], self.generate("Clear Group", group["id"]["uuid"]))
+        unknown = [layer for layer in group["layers"] if layer not in CLEAR_GROUP_LAYERS]
+        if unknown or group["icon"] not in CLEAR_GROUP_ICONS:
+            raise ValueError(f"no sanitising rule for clear group layers {unknown} or icon {group['icon']!r}")
 
     def frame(self, frame):
         url = frame["url"]
@@ -411,6 +423,11 @@ def main():
     version = load(VERSION)
     version["name"] = sanitizer.replaced(version["name"], sanitizer.generate("Host", version["name"]))
     write_json(out_dir / "version.json", version)
+
+    clear_groups = load(CLEAR_GROUPS)
+    for group in clear_groups:
+        sanitizer.clear_group(group)
+    write_json(out_dir / "clear-groups.json", clear_groups)
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)

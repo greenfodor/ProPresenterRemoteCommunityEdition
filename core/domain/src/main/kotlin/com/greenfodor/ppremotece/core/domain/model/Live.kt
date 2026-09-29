@@ -24,7 +24,8 @@ data class LiveState(
     val connection: ConnectionStatus,
     val item: PlaylistItemKey?,
     val slide: LiveSlide?,
-    val slideText: SlideText? = null
+    val slideText: SlideText? = null,
+    val layers: Set<OutputLayer> = emptySet()
 ) {
     companion object {
         val Initial = LiveState(connection = ConnectionStatus.CONNECTING, item = null, slide = null)

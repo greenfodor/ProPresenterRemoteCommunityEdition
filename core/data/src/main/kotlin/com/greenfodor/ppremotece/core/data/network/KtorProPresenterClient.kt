@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.core.data.network
 
+import com.greenfodor.ppremotece.core.data.dto.ClearGroupDto
 import com.greenfodor.ppremotece.core.data.dto.PlaylistDto
 import com.greenfodor.ppremotece.core.data.dto.PlaylistTreeNodeDto
 import com.greenfodor.ppremotece.core.data.dto.PresentationResponseDto
@@ -7,7 +8,9 @@ import com.greenfodor.ppremotece.core.data.dto.SlideIndexResponseDto
 import com.greenfodor.ppremotece.core.data.dto.VersionDto
 import com.greenfodor.ppremotece.core.data.mapper.toDomain
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
@@ -35,8 +38,10 @@ import java.io.IOException
 
 /**
  * [ProPresenterClient] for the ProPresenter HTTP API at [baseUrl], plus the `status/updates`
- * stream. Sends only GET reads, the item-cue, item, next and previous triggers, and the stream POST.
+ * stream. Sends only GET reads, the item-cue, item, next and previous triggers, the layer and
+ * clear-group clears, and the stream POST.
  */
+@Suppress("TooManyFunctions")
 class KtorProPresenterClient(
     private val httpClient: HttpClient,
     baseUrl: String
@@ -69,6 +74,16 @@ class KtorProPresenterClient(
 
     override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/${playlistItemPath(item)}/trigger") }
+
+    override suspend fun clearLayer(layer: OutputLayer): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/v1/clear/layer/${layer.apiName}") }
+
+    override suspend fun clearGroups(): Result<List<ClearGroup>, DataError.Network> =
+        safeCall<List<ClearGroupDto>> { httpClient.get("$baseUrl/v1/clear/groups") }
+            .map { groups -> groups.map { ClearGroup(uuid = it.id.uuid, name = it.id.name) } }
+
+    override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/v1/clear/group/${uuid.encodeURLPathPart()}/trigger") }
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/trigger/next") }

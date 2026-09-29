@@ -25,6 +25,9 @@ class FakeProPresenter(
     @Volatile
     var failSlideIndexReads = 0
 
+    /** Layers whose `clear/layer` answers 500. */
+    val failingLayers = CopyOnWriteArrayList<String>()
+
     /** Bodies served by the next `slide_index` reads, in order, before [SLIDE_INDEX]. */
     val slideIndexBodies = ConcurrentLinkedQueue<String>()
     private val streams = LinkedBlockingQueue<MockResponse>()
@@ -74,11 +77,26 @@ class FakeProPresenter(
                 status(500)
             }
             path == "/v1/presentation/slide_index" -> json(slideIndexBodies.poll() ?: SLIDE_INDEX)
+            path.startsWith("/v1/clear/") -> dispatchClear(path)
+            path.endsWith("/trigger") -> dispatchTrigger(path)
+            path.startsWith("/v1/playlist/") -> fixture("playlist", path.removePrefix("/v1/playlist/"))
+            path.startsWith("/v1/presentation/") -> fixture("presentation", path.removePrefix("/v1/presentation/"))
+            else -> status(404)
+        }
+
+    private fun dispatchTrigger(path: String): MockResponse =
+        when {
             path == "/v1/trigger/next" || path == "/v1/trigger/previous" -> status(204)
             CUE_TRIGGER.matches(path) -> triggerCue(path)
             ITEM_TRIGGER.matches(path) -> status(204)
-            path.startsWith("/v1/playlist/") -> fixture("playlist", path.removePrefix("/v1/playlist/"))
-            path.startsWith("/v1/presentation/") -> fixture("presentation", path.removePrefix("/v1/presentation/"))
+            else -> status(404)
+        }
+
+    private fun dispatchClear(path: String): MockResponse =
+        when {
+            CLEAR_LAYER.matches(path) -> status(if (path.substringAfterLast('/') in failingLayers) 500 else 204)
+            path == "/v1/clear/groups" -> json(Fixtures.text("clear-groups.json"))
+            CLEAR_GROUP_TRIGGER.matches(path) -> status(204)
             else -> status(404)
         }
 
@@ -102,6 +120,9 @@ class FakeProPresenter(
             """{"uuid":"$SONG_A_UUID","name":"Song A","index":0},"total_cues":7,"remaining_cues":3}}"""
         private val CUE_TRIGGER = Regex("^/v1/playlist/[0-9a-f-]+/\\d+/(\\d+)/trigger$")
         private val ITEM_TRIGGER = Regex("^/v1/playlist/[0-9a-f-]+/\\d+/trigger$")
+        private val CLEAR_LAYER =
+            Regex("^/v1/clear/layer/(slide|media|video_input|props|messages|announcements|audio)$")
+        private val CLEAR_GROUP_TRIGGER = Regex("^/v1/clear/group/[0-9a-f-]+/trigger$")
         const val NO_SLIDE_INDEX = """{"presentation_index":null}"""
         const val SLIDE_FRAME =
             """{"url":"status/slide","data":{"current":{"text":"Text 01","notes":"","uuid":"s-1"},""" +
@@ -129,6 +150,9 @@ class FakeProPresenter(
             "GET" to Regex("^/v1/playlist/[0-9a-f-]+/\\d+/\\d+/trigger$"),
             "GET" to Regex("^/v1/playlist/[0-9a-f-]+/\\d+/trigger$"),
             "GET" to Regex("^/v1/trigger/(next|previous)$"),
+            "GET" to Regex("^/v1/clear/layer/(slide|media|video_input|props|messages|announcements|audio)$"),
+            "GET" to Regex("^/v1/clear/groups$"),
+            "GET" to Regex("^/v1/clear/group/[0-9a-f-]+/trigger$"),
             "POST" to Regex("^/v1/status/updates$")
         )
 

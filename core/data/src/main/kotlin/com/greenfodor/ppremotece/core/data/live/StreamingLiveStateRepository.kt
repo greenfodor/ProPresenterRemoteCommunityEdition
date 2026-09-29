@@ -83,6 +83,7 @@ class StreamingLiveStateRepository(
                                         slideReadNeeded = true
                                     }
                                 }
+                                is StatusEvent.Layers -> next = next.copy(layers = event.active)
                                 else -> Unit
                             }
                         }
@@ -115,6 +116,6 @@ class StreamingLiveStateRepository(
     private fun streamChunks() = client.statusUpdates(SUBSCRIPTIONS).timeout(watchdogTimeout)
 
     private companion object {
-        val SUBSCRIPTIONS = listOf("status/slide", "timer/system_time", "playlist/active")
+        val SUBSCRIPTIONS = listOf("status/slide", "timer/system_time", "playlist/active", "status/layers")
     }
 }
