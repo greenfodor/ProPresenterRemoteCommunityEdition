@@ -6,6 +6,7 @@ import assertk.assertions.containsExactly
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
+import assertk.assertions.isInstanceOf
 import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
@@ -93,6 +94,29 @@ class LibraryViewModelTest {
         viewModel.onAction(LibraryAction.OnQueryChange(""))
         assertThat(viewModel.state.value.noResults).isFalse()
         assertThat(viewModel.state.value.rows.size).isEqualTo(2)
+    }
+
+    @Test
+    fun `failed library reads stop loading and are reported once`() = runTest {
+        content.libraryEntries.clear()
+        val viewModel = LibraryViewModel(content)
+
+        viewModel.events.test {
+            assertThat(awaitItem()).isInstanceOf(LibraryEvent.ShowError::class)
+            expectNoEvents()
+        }
+        assertThat(viewModel.state.value.rows.filterIsInstance<LibraryRowUi.Library>().map { it.isLoading })
+            .containsExactly(false, false)
+    }
+
+    @Test
+    fun `a query does not report no results while libraries are still loading`() = runTest {
+        content.pendingLibraries += HYMNS.uuid
+        val viewModel = LibraryViewModel(content)
+
+        viewModel.onAction(LibraryAction.OnQueryChange("qqq"))
+
+        assertThat(viewModel.state.value.noResults).isFalse()
     }
 
     @Test

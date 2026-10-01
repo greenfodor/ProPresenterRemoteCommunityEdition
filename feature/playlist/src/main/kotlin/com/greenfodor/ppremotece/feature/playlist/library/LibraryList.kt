@@ -20,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,15 +32,48 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
+import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.feature.playlist.R
 import com.greenfodor.ppremotece.feature.playlist.tree.ExpandableRow
 import com.greenfodor.ppremotece.feature.playlist.tree.TreeError
+import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val RowHeight = 56.dp
 private val SectionHeight = 48.dp
 private val DepthIndent = 16.dp
+
+/**
+ * Library mode's list with its [LibraryViewModel], which is created when Library mode is first
+ * shown; opened presentations go to [onOpenPresentation] and errors to [onShowError].
+ */
+@Composable
+fun LibraryRoot(
+    openPresentation: String?,
+    onOpenPresentation: (String) -> Unit,
+    onShowError: (UiText) -> Unit,
+    bottomPadding: Dp,
+    modifier: Modifier = Modifier,
+    viewModel: LibraryViewModel = koinViewModel()
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is LibraryEvent.OpenPresentation -> onOpenPresentation(event.uuid)
+            is LibraryEvent.ShowError -> onShowError(event.message)
+        }
+    }
+    LibraryList(
+        state = state,
+        onAction = viewModel::onAction,
+        openPresentation = openPresentation,
+        bottomPadding = bottomPadding,
+        modifier = modifier
+    )
+}
 
 /**
  * Library mode's list: a search field above the libraries, or above the search results grouped

@@ -59,7 +59,7 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   trigger `GET /v1/playlist/{pl}/{item}/trigger`, `GET /v1/trigger/next`,
   `GET /v1/trigger/previous` and the clear calls;
 - the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode and
-  when a presentation is live outside a playlist;
+  when a presentation is live outside a playlist (or remembered from one after a clear);
 - one `POST /v1/status/updates` stream.
 
 Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content) is out of bounds.

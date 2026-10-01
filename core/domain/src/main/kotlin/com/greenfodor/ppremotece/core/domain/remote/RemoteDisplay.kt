@@ -161,8 +161,8 @@ data class RemoteDisplay(
          * The base is the media item this app triggered, else the live slide, else the last live
          * cue. A live slide of another presentation than its item's shows the `status/slide` text
          * and steps with trigger next and previous. A live slide without a playlist item is shown
-         * with the cues of its presentation's current arrangement when their count is the live cue
-         * count, and as the text otherwise. A cued item other than the base item is shown in place
+         * with the cues of its presentation's current arrangement once it is read and when their count
+         * is the live cue count, and as the text otherwise. A cued item other than the base item is shown in place
          * of the base, from its first enabled cue.
          */
         fun reduce(inputs: RemoteInputs, playlist: Playlist?, presentations: Map<String, Presentation>): RemoteDisplay =

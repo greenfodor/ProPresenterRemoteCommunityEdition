@@ -89,6 +89,7 @@ class SlideGridViewModel(
         ) : Content
     }
 
+    private val stepButtons = source is CueSource.PlaylistItem
     private val retries = MutableStateFlow(0)
     private val thumbnailGeneration = MutableStateFlow(0)
     private val widthClass = MutableStateFlow<WidthClass?>(null)
@@ -124,8 +125,9 @@ class SlideGridViewModel(
             reloads
             ->
             when (content) {
-                Content.Loading -> SlideGridState(isLoading = true) to null
-                is Content.Failed -> SlideGridState(isLoading = false, error = content.error) to null
+                Content.Loading -> SlideGridState(stepButtons = stepButtons, isLoading = true) to null
+                is Content.Failed ->
+                    SlideGridState(stepButtons = stepButtons, isLoading = false, error = content.error) to null
                 is Content.Loaded -> gridState(content, requests.value, reloads + requests.index) to content
             }
         }
@@ -142,7 +144,11 @@ class SlideGridViewModel(
                     gridStep = step
                 )
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), SlideGridState())
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            SlideGridState(stepButtons = stepButtons)
+        )
 
     private val _events = Channel<SlideGridEvent>()
     val events = _events.receiveAsFlow()
@@ -187,7 +193,7 @@ class SlideGridViewModel(
             aspect = slideAspect(content.presentation),
             countMismatch = content.cueList.countMismatch,
             thumbnailGeneration = thumbnailGeneration,
-            stepButtons = source is CueSource.PlaylistItem,
+            stepButtons = stepButtons,
             isLoading = false
         )
     }

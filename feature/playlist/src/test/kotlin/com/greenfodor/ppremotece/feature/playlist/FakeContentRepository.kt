@@ -12,6 +12,7 @@ import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.asEmptyResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.onStart
 
@@ -23,6 +24,9 @@ class FakeContentRepository : ContentRepository {
     var tree: List<PlaylistTreeNode> = emptyList()
     var libraries: List<Library> = emptyList()
     val libraryEntries = mutableMapOf<String, List<LibraryEntry>>()
+
+    /** Libraries whose reads never answer. */
+    val pendingLibraries = mutableSetOf<String>()
     val playlists = mutableMapOf<String, Playlist>()
     val presentations = mutableMapOf<String, Presentation>()
     var failWith: DataError.Network? = null
@@ -40,7 +44,7 @@ class FakeContentRepository : ContentRepository {
     override fun libraries(): Flow<Result<List<Library>, DataError.Network>> = observe(LIBRARIES) { libraries }
 
     override fun library(uuid: String): Flow<Result<List<LibraryEntry>, DataError.Network>> =
-        observe("library/$uuid") { libraryEntries[uuid] }
+        if (uuid in pendingLibraries) emptyFlow() else observe("library/$uuid") { libraryEntries[uuid] }
 
     override suspend fun refreshLibraries(): EmptyResult<DataError.Network> = refresh(LIBRARIES) { libraries }
 

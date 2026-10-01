@@ -160,18 +160,20 @@ private fun liveDisplay(
     } ?: textDisplay(text)
 
 /**
- * A presentation played outside a playlist, with the cues of its current arrangement; the text when
- * their count is not the live cue count or they do not hold the cue, and loading until it is read.
+ * A presentation played outside a playlist, with the cues of its current arrangement; the text
+ * until it is read, and when their count is not the live cue count or they do not hold the cue.
  */
 internal fun presentationDisplay(
     base: Base.Presentation,
     presentations: Map<String, Presentation>,
     text: SlideText?
 ): RemoteDisplay {
-    val presentation = presentations[base.presentationUuid] ?: return RemoteDisplay(status = RemoteStatus.LOADING)
-    val cueList = currentCueList(presentation)
-    val countMatches = base.liveCueCount == null || base.liveCueCount == cueList.cues.size
-    return if (countMatches && cueList.cues.any { it.index == base.cueIndex }) {
+    val presentation = presentations[base.presentationUuid]
+    val cueList = presentation?.let(::currentCueList)?.takeIf { cues ->
+        (base.liveCueCount == null || base.liveCueCount == cues.cues.size) &&
+            cues.cues.any { it.index == base.cueIndex }
+    }
+    return if (presentation != null && cueList != null) {
         matchDisplay(presentation, cueList, base.cueIndex)
     } else {
         textDisplay(text)

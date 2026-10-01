@@ -7,6 +7,7 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
+import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
@@ -322,6 +323,19 @@ class SlideGridViewModelTest {
             assertThat(awaitItem().nextCueIndex).isEqualTo(2)
             live.value = outside(cue = 0, totalCues = 8).copy(item = item)
             assertThat(awaitItem().liveCueIndex).isNull()
+        }
+    }
+
+    @Test
+    fun `a library presentation has no next and previous buttons while loading or after a failed read`() = runTest {
+        content.failWith = DataError.Network.SERVER
+        val viewModel = viewModel(CueSource.Presentation(SONG_C))
+
+        assertThat(viewModel.state.value.stepButtons).isFalse()
+        viewModel.state.test {
+            val failed = awaitItem()
+            assertThat(failed.error).isNotNull()
+            assertThat(failed.stepButtons).isFalse()
         }
     }
 

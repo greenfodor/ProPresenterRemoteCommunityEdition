@@ -22,8 +22,9 @@ import kotlinx.coroutines.launch
 /**
  * Library mode: the library list and the presentations of every library, all read in parallel
  * through the [ContentRepository] when it opens and shown again whenever they change. Libraries
- * expand in place; a non-blank query lists the matching presentations of all libraries instead.
- * Pull-to-refresh reads them all again.
+ * expand in place; a non-blank query lists the matching presentations of all libraries instead,
+ * and says there are none only once every library is read or has failed. Libraries whose read
+ * failed stop loading, and a run of failures is reported once. Pull-to-refresh reads them all again.
  */
 class LibraryViewModel(
     private val contentRepository: ContentRepository
@@ -37,6 +38,7 @@ class LibraryViewModel(
     private var libraries: List<Library> = emptyList()
     private val entries = mutableMapOf<String, List<LibraryEntry>>()
     private val expanded = mutableSetOf<String>()
+    private val failed = mutableSetOf<String>()
     private var listJob: Job? = null
     private val libraryJobs = mutableMapOf<String, Job>()
 
@@ -86,10 +88,16 @@ class LibraryViewModel(
             contentRepository.library(uuid).collect { result ->
                 when (result) {
                     is Result.Success -> {
+                        failed -= uuid
                         entries[uuid] = result.data
                         publish()
                     }
-                    is Result.Failure -> _events.send(LibraryEvent.ShowError(result.error.toUiText()))
+                    is Result.Failure -> {
+                        val firstFailure = failed.isEmpty()
+                        failed += uuid
+                        publish()
+                        if (firstFailure) _events.send(LibraryEvent.ShowError(result.error.toUiText()))
+                    }
                 }
             }
         }
@@ -113,7 +121,8 @@ class LibraryViewModel(
             _state.update { it.copy(rows = libraryRows(), noResults = false) }
         } else {
             val results = searchLibraries(libraries.map { LibraryContents(it, entries[it.uuid].orEmpty()) }, query)
-            _state.update { it.copy(rows = resultRows(results), noResults = results.isEmpty()) }
+            val settled = libraries.all { it.uuid in entries || it.uuid in failed }
+            _state.update { it.copy(rows = resultRows(results), noResults = settled && results.isEmpty()) }
         }
     }
 
@@ -121,7 +130,8 @@ class LibraryViewModel(
         libraries.sortedBy { it.index }.flatMap { library ->
             val isExpanded = library.uuid in expanded
             val loaded = entries[library.uuid]
-            listOf(LibraryRowUi.Library(library.uuid, library.name, isExpanded, isLoading = loaded == null)) +
+            val isLoading = loaded == null && library.uuid !in failed
+            listOf(LibraryRowUi.Library(library.uuid, library.name, isExpanded, isLoading)) +
                 if (isExpanded) loaded.orEmpty().map { presentationRow(library, it) } else emptyList()
         }
 

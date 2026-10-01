@@ -423,11 +423,14 @@ class RemoteDisplayTest {
     }
 
     @Test
-    fun `a presentation live outside a playlist needs only that presentation and is loading until it is read`() {
-        val inputs = RemoteInputs(liveOutside(SONG_L, 2, totalCues = 8), lastLive = null)
+    fun `a presentation live outside a playlist needs only that presentation and shows the text until it is read`() {
+        val inputs = RemoteInputs(liveOutside(SONG_L, 2, totalCues = 8, text = text), lastLive = null)
 
         assertThat(RemoteDisplay.playlistNeeded(inputs)).isNull()
         assertThat(RemoteDisplay.presentationsNeeded(inputs, null)).containsExactlyInAnyOrder(SONG_L)
-        assertThat(RemoteDisplay.reduce(inputs, null, emptyMap()).status).isEqualTo(RemoteStatus.LOADING)
+        val unread = RemoteDisplay.reduce(inputs, null, emptyMap())
+        assertThat(unread.status).isEqualTo(RemoteStatus.SHOWING)
+        assertThat(unread.current).isEqualTo(RemoteBox.Text("Text 03"))
+        assertThat(unread.nextButton).isEqualTo(RemoteCommand.TriggerNext)
     }
 }

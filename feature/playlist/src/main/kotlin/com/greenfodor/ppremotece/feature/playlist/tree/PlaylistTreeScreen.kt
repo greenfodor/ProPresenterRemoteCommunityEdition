@@ -59,9 +59,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.R
-import com.greenfodor.ppremotece.feature.playlist.library.LibraryEvent
-import com.greenfodor.ppremotece.feature.playlist.library.LibraryList
-import com.greenfodor.ppremotece.feature.playlist.library.LibraryViewModel
+import com.greenfodor.ppremotece.feature.playlist.library.LibraryRoot
 import com.greenfodor.ppremotece.feature.playlist.text
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -87,11 +85,9 @@ fun PlaylistTreeRoot(
     onDisconnected: () -> Unit,
     modifier: Modifier = Modifier,
     floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
-    viewModel: PlaylistTreeViewModel = koinViewModel(),
-    libraryViewModel: LibraryViewModel = koinViewModel()
+    viewModel: PlaylistTreeViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val libraryState by libraryViewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -100,14 +96,6 @@ fun PlaylistTreeRoot(
             is PlaylistTreeEvent.OpenItem -> onOpenItem(event.key)
             PlaylistTreeEvent.Disconnected -> onDisconnected()
             is PlaylistTreeEvent.ShowError -> scope.launch {
-                snackbarHostState.showSnackbar(event.message.asString(context))
-            }
-        }
-    }
-    ObserveAsEvents(libraryViewModel.events) { event ->
-        when (event) {
-            is LibraryEvent.OpenPresentation -> onOpenPresentation(event.uuid)
-            is LibraryEvent.ShowError -> scope.launch {
                 snackbarHostState.showSnackbar(event.message.asString(context))
             }
         }
@@ -121,10 +109,10 @@ fun PlaylistTreeRoot(
         floatingActionButton = floatingActionButton,
         modifier = modifier,
         libraryContent = { bottomPadding ->
-            LibraryList(
-                state = libraryState,
-                onAction = libraryViewModel::onAction,
+            LibraryRoot(
                 openPresentation = openPresentation,
+                onOpenPresentation = onOpenPresentation,
+                onShowError = { message -> scope.launch { snackbarHostState.showSnackbar(message.asString(context)) } },
                 bottomPadding = bottomPadding
             )
         }
