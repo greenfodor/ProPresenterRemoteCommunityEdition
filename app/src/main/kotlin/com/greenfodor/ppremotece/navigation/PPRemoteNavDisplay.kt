@@ -12,10 +12,13 @@ import androidx.navigation3.ui.NavDisplay
 import com.greenfodor.ppremotece.feature.connect.ConnectRoot
 import com.greenfodor.ppremotece.feature.connect.ConnectRoute
 
-/** The full-screen Connect screen until a host is connected, then the app shell until Disconnect. */
+/**
+ * The full-screen Connect screen until a host is connected, then the app shell until Disconnect,
+ * which returns to a Connect screen that does not auto-connect.
+ */
 @Composable
 fun PPRemoteNavDisplay(modifier: Modifier = Modifier) {
-    val backStack = rememberNavBackStack(ConnectRoute)
+    val backStack = rememberNavBackStack(ConnectRoute())
     NavDisplay(
         backStack = backStack,
         modifier = modifier,
@@ -25,11 +28,11 @@ fun PPRemoteNavDisplay(modifier: Modifier = Modifier) {
             rememberViewModelStoreNavEntryDecorator()
         ),
         entryProvider = entryProvider {
-            entry<ConnectRoute> {
-                ConnectRoot(onConnected = { backStack.replaceAll(ShellRoute) })
+            entry<ConnectRoute> { key ->
+                ConnectRoot(autoConnect = key.autoConnect, onConnected = { backStack.replaceAll(ShellRoute) })
             }
             entry<ShellRoute> {
-                AppShell(onDisconnected = { backStack.replaceAll(ConnectRoute) })
+                AppShell(onDisconnected = { backStack.replaceAll(ConnectRoute(autoConnect = false)) })
             }
         }
     )

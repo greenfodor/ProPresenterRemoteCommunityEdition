@@ -49,3 +49,9 @@ data class ProPresenterHost(
     val address: String,
     val port: Int
 )
+
+/** The connected [host] and the [version] it reported on connect. */
+data class ConnectedHost(
+    val host: ProPresenterHost,
+    val version: ProPresenterVersion
+)

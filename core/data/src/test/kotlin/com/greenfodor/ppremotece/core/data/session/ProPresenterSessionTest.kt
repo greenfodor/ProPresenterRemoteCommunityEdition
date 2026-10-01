@@ -18,6 +18,7 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
@@ -25,11 +26,16 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import mockwebserver3.junit5.StartStop
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -70,6 +76,66 @@ class ProPresenterSessionTest {
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
 
         assertThat(withTimeout(2.seconds) { session.lastLive.first { it == null } }).isNull()
+    }
+
+    @Test
+    fun `disconnect keeps the saved host`() = runBlocking {
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+
+        session.disconnect()
+
+        assertThat(session.savedHost()).isEqualTo(host())
+    }
+
+    @Test
+    fun `the connected host and its version are shown until disconnect`() = runBlocking {
+        assertThat(session.connectedHost.value).isNull()
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+
+        val connected = session.connectedHost.value
+        assertThat(connected?.host).isEqualTo(host())
+        assertThat(connected?.version?.hostDescription).isEqualTo("ProPresenter 21.4.2")
+
+        session.disconnect()
+        assertThat(session.connectedHost.value).isNull()
+    }
+
+    @Test
+    fun `a request after disconnect does not reconnect to the saved host`() = runBlocking {
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        session.disconnect()
+
+        session.restore()
+
+        assertThat(session.sessionKey.value).isNull()
+        assertThat(session.connectedHost.value).isNull()
+    }
+
+    @Test
+    fun `a disconnect during a restore leaves the session disconnected`() = runBlocking {
+        savedHosts.host = host()
+        val versionRequested = CompletableDeferred<Unit>()
+        val release = CountDownLatch(1)
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.url.encodedPath == "/version") {
+                    versionRequested.complete(Unit)
+                    release.await(5, TimeUnit.SECONDS)
+                }
+                return fake.dispatch(request)
+            }
+        }
+
+        val restoring = launch(Dispatchers.IO) { session.restore() }
+        withTimeout(5.seconds) { versionRequested.await() }
+        val disconnecting = launch(Dispatchers.IO) { session.disconnect() }
+        delay(100.milliseconds)
+        release.countDown()
+        restoring.join()
+        disconnecting.join()
+
+        assertThat(session.sessionKey.value).isNull()
+        assertThat(session.connectedHost.value).isNull()
     }
 
     private suspend fun connectUntilLastLive() = coroutineScope {

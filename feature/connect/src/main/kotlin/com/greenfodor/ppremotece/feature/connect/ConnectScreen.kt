@@ -49,6 +49,7 @@ private val ProgressSize = 20.dp
 
 @Composable
 fun ConnectRoot(
+    autoConnect: Boolean,
     onConnected: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ConnectViewModel = koinViewModel()
@@ -61,7 +62,7 @@ fun ConnectRoot(
     LaunchedEffect(Unit) {
         val granted = Build.VERSION.SDK_INT < LOCAL_NETWORK_PERMISSION_SDK ||
             context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED
-        viewModel.onAction(ConnectAction.OnStart(permissionGranted = granted))
+        viewModel.onAction(ConnectAction.OnStart(permissionGranted = granted, autoConnect = autoConnect))
     }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {

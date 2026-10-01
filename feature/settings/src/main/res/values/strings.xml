@@ -2,4 +2,22 @@
     <string name="more_title">More</string>
     <string name="settings_title">Settings</string>
     <string name="settings_back">Back</string>
+    <string name="settings_keep_awake">Keep screen on</string>
+    <string name="settings_keep_awake_off">Never</string>
+    <string name="settings_keep_awake_remote_only">On the Remote tab</string>
+    <string name="settings_keep_awake_always">Always</string>
+    <string name="settings_connection">Connection</string>
+    <string name="settings_auto_connect">Auto-connect</string>
+    <string name="settings_auto_connect_description">Connect to the saved host when the app starts</string>
+    <string name="settings_disconnect">Disconnect</string>
+    <string name="settings_disconnect_title">Disconnect from %1$s?</string>
+    <string name="settings_disconnect_title_no_host">Disconnect?</string>
+    <string name="settings_cancel">Cancel</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_license">License</string>
+    <string name="settings_license_name">Apache-2.0</string>
+    <string name="settings_source">Source code</string>
+    <string name="settings_source_open">Open the source code</string>
+    <string name="settings_network_note">ProPresenter\'s Network port accepts unauthenticated control from anyone on the local network.</string>
 </resources>

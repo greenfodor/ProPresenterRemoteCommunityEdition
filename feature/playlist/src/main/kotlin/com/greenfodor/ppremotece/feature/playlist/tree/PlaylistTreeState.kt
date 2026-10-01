@@ -65,8 +65,6 @@ sealed interface PlaylistTreeAction {
         val key: PlaylistItemKey
     ) : PlaylistTreeAction
 
-    data object OnDisconnectClick : PlaylistTreeAction
-
     data object OnRetryClick : PlaylistTreeAction
 
     data object OnRefresh : PlaylistTreeAction
@@ -80,6 +78,4 @@ sealed interface PlaylistTreeEvent {
     data class ShowError(
         val message: UiText
     ) : PlaylistTreeEvent
-
-    data object Disconnected : PlaylistTreeEvent
 }

@@ -8,6 +8,8 @@ import com.greenfodor.ppremotece.core.data.layout.gridPreferencesDataStore
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.data.session.ProPresenterSession
 import com.greenfodor.ppremotece.core.data.session.SavedHostStore
+import com.greenfodor.ppremotece.core.data.settings.DataStoreAppPreferences
+import com.greenfodor.ppremotece.core.data.settings.appSettingsDataStore
 import com.greenfodor.ppremotece.core.data.thumbnail.CoilThumbnailCache
 import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailImageLoader
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
@@ -16,6 +18,7 @@ import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.HostDiscovery
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +38,7 @@ val coreDataModule = module {
     single<ImageLoader> { thumbnailImageLoader(androidContext(), get()) }
     single<ThumbnailCache> { CoilThumbnailCache(get()) }
     single<GridPreferences> { DataStoreGridPreferences(androidContext().gridPreferencesDataStore) }
+    single<AppPreferences> { DataStoreAppPreferences(androidContext().appSettingsDataStore) }
     single<ContentRepository> {
         val session = get<ProPresenterSession>()
         CachingContentRepository(

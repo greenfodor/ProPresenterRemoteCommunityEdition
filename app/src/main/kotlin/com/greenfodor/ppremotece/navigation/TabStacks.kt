@@ -1,13 +1,7 @@
 package com.greenfodor.ppremotece.navigation
 
 import androidx.navigation3.runtime.NavKey
-
-enum class ShellTab {
-    PRESENTATION,
-    REMOTE,
-    SETTINGS,
-    MORE
-}
+import com.greenfodor.ppremotece.core.domain.layout.ShellTab
 
 /**
  * The shell's back stacks, one per tab, and its selected tab. [displayed] is the Presentation stack,

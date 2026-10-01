@@ -15,12 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -34,7 +31,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -84,7 +80,6 @@ fun PlaylistTreeRoot(
     reconnecting: Boolean,
     onOpenItem: (PlaylistItemKey) -> Unit,
     onOpenPresentation: (String) -> Unit,
-    onDisconnected: () -> Unit,
     modifier: Modifier = Modifier,
     floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
     viewModel: PlaylistTreeViewModel = koinViewModel()
@@ -96,7 +91,6 @@ fun PlaylistTreeRoot(
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is PlaylistTreeEvent.OpenItem -> onOpenItem(event.key)
-            PlaylistTreeEvent.Disconnected -> onDisconnected()
             is PlaylistTreeEvent.ShowError -> scope.launch {
                 snackbarHostState.showSnackbar(event.message.asString(context))
             }
@@ -137,7 +131,6 @@ fun PlaylistTreeScreen(
     floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
     libraryContent: @Composable (bottomPadding: Dp) -> Unit = {}
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -153,21 +146,7 @@ fun PlaylistTreeScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                ),
-                actions = {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(painterResource(DesignR.drawable.ic_more_vert), stringResource(R.string.playlists_more))
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.playlists_disconnect)) },
-                            onClick = {
-                                menuOpen = false
-                                onAction(PlaylistTreeAction.OnDisconnectClick)
-                            }
-                        )
-                    }
-                }
+                )
             )
         }
     ) { padding ->

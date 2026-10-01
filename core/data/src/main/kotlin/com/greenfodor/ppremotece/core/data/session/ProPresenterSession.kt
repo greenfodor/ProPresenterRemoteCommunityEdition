@@ -7,6 +7,7 @@ import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailUrl
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.ConnectedHost
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveState
@@ -49,7 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The connection to the current ProPresenter host: its [KtorProPresenterClient] and its
- * [StreamingLiveStateRepository], which lives in a scope that [disconnect] cancels.
+ * [StreamingLiveStateRepository], which lives in a scope that [disconnect] cancels; [disconnect] keeps the saved host.
  * [sessionKey] names the current connection (`{n}@{address}:{port}`, new on each connect, null
  * while disconnected), and [streamReconnects] emits each time the live stream is reopened. Each
  * successful connect clears the [ThumbnailCache] in the background; the connection's
@@ -74,8 +75,14 @@ class ProPresenterSession(
     private val restoreMutex = Mutex()
     private val connectCount = AtomicInteger()
 
+    @Volatile
+    private var restoreAllowed = true
+
     private val _sessionKey = MutableStateFlow<String?>(null)
     val sessionKey: StateFlow<String?> = _sessionKey.asStateFlow()
+
+    private val _connectedHost = MutableStateFlow<ConnectedHost?>(null)
+    override val connectedHost: StateFlow<ConnectedHost?> = _connectedHost.asStateFlow()
 
     private val _streamReconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val streamReconnects: SharedFlow<Unit> = _streamReconnects.asSharedFlow()
@@ -105,6 +112,8 @@ class ProPresenterSession(
             val thumbnails = MutableStateFlow<ThumbnailRequests?>(null)
             connection.getAndUpdate { Connection(client, live, thumbnails, scope) }?.scope?.cancel()
             _sessionKey.value = "${connectCount.incrementAndGet()}@${host.address}:${host.port}"
+            _connectedHost.value = ConnectedHost(host, version)
+            restoreAllowed = true
             scope.launch {
                 thumbnailCache.clear()
                 thumbnails.value = thumbnailRequests(baseUrl, version.name)
@@ -118,11 +127,12 @@ class ProPresenterSession(
     }
 
     override suspend fun disconnect() {
-        try {
-            savedHostStore.clear()
-        } finally {
+        restoreAllowed = false
+        restoreMutex.withLock {
+            restoreAllowed = false
             connection.getAndUpdate { null }?.scope?.cancel()
             _sessionKey.value = null
+            _connectedHost.value = null
         }
     }
 
@@ -140,17 +150,20 @@ class ProPresenterSession(
             )
         }
 
-    /** Reconnects to the saved host when no host is connected. */
+    /** Reconnects to the saved host when no host is connected, unless [disconnect] was called since the last connect. */
     suspend fun restore() {
         currentClient()
     }
 
-    /** Forwards to the current host's client; with none connected, first reconnects to the saved host. */
+    /**
+     * Forwards to the current host's client; with none connected, first reconnects to the saved host
+     * unless [disconnect] was called since the last connect.
+     */
     val client: ProPresenterClient = CurrentHostClient(::currentClient)
 
     private suspend fun currentClient(): ProPresenterClient? =
         connection.value?.client ?: restoreMutex.withLock {
-            connection.value?.client ?: savedHostStore.read()?.let { host ->
+            connection.value?.client ?: savedHostStore.read()?.takeIf { restoreAllowed }?.let { host ->
                 connect(host)
                 connection.value?.client
             }
