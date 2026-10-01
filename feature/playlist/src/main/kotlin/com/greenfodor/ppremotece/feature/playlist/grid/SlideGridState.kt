@@ -40,6 +40,9 @@ data class CueUi(
 )
 
 sealed interface SlideGridAction {
+    /** The slide size and view mode actions. */
+    sealed interface Layout : SlideGridAction
+
     data class OnCueClick(
         val index: Int
     ) : SlideGridAction
@@ -64,17 +67,17 @@ sealed interface SlideGridAction {
 
     data class OnWidthClassChange(
         val widthClass: WidthClass
-    ) : SlideGridAction
+    ) : Layout
 
     data class OnGridStepChange(
         val step: GridStep
-    ) : SlideGridAction
+    ) : Layout
 
-    data object OnGridStepChangeFinished : SlideGridAction
+    data object OnGridStepChangeFinished : Layout
 
     data class OnViewModeChange(
         val mode: ViewMode
-    ) : SlideGridAction
+    ) : Layout
 }
 
 sealed interface SlideGridEvent {

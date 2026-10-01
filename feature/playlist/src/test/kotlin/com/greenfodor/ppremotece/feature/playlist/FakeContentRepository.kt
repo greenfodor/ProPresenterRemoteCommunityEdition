@@ -27,6 +27,9 @@ class FakeContentRepository : ContentRepository {
 
     /** Libraries whose reads never answer. */
     val pendingLibraries = mutableSetOf<String>()
+
+    /** Playlists whose reads never answer. */
+    val pendingPlaylists = mutableSetOf<String>()
     val playlists = mutableMapOf<String, Playlist>()
     val presentations = mutableMapOf<String, Presentation>()
     var failWith: DataError.Network? = null
@@ -36,7 +39,8 @@ class FakeContentRepository : ContentRepository {
 
     override fun playlists(): Flow<Result<List<PlaylistTreeNode>, DataError.Network>> = observe(TREE) { tree }
 
-    override fun playlist(uuid: String): Flow<Result<Playlist, DataError.Network>> = observe(uuid) { playlists[uuid] }
+    override fun playlist(uuid: String): Flow<Result<Playlist, DataError.Network>> =
+        if (uuid in pendingPlaylists) emptyFlow() else observe(uuid) { playlists[uuid] }
 
     override fun presentation(uuid: String): Flow<Result<Presentation, DataError.Network>> =
         observe(uuid) { presentations[uuid] }

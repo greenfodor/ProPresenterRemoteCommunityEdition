@@ -43,6 +43,14 @@ class ArrangementBannerTest {
     }
 
     @Test
+    fun `a live arrangement that does not match the live cue count is compared by count`() {
+        val banner = arrangementBanner(item0, longCues, live(item = null, totalCues = 9), song, liveItemRef = null)
+
+        assertThat(banner).isEqualTo(ArrangementBanner(arrangementName = null, isSongOrder = false, totalCues = 9))
+        assertThat(liveCueList(song, live(item = null, totalCues = 9), liveItemRef = null)).isNull()
+    }
+
+    @Test
     fun `this item live shows no banner`() {
         assertThat(arrangementBanner(item0, longCues, live(key(0), totalCues = 11), song, liveItemRef = ref("long")))
             .isNull()

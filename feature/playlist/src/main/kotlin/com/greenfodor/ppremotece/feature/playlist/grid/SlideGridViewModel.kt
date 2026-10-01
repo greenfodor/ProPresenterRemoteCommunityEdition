@@ -17,9 +17,9 @@ import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
-import com.greenfodor.ppremotece.core.domain.live.liveCueIndex
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
+import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.PresentationRef
 import com.greenfodor.ppremotece.core.domain.result.DataError
@@ -113,16 +113,19 @@ class SlideGridViewModel(
     private var resyncTarget: Int? = null
     private val live = liveStateRepository.liveState
 
-    private val liveItemRef: Flow<PresentationRef?> =
+    /** Another live playlist item of this grid's playlist item and its presentation ref, null until read. */
+    private val liveItemRef: Flow<Pair<PlaylistItemKey, PresentationRef?>?> =
         if (source is CueSource.PlaylistItem) {
-            live.map { it.item }.distinctUntilChanged().flatMapLatest { key ->
-                if (key == null || key == source.key) {
+            val liveItem = live.map { state -> state.item?.takeIf { it != source.key } }.distinctUntilChanged()
+            val livePlaylist = liveItem.map { it?.playlistUuid }.distinctUntilChanged().flatMapLatest { uuid ->
+                if (uuid == null) {
                     flowOf(null)
                 } else {
-                    contentRepository.playlist(key.playlistUuid).map { result ->
-                        (result as? Result.Success)?.data?.items?.firstOrNull { it.key == key }?.presentation
-                    }
+                    contentRepository.playlist(uuid).map { (it as? Result.Success)?.data }.onStart { emit(null) }
                 }
+            }
+            combine(liveItem, livePlaylist) { key, playlist ->
+                key?.let { it to playlist?.items?.firstOrNull { item -> item.key == it }?.presentation }
             }
         } else {
             flowOf(null)
@@ -166,7 +169,8 @@ class SlideGridViewModel(
         }
 
     val state: StateFlow<SlideGridState> =
-        combine(grid, live, gridStep, liveItemRef) { (state, loaded), live, step, liveItemRef ->
+        combine(grid, live, gridStep, liveItemRef) { (state, loaded), live, step, liveItem ->
+            val liveItemRef = liveItem?.takeIf { it.first == live.item }?.second
             if (loaded == null) {
                 state.copy(gridStep = step)
             } else {
@@ -201,14 +205,11 @@ class SlideGridViewModel(
             is SlideGridAction.OnFirstVisibleCueChange -> firstVisibleCue = action.cueIndex
             SlideGridAction.OnRetryClick -> retries.value++
             SlideGridAction.OnReloadClick -> reload()
-            is SlideGridAction.OnWidthClassChange,
-            is SlideGridAction.OnGridStepChange,
-            SlideGridAction.OnGridStepChangeFinished,
-            is SlideGridAction.OnViewModeChange -> onLayoutAction(action)
+            is SlideGridAction.Layout -> onLayoutAction(action)
         }
     }
 
-    private fun onLayoutAction(action: SlideGridAction) {
+    private fun onLayoutAction(action: SlideGridAction.Layout) {
         when (action) {
             is SlideGridAction.OnWidthClassChange -> {
                 draggedStep.value = null
@@ -219,7 +220,6 @@ class SlideGridViewModel(
             is SlideGridAction.OnViewModeChange -> widthClass.value?.let { current ->
                 viewModelScope.launch { gridPreferences.setViewMode(current, action.mode) }
             }
-            else -> Unit
         }
     }
 

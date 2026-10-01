@@ -20,7 +20,7 @@ data class ArrangementBanner(
 /**
  * The cue list ProPresenter plays for [presentation] while [live] shows it: the arrangement of the
  * live item ([liveItemRef]), or the presentation's current arrangement when no item is live; null
- * when that arrangement can't be resolved.
+ * when that arrangement can't be resolved or its cue count is not the live slide's.
  */
 fun liveCueList(presentation: Presentation, live: LiveState, liveItemRef: PresentationRef?): CueList? {
     val ref = if (live.item == null) {
@@ -29,7 +29,9 @@ fun liveCueList(presentation: Presentation, live: LiveState, liveItemRef: Presen
         liveItemRef?.takeIf { it.presentationUuid == presentation.uuid } ?: return null
     }
     val resolved = ref.arrangementUuid.isEmpty() || ArrangementExpander.resolve(presentation, ref) != null
-    return if (resolved) ArrangementExpander.expand(presentation, ref) else null
+    return ArrangementExpander.expand(presentation, ref).takeIf { cueList ->
+        resolved && live.slide?.totalCues?.let { it == cueList.cues.size } != false
+    }
 }
 
 /**

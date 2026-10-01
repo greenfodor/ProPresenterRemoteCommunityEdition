@@ -507,6 +507,41 @@ class SlideGridViewModelTest {
     }
 
     @Test
+    fun `a live item whose playlist is still being read names no earlier item's arrangement`() = runTest {
+        content.pendingPlaylists += PENDING_PLAYLIST
+        val viewModel = viewModel()
+        live.value = LiveState(ConnectionStatus.CONNECTED, otherItem, LiveSlide(SONG_C, index = 1, totalCues = 5))
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().banner?.arrangementName).isEqualTo("B")
+            live.value = LiveState(
+                ConnectionStatus.CONNECTED,
+                PlaylistItemKey(PENDING_PLAYLIST, 0),
+                LiveSlide(SONG_C, index = 1, totalCues = 5)
+            )
+            assertThat(expectMostRecentItem().banner)
+                .isEqualTo(ArrangementBanner(arrangementName = null, isSongOrder = false, totalCues = 5))
+        }
+    }
+
+    @Test
+    fun `the grid loads while the live item's playlist is still being read`() = runTest {
+        content.pendingPlaylists += PENDING_PLAYLIST
+        live.value = LiveState(
+            ConnectionStatus.CONNECTED,
+            PlaylistItemKey(PENDING_PLAYLIST, 0),
+            LiveSlide(SONG_C, index = 1, totalCues = 5)
+        )
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            val state = expectMostRecentItem()
+            assertThat(state.isLoading).isFalse()
+            assertThat(state.cues.size).isEqualTo(8)
+        }
+    }
+
+    @Test
     fun `re-sync triggers this item's cue showing the live slide`() = runTest {
         val viewModel = viewModel()
         live.value = LiveState(ConnectionStatus.CONNECTED, otherItem, LiveSlide(SONG_C, index = 1, totalCues = 5))
@@ -589,5 +624,6 @@ class SlideGridViewModelTest {
     private companion object {
         const val PLAYLIST = "pl-1"
         const val SONG_C = "p-c"
+        const val PENDING_PLAYLIST = "pl-2"
     }
 }
