@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -66,7 +67,7 @@ fun SettingsRoot(
         onAction = viewModel::onAction,
         appVersion = appVersion,
         onBack = onBack,
-        onOpenSource = { uriHandler.openUri(SOURCE_URL) },
+        onOpenSource = { uriHandler.tryOpenUri(SOURCE_URL) },
         modifier = modifier
     )
 }
@@ -117,12 +118,20 @@ fun SettingsScreen(
     }
 }
 
-/** "Disconnect from {hostName}?" with Disconnect and Cancel. */
+/** "Disconnect from {hostName}?", or "Disconnect?" without a host name, with Disconnect and Cancel. */
 @Composable
 private fun DisconnectDialog(hostName: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_disconnect_title, hostName)) },
+        title = {
+            Text(
+                if (hostName.isEmpty()) {
+                    stringResource(R.string.settings_disconnect_title_no_host)
+                } else {
+                    stringResource(R.string.settings_disconnect_title, hostName)
+                }
+            )
+        },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(stringResource(R.string.settings_disconnect)) }
         },
@@ -131,6 +140,15 @@ private fun DisconnectDialog(hostName: String, onConfirm: () -> Unit, onDismiss:
         }
     )
 }
+
+/** Opens [uri], or does nothing when no app can open it; true when it was opened. */
+internal fun UriHandler.tryOpenUri(uri: String): Boolean =
+    try {
+        openUri(uri)
+        true
+    } catch (_: IllegalArgumentException) {
+        false
+    }
 
 private fun appVersion(context: Context): String {
     val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

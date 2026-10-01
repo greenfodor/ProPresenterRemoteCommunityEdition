@@ -18,6 +18,7 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
@@ -25,11 +26,16 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import mockwebserver3.junit5.StartStop
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -100,6 +106,33 @@ class ProPresenterSessionTest {
         session.disconnect()
 
         session.restore()
+
+        assertThat(session.sessionKey.value).isNull()
+        assertThat(session.connectedHost.value).isNull()
+    }
+
+    @Test
+    fun `a disconnect during a restore leaves the session disconnected`() = runBlocking {
+        savedHosts.host = host()
+        val versionRequested = CompletableDeferred<Unit>()
+        val release = CountDownLatch(1)
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.url.encodedPath == "/version") {
+                    versionRequested.complete(Unit)
+                    release.await(5, TimeUnit.SECONDS)
+                }
+                return fake.dispatch(request)
+            }
+        }
+
+        val restoring = launch(Dispatchers.IO) { session.restore() }
+        withTimeout(5.seconds) { versionRequested.await() }
+        val disconnecting = launch(Dispatchers.IO) { session.disconnect() }
+        delay(100.milliseconds)
+        release.countDown()
+        restoring.join()
+        disconnecting.join()
 
         assertThat(session.sessionKey.value).isNull()
         assertThat(session.connectedHost.value).isNull()

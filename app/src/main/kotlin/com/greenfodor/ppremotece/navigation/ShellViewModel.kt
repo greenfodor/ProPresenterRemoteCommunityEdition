@@ -35,5 +35,5 @@ class ShellViewModel(
 
     val keepAwake: StateFlow<KeepAwake> =
         appPreferences.keepAwake()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), KeepAwake.REMOTE_ONLY)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), KeepAwake.Default)
 }

@@ -22,7 +22,8 @@ import kotlinx.coroutines.launch
 /**
  * Connect screen: browses for hosts once the local network permission is granted and, when the
  * route allows it and the auto-connect setting is on, connects to the saved host on start;
- * otherwise the saved host's address and port are filled in. The permission is requested on start and again on each connect attempt
+ * otherwise the saved host's address and port fill the empty fields, and connecting to them keeps
+ * the saved host's name. The permission is requested on start and again on each connect attempt
  * while it is missing; a failed auto-connect leaves its address and port filled in.
  */
 class ConnectViewModel(
@@ -40,6 +41,7 @@ class ConnectViewModel(
     private var permissionGranted = false
     private var discoveryStarted = false
     private var pendingHost: ProPresenterHost? = null
+    private var savedHost: ProPresenterHost? = null
 
     fun onAction(action: ConnectAction) {
         when (action) {
@@ -60,12 +62,13 @@ class ConnectViewModel(
         permissionGranted = granted
         if (granted) startDiscovery()
         viewModelScope.launch {
-            val savedHost = connectionRepository.savedHost()
-            if (savedHost != null && autoConnect && appPreferences.autoConnect().first()) {
-                connect(savedHost)
+            val host = connectionRepository.savedHost()
+            savedHost = host
+            if (host != null && autoConnect && appPreferences.autoConnect().first()) {
+                connect(host)
                 return@launch
             }
-            savedHost?.let { host -> _state.update { it.copy(address = host.address, port = host.port.toString()) } }
+            if (host != null) prefill(host)
             if (!granted) _events.send(ConnectEvent.RequestLocalNetworkPermission)
         }
     }
@@ -100,7 +103,20 @@ class ConnectViewModel(
             }
             port == null || port !in PORT_RANGE ->
                 _state.update { it.copy(error = UiText.StringResource(R.string.connect_error_port)) }
-            else -> connect(ProPresenterHost(name = address, address = address, port = port))
+            else -> connect(
+                savedHost?.takeIf { it.address == address && it.port == port }
+                    ?: ProPresenterHost(name = address, address = address, port = port)
+            )
+        }
+    }
+
+    private fun prefill(host: ProPresenterHost) {
+        _state.update {
+            if (it.address.isEmpty() && it.port.isEmpty() && !it.isConnecting) {
+                it.copy(address = host.address, port = host.port.toString())
+            } else {
+                it
+            }
         }
     }
 

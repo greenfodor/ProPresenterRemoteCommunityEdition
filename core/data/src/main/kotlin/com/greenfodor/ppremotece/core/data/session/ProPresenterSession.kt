@@ -128,9 +128,12 @@ class ProPresenterSession(
 
     override suspend fun disconnect() {
         restoreAllowed = false
-        connection.getAndUpdate { null }?.scope?.cancel()
-        _sessionKey.value = null
-        _connectedHost.value = null
+        restoreMutex.withLock {
+            restoreAllowed = false
+            connection.getAndUpdate { null }?.scope?.cancel()
+            _sessionKey.value = null
+            _connectedHost.value = null
+        }
     }
 
     private fun thumbnailRequests(baseUrl: String, instanceName: String) =

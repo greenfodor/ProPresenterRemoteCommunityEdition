@@ -17,6 +17,7 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -39,7 +40,12 @@ class ConnectViewModelTest {
 
         override val connectedHost = MutableStateFlow<ConnectedHost?>(null)
 
-        override suspend fun savedHost(): ProPresenterHost = this@ConnectViewModelTest.savedHost
+        var savedHostRead = CompletableDeferred(Unit)
+
+        override suspend fun savedHost(): ProPresenterHost {
+            savedHostRead.await()
+            return this@ConnectViewModelTest.savedHost
+        }
 
         override suspend fun connect(host: ProPresenterHost): Result<ProPresenterVersion, DataError.Network> {
             attempts += host
@@ -109,6 +115,29 @@ class ConnectViewModelTest {
         viewModel.onAction(ConnectAction.OnStart(permissionGranted = true, autoConnect = true))
 
         assertSavedHostWaiting(viewModel.state.value)
+    }
+
+    @Test
+    fun `connecting to the prefilled saved host keeps its name`() = runTest {
+        val viewModel = ConnectViewModel(connections, discovery, preferences)
+        viewModel.onAction(ConnectAction.OnStart(permissionGranted = true, autoConnect = false))
+
+        viewModel.onAction(ConnectAction.OnConnectClick)
+
+        assertThat(connections.attempts).isEqualTo(listOf(savedHost))
+    }
+
+    @Test
+    fun `an address typed before the saved host is read is kept`() = runTest {
+        connections.savedHostRead = CompletableDeferred()
+        val viewModel = ConnectViewModel(connections, discovery, preferences)
+        viewModel.onAction(ConnectAction.OnStart(permissionGranted = true, autoConnect = false))
+
+        viewModel.onAction(ConnectAction.OnAddressChange("198.51.100.7"))
+        connections.savedHostRead.complete(Unit)
+
+        assertThat(viewModel.state.value.address).isEqualTo("198.51.100.7")
+        assertThat(viewModel.state.value.port).isEqualTo("")
     }
 
     private fun assertSavedHostWaiting(state: ConnectState) {

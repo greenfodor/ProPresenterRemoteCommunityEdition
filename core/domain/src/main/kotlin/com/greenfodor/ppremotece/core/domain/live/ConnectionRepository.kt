@@ -18,7 +18,10 @@ interface ConnectionRepository {
     /** Checks the host's `/version`; on success makes it the current host and saves it. */
     suspend fun connect(host: ProPresenterHost): Result<ProPresenterVersion, DataError.Network>
 
-    /** Closes the live stream and keeps the saved host; nothing reconnects to it until the next connect. */
+    /**
+     * Closes the live stream, after any reconnect to the saved host in progress, and keeps the saved
+     * host; this session does not reconnect to it on its own until the next connect.
+     */
     suspend fun disconnect()
 }
 

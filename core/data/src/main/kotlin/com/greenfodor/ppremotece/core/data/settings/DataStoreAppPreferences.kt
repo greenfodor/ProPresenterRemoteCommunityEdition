@@ -21,7 +21,7 @@ import java.io.IOException
 internal val Context.appSettingsDataStore by preferencesDataStore(name = "app_settings")
 
 /**
- * [AppPreferences] in [dataStore] under `keep_awake` and `auto_connect`; [KeepAwake.REMOTE_ONLY]
+ * [AppPreferences] in [dataStore] under `keep_awake` and `auto_connect`; [KeepAwake.Default]
  * and auto-connect on when unset. Read and write errors leave the saved values unchanged.
  */
 class DataStoreAppPreferences(
@@ -29,7 +29,7 @@ class DataStoreAppPreferences(
 ) : AppPreferences {
     override fun keepAwake(): Flow<KeepAwake> =
         read { preferences ->
-            KeepAwake.entries.firstOrNull { it.name == preferences[KEEP_AWAKE] } ?: KeepAwake.REMOTE_ONLY
+            KeepAwake.entries.firstOrNull { it.name == preferences[KEEP_AWAKE] } ?: KeepAwake.Default
         }
 
     override suspend fun setKeepAwake(mode: KeepAwake) {

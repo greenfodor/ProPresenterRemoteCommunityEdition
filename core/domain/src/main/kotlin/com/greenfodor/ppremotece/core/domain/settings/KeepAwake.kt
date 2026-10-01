@@ -6,7 +6,11 @@ import com.greenfodor.ppremotece.core.domain.layout.ShellTab
 enum class KeepAwake {
     OFF,
     REMOTE_ONLY,
-    ALWAYS
+    ALWAYS;
+
+    companion object {
+        val Default = REMOTE_ONLY
+    }
 }
 
 /** Whether the screen stays on while the shell shows [tab]. */

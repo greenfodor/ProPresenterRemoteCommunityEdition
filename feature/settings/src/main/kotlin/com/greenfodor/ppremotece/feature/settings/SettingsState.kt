@@ -7,7 +7,7 @@ import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
  * `address:port` and description (empty while disconnected), and whether the Disconnect dialog is shown.
  */
 data class SettingsState(
-    val keepAwake: KeepAwake = KeepAwake.REMOTE_ONLY,
+    val keepAwake: KeepAwake = KeepAwake.Default,
     val autoConnect: Boolean = true,
     val hostName: String = "",
     val hostAddress: String = "",

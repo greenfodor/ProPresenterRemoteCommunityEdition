@@ -11,6 +11,7 @@
     <string name="settings_auto_connect_description">Connect to the saved host when the app starts</string>
     <string name="settings_disconnect">Disconnect</string>
     <string name="settings_disconnect_title">Disconnect from %1$s?</string>
+    <string name="settings_disconnect_title_no_host">Disconnect?</string>
     <string name="settings_cancel">Cancel</string>
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
