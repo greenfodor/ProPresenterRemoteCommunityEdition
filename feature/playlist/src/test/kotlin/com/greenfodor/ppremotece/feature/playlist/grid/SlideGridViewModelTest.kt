@@ -194,7 +194,7 @@ class SlideGridViewModelTest {
     }
 
     @Test
-    fun `reload evicts the item's thumbnails once per key and loads them again`() = runTest {
+    fun `reload evicts the item's grid and box thumbnails once per key and loads them again`() = runTest {
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -203,9 +203,10 @@ class SlideGridViewModelTest {
             viewModel.onAction(SlideGridAction.OnReloadClick)
 
             assertThat(awaitItem().thumbnailGeneration).isEqualTo(1)
-            assertThat(thumbnailCache.removed.single().size).isEqualTo(5)
-            assertThat(thumbnailCache.removed.single()).isEqualTo(
+            val gridKeys =
                 listOf("p-c:g-verse:0", "p-c:g-verse:1", "p-c:g-verse:2", "p-c:g-chorus:0", "p-c:g-chorus:1")
+            assertThat(thumbnailCache.removed.single()).isEqualTo(
+                gridKeys + gridKeys.flatMap { key -> listOf(600, 800, 1000, 1080).map { "$key:q$it" } }
             )
         }
     }

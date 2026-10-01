@@ -23,8 +23,10 @@ import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.map
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRoute
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import com.greenfodor.ppremotece.core.domain.thumbnail.slideAspect
 import com.greenfodor.ppremotece.feature.playlist.R
@@ -214,11 +216,10 @@ class SlideGridViewModel(
     private suspend fun evictThumbnails() {
         val content = loaded?.takeUnless { it.cueList.countMismatch } ?: return
         val requests = thumbnailSource.thumbnailRequests.first() ?: return
-        thumbnailCache.remove(
-            content.cueList.cues.map {
-                requests.request(item, content.presentation.uuid, it, ThumbnailQuality.Grid).cacheKey
-            }.distinct()
-        )
+        val gridKeys = content.cueList.cues
+            .map { requests.request(item, content.presentation.uuid, it, ThumbnailQuality.Grid).cacheKey }
+            .distinct()
+        thumbnailCache.remove(gridKeys + gridKeys.flatMap { ThumbnailKey.boxKeys(it, ThumbnailRoute.PLAYLIST) })
         thumbnailGeneration.value++
     }
 

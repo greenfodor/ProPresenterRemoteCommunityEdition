@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.thumbnail
 
 import assertk.assertThat
+import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
 import org.junit.jupiter.api.Test
@@ -41,6 +42,17 @@ class BoxQualityTest {
         assertThat(boxQuality(ThumbnailRoute.PLAYLIST, 711)).isNull()
         assertThat(boxQuality(ThumbnailRoute.PRESENTATION, 600)).isNull()
         assertThat(boxQuality(ThumbnailRoute.PLAYLIST, 0)).isNull()
+    }
+
+    @Test
+    fun `box qualities list every value boxQuality gives on each route`() {
+        assertThat(boxQualities(ThumbnailRoute.PLAYLIST)).containsExactly(600, 800, 1000, 1080)
+        assertThat(boxQualities(ThumbnailRoute.PRESENTATION))
+            .containsExactly(800, 1000, 1200, 1400, 1600, 1800, 1920)
+        ThumbnailRoute.entries.forEach { route ->
+            val given = (1..4000).mapNotNull { boxQuality(route, it) }.distinct()
+            assertThat(boxQualities(route)).isEqualTo(given)
+        }
     }
 
     @Test

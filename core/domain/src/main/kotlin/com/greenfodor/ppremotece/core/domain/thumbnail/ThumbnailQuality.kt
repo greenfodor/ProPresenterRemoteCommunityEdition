@@ -36,3 +36,9 @@ fun boxQuality(route: ThumbnailRoute, px: Int): Int? {
     val quality = ((wanted + QUALITY_STEP - 1) / QUALITY_STEP * QUALITY_STEP).coerceAtMost(route.maxQuality)
     return quality.takeIf { it > route.gridQuality }
 }
+
+/** Every `quality` value [boxQuality] gives on [route], in ascending order. */
+fun boxQualities(route: ThumbnailRoute): List<Int> {
+    val first = route.gridQuality / QUALITY_STEP * QUALITY_STEP + QUALITY_STEP
+    return (first until route.maxQuality step QUALITY_STEP).toList() + route.maxQuality
+}
