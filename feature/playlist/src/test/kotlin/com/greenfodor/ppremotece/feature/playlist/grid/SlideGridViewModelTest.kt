@@ -12,6 +12,7 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
+import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
@@ -82,6 +83,14 @@ class SlideGridViewModelTest {
         override suspend fun setGridStep(widthClass: WidthClass, step: GridStep) {
             writes++
             steps.value += widthClass to step
+        }
+
+        val modes = MutableStateFlow(mapOf<WidthClass, ViewMode>())
+
+        override fun viewMode(widthClass: WidthClass) = modes.map { it[widthClass] ?: ViewMode.GRID }
+
+        override suspend fun setViewMode(widthClass: WidthClass, mode: ViewMode) {
+            modes.value += widthClass to mode
         }
     }
     private val thumbnailCache = object : ThumbnailCache {
@@ -379,6 +388,27 @@ class SlideGridViewModelTest {
         }
 
         assertThat(content.refreshed).containsExactly(SONG_C)
+    }
+
+    @Test
+    fun `the view mode is read and saved for the current width class`() = runTest {
+        gridPreferences.modes.value = mapOf(WidthClass.EXPANDED to ViewMode.LIST)
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            awaitItem()
+            viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.EXPANDED))
+            assertThat(viewModel.state.value.viewMode).isEqualTo(ViewMode.LIST)
+
+            viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
+            assertThat(viewModel.state.value.viewMode).isEqualTo(ViewMode.GRID)
+            viewModel.onAction(SlideGridAction.OnViewModeChange(ViewMode.LIST))
+            assertThat(viewModel.state.value.viewMode).isEqualTo(ViewMode.LIST)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(gridPreferences.modes.value)
+            .isEqualTo(mapOf(WidthClass.EXPANDED to ViewMode.LIST, WidthClass.COMPACT to ViewMode.LIST))
     }
 
     private fun outside(cue: Int, totalCues: Int) =

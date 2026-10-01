@@ -4,6 +4,7 @@ import coil3.ImageLoader
 import com.greenfodor.ppremotece.core.data.content.CachingContentRepository
 import com.greenfodor.ppremotece.core.data.discovery.NsdHostDiscovery
 import com.greenfodor.ppremotece.core.data.layout.DataStoreGridPreferences
+import com.greenfodor.ppremotece.core.data.layout.gridPreferencesDataStore
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.data.session.ProPresenterSession
 import com.greenfodor.ppremotece.core.data.session.SavedHostStore
@@ -33,7 +34,7 @@ val coreDataModule = module {
     single<HostDiscovery> { NsdHostDiscovery(androidContext()) }
     single<ImageLoader> { thumbnailImageLoader(androidContext(), get()) }
     single<ThumbnailCache> { CoilThumbnailCache(get()) }
-    single<GridPreferences> { DataStoreGridPreferences(androidContext()) }
+    single<GridPreferences> { DataStoreGridPreferences(androidContext().gridPreferencesDataStore) }
     single<ContentRepository> {
         val session = get<ProPresenterSession>()
         CachingContentRepository(

@@ -11,6 +11,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,27 +29,40 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
+import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.feature.playlist.R
 import kotlin.math.roundToInt
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val SlideSizeMenuWidth = 280.dp
 
-/** Top-bar actions of the slide grid: the slide size slider menu and the overflow menu with "Reload slides". */
+/**
+ * Top-bar actions of the slide grid: the view menu (a `Grid | List` switch, and the slide size
+ * slider in Grid mode) behind a button showing the current mode, and the overflow menu with
+ * "Reload slides".
+ */
 @Composable
-internal fun GridActions(gridStep: GridStep, onAction: (SlideGridAction) -> Unit) {
+internal fun GridActions(gridStep: GridStep, viewMode: ViewMode, onAction: (SlideGridAction) -> Unit) {
     var sizeOpen by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { sizeOpen = true }) {
-            Icon(painterResource(DesignR.drawable.ic_grid_view), stringResource(R.string.grid_slide_size))
+            Icon(
+                painterResource(
+                    if (viewMode == ViewMode.LIST) DesignR.drawable.ic_view_list else DesignR.drawable.ic_grid_view
+                ),
+                stringResource(R.string.grid_view_options)
+            )
         }
         DropdownMenu(expanded = sizeOpen, onDismissRequest = { sizeOpen = false }) {
-            SlideSizeControl(
-                gridStep = gridStep,
-                onStepChange = { onAction(SlideGridAction.OnGridStepChange(it)) },
-                onStepChangeFinished = { onAction(SlideGridAction.OnGridStepChangeFinished) }
-            )
+            ViewModeSwitch(viewMode = viewMode, onViewModeChange = { onAction(SlideGridAction.OnViewModeChange(it)) })
+            if (viewMode == ViewMode.GRID) {
+                SlideSizeControl(
+                    gridStep = gridStep,
+                    onStepChange = { onAction(SlideGridAction.OnGridStepChange(it)) },
+                    onStepChangeFinished = { onAction(SlideGridAction.OnGridStepChangeFinished) }
+                )
+            }
         }
     }
     Box {
@@ -60,6 +76,34 @@ internal fun GridActions(gridStep: GridStep, onAction: (SlideGridAction) -> Unit
                 onClick = {
                     menuOpen = false
                     onAction(SlideGridAction.OnReloadClick)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ViewModeSwitch(viewMode: ViewMode, onViewModeChange: (ViewMode) -> Unit) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier.width(SlideSizeMenuWidth).padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        ViewMode.entries.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = viewMode == mode,
+                onClick = { onViewModeChange(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = ViewMode.entries.size),
+                label = {
+                    Text(
+                        stringResource(
+                            if (mode ==
+                                ViewMode.LIST
+                            ) {
+                                R.string.grid_view_list
+                            } else {
+                                R.string.grid_view_grid
+                            }
+                        )
+                    )
                 }
             )
         }

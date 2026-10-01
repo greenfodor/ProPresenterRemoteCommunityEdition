@@ -11,6 +11,9 @@
     <string name="grid_next">Next</string>
     <string name="grid_reload">Reload slides</string>
     <string name="grid_slide_size">Slide size</string>
+    <string name="grid_view_options">View options</string>
+    <string name="grid_view_grid">Grid</string>
+    <string name="grid_view_list">List</string>
     <string name="grid_select_item">Select a playlist item</string>
     <string name="grid_count_mismatch">Arrangement partly unresolved; cue numbers may differ from ProPresenter</string>
     <string name="grid_item_has_no_slides">This playlist item has no slides.</string>

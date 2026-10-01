@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridLayoutInfo
 import androidx.compose.foundation.lazy.grid.LazyGridPrefetchScope
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridPrefetchStrategy
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.layout.NestedPrefetchScope
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,10 +59,12 @@ import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
 import com.greenfodor.ppremotece.core.designsystem.ui.CueCell
 import com.greenfodor.ppremotece.core.designsystem.ui.CueMark
+import com.greenfodor.ppremotece.core.designsystem.ui.CueRow
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.SyntheticThumbnails
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
+import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
@@ -148,7 +152,13 @@ fun SlideGridScreen(
                         Icon(painterResource(DesignR.drawable.ic_arrow_back), stringResource(R.string.grid_back))
                     }
                 },
-                actions = { GridActions(gridStep = state.gridStep ?: GridStep.Default, onAction = onAction) },
+                actions = {
+                    GridActions(
+                        gridStep = state.gridStep ?: GridStep.Default,
+                        viewMode = state.viewMode,
+                        onAction = onAction
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
@@ -179,6 +189,11 @@ private fun GridContent(state: SlideGridState, headerScrollsWithGrid: Boolean, o
                     onAction(SlideGridAction.OnRetryClick)
                 }) { Text(stringResource(R.string.playlists_retry)) }
             }
+            state.viewMode == ViewMode.LIST -> CueList(
+                state = state,
+                headerScrollsWithList = headerScrollsWithGrid,
+                onAction = onAction
+            )
             else -> CueGrid(
                 state = state,
                 gridStep = state.gridStep ?: GridStep.Default,
@@ -229,16 +244,50 @@ private fun CueGrid(
                     label = cue.label,
                     enabled = cue.enabled,
                     thumbnailGeneration = state.thumbnailGeneration,
-                    mark = when (cue.index) {
-                        state.liveCueIndex -> CueMark.LIVE
-                        state.nextCueIndex -> CueMark.NEXT
-                        else -> CueMark.NONE
-                    }
+                    mark = cue.mark(state)
                 )
             }
         }
     }
 }
+
+@Composable
+private fun CueList(state: SlideGridState, headerScrollsWithList: Boolean, onAction: (SlideGridAction) -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (!headerScrollsWithList) GridHeader(state, horizontalPadding = GridPadding)
+        LazyColumn(
+            contentPadding = PaddingValues(
+                start = GridPadding,
+                top = GridPadding,
+                end = GridPadding,
+                bottom = GridBottomPadding
+            ),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (headerScrollsWithList) item(key = HEADER_KEY) { GridHeader(state, horizontalPadding = 0.dp) }
+            items(state.cues, key = { it.index }) { cue ->
+                CueRow(
+                    number = cue.index + 1,
+                    groupName = cue.groupName,
+                    groupColor = cue.groupColor,
+                    text = cue.text,
+                    onClick = { onAction(SlideGridAction.OnCueClick(cue.index)) },
+                    label = cue.label,
+                    enabled = cue.enabled,
+                    mark = cue.mark(state)
+                )
+            }
+        }
+    }
+}
+
+private fun CueUi.mark(state: SlideGridState): CueMark =
+    when (index) {
+        state.liveCueIndex -> CueMark.LIVE
+        state.nextCueIndex -> CueMark.NEXT
+        else -> CueMark.NONE
+    }
 
 @Composable
 private fun GridHeader(state: SlideGridState, horizontalPadding: Dp) {
