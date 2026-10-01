@@ -102,8 +102,8 @@ class SlideGridViewModel(
             ->
             dragged ?: saved
         }
-    private val viewMode: Flow<ViewMode> =
-        widthClass.flatMapLatest { it?.let(gridPreferences::viewMode) ?: flowOf(ViewMode.GRID) }
+    private val viewMode: Flow<ViewMode?> =
+        widthClass.flatMapLatest { it?.let(gridPreferences::viewMode) ?: flowOf(null) }
     private var loaded: Content.Loaded? = null
 
     private val content: Flow<Content> =

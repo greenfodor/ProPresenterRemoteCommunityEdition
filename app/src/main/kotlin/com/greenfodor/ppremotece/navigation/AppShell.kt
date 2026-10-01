@@ -100,7 +100,7 @@ fun AppShell(
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val windowSizeClass = adaptiveInfo.windowSizeClass
     val directive = calculatePaneScaffoldDirective(adaptiveInfo)
-        .copy(maxHorizontalPartitions = paneCount(windowSizeClass.minWidthDp))
+        .copy(maxHorizontalPartitions = paneCount(windowSizeClass.minWidthDp), horizontalPartitionSpacerSize = 0.dp)
     val widthClass = widthClassOf(windowSizeClass.minWidthDp)
     val compactHeight = !windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
     val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)

@@ -155,7 +155,7 @@ fun SlideGridScreen(
                 actions = {
                     GridActions(
                         gridStep = state.gridStep ?: GridStep.Default,
-                        viewMode = state.viewMode,
+                        viewMode = state.viewMode ?: ViewMode.GRID,
                         onAction = onAction
                     )
                 },
@@ -177,7 +177,7 @@ fun SlideGridScreen(
 private fun GridContent(state: SlideGridState, headerScrollsWithGrid: Boolean, onAction: (SlideGridAction) -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         when {
-            state.isLoading || state.gridStep == null && state.error == null ->
+            state.isLoading || (state.gridStep == null || state.viewMode == null) && state.error == null ->
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             state.error != null -> Column(
                 modifier = Modifier.align(Alignment.Center).padding(16.dp),

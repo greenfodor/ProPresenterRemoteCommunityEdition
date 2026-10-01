@@ -251,10 +251,11 @@ class SlideGridViewModelTest {
             assertThat(awaitItem().gridStep).isNull()
 
             viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.EXPANDED))
-            assertThat(awaitItem().gridStep).isEqualTo(GridStep.SIZE_280)
+            assertThat(viewModel.state.value.gridStep).isEqualTo(GridStep.SIZE_280)
 
             viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
-            assertThat(awaitItem().gridStep).isEqualTo(GridStep.Default)
+            assertThat(viewModel.state.value.gridStep).isEqualTo(GridStep.Default)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -396,7 +397,7 @@ class SlideGridViewModelTest {
         val viewModel = viewModel()
 
         viewModel.state.test {
-            awaitItem()
+            assertThat(awaitItem().viewMode).isNull()
             viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.EXPANDED))
             assertThat(viewModel.state.value.viewMode).isEqualTo(ViewMode.LIST)
 

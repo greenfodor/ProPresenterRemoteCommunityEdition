@@ -20,7 +20,7 @@ data class SlideGridState(
     val thumbnailGeneration: Int = 0,
     val stepButtons: Boolean = true,
     val gridStep: GridStep? = null,
-    val viewMode: ViewMode = ViewMode.GRID,
+    val viewMode: ViewMode? = null,
     val isLoading: Boolean = true,
     val error: UiText? = null
 )

@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.feature.playlist.grid
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,19 +93,7 @@ private fun ViewModeSwitch(viewMode: ViewMode, onViewModeChange: (ViewMode) -> U
                 selected = viewMode == mode,
                 onClick = { onViewModeChange(mode) },
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = ViewMode.entries.size),
-                label = {
-                    Text(
-                        stringResource(
-                            if (mode ==
-                                ViewMode.LIST
-                            ) {
-                                R.string.grid_view_list
-                            } else {
-                                R.string.grid_view_grid
-                            }
-                        )
-                    )
-                }
+                label = { Text(stringResource(mode.label())) }
             )
         }
     }
@@ -138,3 +127,10 @@ private fun SlideSizeControl(gridStep: GridStep, onStepChange: (GridStep) -> Uni
         }
     }
 }
+
+@StringRes
+private fun ViewMode.label(): Int =
+    when (this) {
+        ViewMode.GRID -> R.string.grid_view_grid
+        ViewMode.LIST -> R.string.grid_view_list
+    }
