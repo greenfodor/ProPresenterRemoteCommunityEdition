@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.layout.NestedPrefetchScope
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -126,6 +127,7 @@ fun SlideGridRoot(
         reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
         floatingActionButton = floatingActionButton,
+        firstVisibleCue = viewModel.firstVisibleCue,
         modifier = modifier
     )
 }
@@ -141,7 +143,8 @@ fun SlideGridScreen(
     headerScrollsWithGrid: Boolean = false,
     reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    floatingActionButton: @Composable (SnackbarHostState) -> Unit = {}
+    floatingActionButton: @Composable (SnackbarHostState) -> Unit = {},
+    firstVisibleCue: Int = 0
 ) {
     Scaffold(
         modifier = modifier,
@@ -172,17 +175,27 @@ fun SlideGridScreen(
                 )
             )
         },
-        bottomBar = { if (state.stepButtons) StepButtons(onAction = onAction) }
+        bottomBar = { StepButtons(enabled = state.stepsEnabled, onAction = onAction) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
-            GridContent(state = state, headerScrollsWithGrid = headerScrollsWithGrid, onAction = onAction)
+            GridContent(
+                state = state,
+                headerScrollsWithGrid = headerScrollsWithGrid,
+                firstVisibleCue = firstVisibleCue,
+                onAction = onAction
+            )
         }
     }
 }
 
 @Composable
-private fun GridContent(state: SlideGridState, headerScrollsWithGrid: Boolean, onAction: (SlideGridAction) -> Unit) {
+private fun GridContent(
+    state: SlideGridState,
+    headerScrollsWithGrid: Boolean,
+    firstVisibleCue: Int,
+    onAction: (SlideGridAction) -> Unit
+) {
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             state.isLoading || (state.gridStep == null || state.viewMode == null) && state.error == null ->
@@ -200,12 +213,14 @@ private fun GridContent(state: SlideGridState, headerScrollsWithGrid: Boolean, o
             state.viewMode == ViewMode.LIST -> CueList(
                 state = state,
                 headerScrollsWithList = headerScrollsWithGrid,
+                firstVisibleCue = firstVisibleCue,
                 onAction = onAction
             )
             else -> CueGrid(
                 state = state,
                 gridStep = state.gridStep ?: GridStep.Default,
                 headerScrollsWithGrid = headerScrollsWithGrid,
+                firstVisibleCue = firstVisibleCue,
                 onAction = onAction
             )
         }
@@ -218,13 +233,26 @@ private fun CueGrid(
     state: SlideGridState,
     gridStep: GridStep,
     headerScrollsWithGrid: Boolean,
+    firstVisibleCue: Int,
     onAction: (SlideGridAction) -> Unit
 ) {
+    val headerItems = if (headerScrollsWithGrid) 1 else 0
+    val gridState = rememberLazyGridState(
+        initialFirstVisibleItemIndex = itemIndexOf(firstVisibleCue, state.cues, headerItems),
+        prefetchStrategy = NoPrefetch
+    )
+    ReportFirstVisibleCue(
+        firstVisibleItem = { gridState.firstVisibleItemIndex },
+        isScrolling = { gridState.isScrollInProgress },
+        cues = state.cues,
+        headerItems = headerItems,
+        onAction = onAction
+    )
     Column(modifier = Modifier.fillMaxSize()) {
         if (!headerScrollsWithGrid) GridHeader(state, horizontalPadding = GridPadding)
         LazyVerticalGrid(
             columns = gridStep.toGridCells(),
-            state = rememberLazyGridState(prefetchStrategy = NoPrefetch),
+            state = gridState,
             contentPadding = PaddingValues(
                 start = GridPadding,
                 top = GridPadding,
@@ -260,10 +288,27 @@ private fun CueGrid(
 }
 
 @Composable
-private fun CueList(state: SlideGridState, headerScrollsWithList: Boolean, onAction: (SlideGridAction) -> Unit) {
+private fun CueList(
+    state: SlideGridState,
+    headerScrollsWithList: Boolean,
+    firstVisibleCue: Int,
+    onAction: (SlideGridAction) -> Unit
+) {
+    val headerItems = if (headerScrollsWithList) 1 else 0
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = itemIndexOf(firstVisibleCue, state.cues, headerItems)
+    )
+    ReportFirstVisibleCue(
+        firstVisibleItem = { listState.firstVisibleItemIndex },
+        isScrolling = { listState.isScrollInProgress },
+        cues = state.cues,
+        headerItems = headerItems,
+        onAction = onAction
+    )
     Column(modifier = Modifier.fillMaxSize()) {
         if (!headerScrollsWithList) GridHeader(state, horizontalPadding = GridPadding)
         LazyColumn(
+            state = listState,
             contentPadding = PaddingValues(
                 start = GridPadding,
                 top = GridPadding,
@@ -326,7 +371,7 @@ private fun CountMismatchLine() {
 }
 
 @Composable
-private fun StepButtons(onAction: (SlideGridAction) -> Unit) {
+private fun StepButtons(enabled: Boolean, onAction: (SlideGridAction) -> Unit) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier
@@ -336,6 +381,7 @@ private fun StepButtons(onAction: (SlideGridAction) -> Unit) {
     ) {
         FilledTonalButton(
             onClick = { onAction(SlideGridAction.OnPreviousClick) },
+            enabled = enabled,
             modifier = Modifier.weight(1f).height(StepButtonHeight)
         ) {
             Icon(painterResource(DesignR.drawable.ic_skip_previous), contentDescription = null)
@@ -343,6 +389,7 @@ private fun StepButtons(onAction: (SlideGridAction) -> Unit) {
         }
         Button(
             onClick = { onAction(SlideGridAction.OnNextClick) },
+            enabled = enabled,
             modifier = Modifier.weight(1f).height(StepButtonHeight)
         ) {
             Text(stringResource(R.string.grid_next), modifier = Modifier.padding(end = 8.dp))
@@ -377,6 +424,7 @@ private fun SlideGridScreenPreview() {
                     countMismatch = true,
                     liveCueIndex = 0,
                     nextCueIndex = 2,
+                    stepsEnabled = true,
                     isLoading = false
                 ),
                 onAction = {},
@@ -400,7 +448,7 @@ private fun LibraryGridScreenPreview() {
                 aspect = 1920f / 858f,
                 liveCueIndex = 3,
                 nextCueIndex = 4,
-                stepButtons = false,
+                stepsEnabled = true,
                 isLoading = false
             ),
             onAction = {},

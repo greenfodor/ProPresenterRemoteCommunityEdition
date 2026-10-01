@@ -38,6 +38,12 @@ class LibrarySearchTest {
     }
 
     @Test
+    fun `folding maps letters without a combining mark to their base letters`() {
+        assertThat(foldForSearch("Kałvørn Đubeß")).isEqualTo("kalvorn dubess")
+        assertThat(foldForSearch("ŁØĐẞ")).isEqualTo("lodss")
+    }
+
+    @Test
     fun `a query without diacritics matches names with them, case-insensitively`() {
         val results = searchLibraries(contents, "mormantul")
 

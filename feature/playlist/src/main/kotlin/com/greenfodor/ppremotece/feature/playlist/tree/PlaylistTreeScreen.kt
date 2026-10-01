@@ -72,11 +72,13 @@ private val DepthIndent = 16.dp
 private val ProgressSize = 20.dp
 
 /**
- * The Presentation tab's list pane: the playlist tree or, in Library mode, the library list.
+ * The Presentation tab's list pane: the playlist tree or, in Library [mode], the library list.
  * [openItem] and [openPresentation] are highlighted.
  */
 @Composable
 fun PlaylistTreeRoot(
+    mode: ListMode,
+    onModeChange: (ListMode) -> Unit,
     openItem: PlaylistItemKey?,
     openPresentation: String?,
     reconnecting: Boolean,
@@ -103,6 +105,8 @@ fun PlaylistTreeRoot(
     PlaylistTreeScreen(
         state = state,
         onAction = viewModel::onAction,
+        mode = mode,
+        onModeChange = onModeChange,
         openItem = openItem,
         reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
@@ -124,6 +128,8 @@ fun PlaylistTreeRoot(
 fun PlaylistTreeScreen(
     state: PlaylistTreeState,
     onAction: (PlaylistTreeAction) -> Unit,
+    mode: ListMode,
+    onModeChange: (ListMode) -> Unit,
     modifier: Modifier = Modifier,
     openItem: PlaylistItemKey? = null,
     reconnecting: Boolean = false,
@@ -141,7 +147,7 @@ fun PlaylistTreeScreen(
                 title = {
                     Text(
                         stringResource(
-                            if (state.mode == ListMode.LIBRARY) R.string.library_title else R.string.playlists_title
+                            if (mode == ListMode.LIBRARY) R.string.library_title else R.string.playlists_title
                         )
                     )
                 },
@@ -167,9 +173,9 @@ fun PlaylistTreeScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
-            ModeSwitch(mode = state.mode, onModeChange = { onAction(PlaylistTreeAction.OnModeChange(it)) })
+            ModeSwitch(mode = mode, onModeChange = onModeChange)
             val bottomPadding = if (floatingActionButton != null) FabClearance else 0.dp
-            when (state.mode) {
+            when (mode) {
                 ListMode.PLAYLISTS -> TreeContent(
                     state = state,
                     openItem = openItem,
@@ -366,7 +372,9 @@ private fun PlaylistTreeScreenPreview() {
                     TreeRowUi.Item("pl-1/1", 2, "Song A", key, label = null, opensSlides = true)
                 )
             ),
-            onAction = {}
+            onAction = {},
+            mode = ListMode.PLAYLISTS,
+            onModeChange = {}
         )
     }
 }

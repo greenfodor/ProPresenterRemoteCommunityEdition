@@ -9,16 +9,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import com.greenfodor.ppremotece.feature.playlist.tree.ListMode
 
-/** Detail-pane content shown before a playlist item is opened. */
+/** Detail-pane content shown before a playlist item, or in Library [mode] a presentation, is opened. */
 @Composable
-fun SelectItemPlaceholder(modifier: Modifier = Modifier) {
+fun SelectItemPlaceholder(mode: ListMode, modifier: Modifier = Modifier) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
     ) {
         Text(
-            text = stringResource(R.string.grid_select_item),
+            text = stringResource(
+                if (mode == ListMode.LIBRARY) R.string.grid_select_presentation else R.string.grid_select_item
+            ),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

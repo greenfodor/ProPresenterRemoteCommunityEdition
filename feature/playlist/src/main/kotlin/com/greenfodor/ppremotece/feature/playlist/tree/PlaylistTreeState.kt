@@ -11,7 +11,6 @@ enum class ListMode {
 }
 
 data class PlaylistTreeState(
-    val mode: ListMode = ListMode.PLAYLISTS,
     val rows: List<TreeRowUi> = emptyList(),
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -71,10 +70,6 @@ sealed interface PlaylistTreeAction {
     data object OnRetryClick : PlaylistTreeAction
 
     data object OnRefresh : PlaylistTreeAction
-
-    data class OnModeChange(
-        val mode: ListMode
-    ) : PlaylistTreeAction
 }
 
 sealed interface PlaylistTreeEvent {

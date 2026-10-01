@@ -15,6 +15,7 @@ import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
+import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 
 /**
  * [ProPresenterClient] that forwards to [current]; calls fail with [DataError.Network.NO_CONNECTION]
@@ -43,6 +44,9 @@ internal class CurrentHostClient(
         current()?.presentation(uuid) ?: notConnected()
 
     override suspend fun slideIndex(): Result<LiveSlide?, DataError.Network> = current()?.slideIndex() ?: notConnected()
+
+    override suspend fun activePlaylistItem(): Result<StatusEvent.PlaylistActive, DataError.Network> =
+        current()?.activePlaylistItem() ?: notConnected()
 
     override suspend fun triggerCue(item: PlaylistItemKey, cueIndex: Int): EmptyResult<DataError.Network> =
         current()?.triggerCue(item, cueIndex) ?: notConnected()

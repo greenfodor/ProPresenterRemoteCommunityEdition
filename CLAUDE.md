@@ -54,10 +54,12 @@ Versions come only from `gradle/libs.versions.toml`.
 ## ProPresenter network rule (P-10)
 
 The app talks to ProPresenter's HTTP `/v1` API and sends only:
-- `GET` reads (including `GET /v1/clear/group/{id}/icon`, the clear group's icon, `GET /v1/libraries`
-  and `GET /v1/library/{uuid}`), the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
+- `GET` reads (including `GET /v1/clear/group/{id}/icon`, the clear group's icon, `GET /v1/libraries`,
+  `GET /v1/library/{uuid}` and `GET /v1/playlist/active`, read with the slide index on each slide change),
+  the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
   trigger `GET /v1/playlist/{pl}/{item}/trigger`, `GET /v1/trigger/next`,
-  `GET /v1/trigger/previous` and the clear calls;
+  `GET /v1/trigger/previous` (from the playlist grid, the Remote, and the library grid while its
+  presentation is live outside a playlist) and the clear calls;
 - the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode and
   when a presentation is live outside a playlist (or remembered from one after a clear);
 - one `POST /v1/status/updates` stream.

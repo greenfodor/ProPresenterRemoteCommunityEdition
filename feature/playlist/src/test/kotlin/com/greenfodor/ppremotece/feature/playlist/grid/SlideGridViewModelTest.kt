@@ -322,7 +322,7 @@ class SlideGridViewModelTest {
             val state = awaitItem()
             assertThat(state.title).isEqualTo("Song C")
             assertThat(state.cues.map { it.index }).containsExactly(0, 1, 2, 3, 4, 5, 6, 7)
-            assertThat(state.stepButtons).isFalse()
+            assertThat(state.stepsEnabled).isFalse()
             assertThat(state.cues[0].thumbnail?.url).isEqualTo("http://host/presentation/$SONG_C/thumbnail/0")
 
             live.value = outside(cue = 2, totalCues = 8)
@@ -337,15 +337,88 @@ class SlideGridViewModelTest {
     }
 
     @Test
-    fun `a library presentation has no next and previous buttons while loading or after a failed read`() = runTest {
+    fun `a library presentation's next and previous are disabled while loading or after a failed read`() = runTest {
         content.failWith = DataError.Network.SERVER
         val viewModel = viewModel(CueSource.Presentation(SONG_C))
 
-        assertThat(viewModel.state.value.stepButtons).isFalse()
+        assertThat(viewModel.state.value.stepsEnabled).isFalse()
         viewModel.state.test {
             val failed = awaitItem()
             assertThat(failed.error).isNotNull()
-            assertThat(failed.stepButtons).isFalse()
+            assertThat(failed.stepsEnabled).isFalse()
+        }
+    }
+
+    @Test
+    fun `a library presentation's next and previous send only while it is live outside a playlist`() = runTest {
+        val viewModel = viewModel(CueSource.Presentation(SONG_C))
+
+        viewModel.state.test {
+            assertThat(awaitItem().stepsEnabled).isFalse()
+            viewModel.onAction(SlideGridAction.OnNextClick)
+            viewModel.onAction(SlideGridAction.OnPreviousClick)
+            assertThat(client.steps).isEmpty()
+
+            live.value = outside(cue = 3, totalCues = 8)
+            assertThat(awaitItem().stepsEnabled).isTrue()
+            viewModel.onAction(SlideGridAction.OnNextClick)
+            viewModel.onAction(SlideGridAction.OnPreviousClick)
+            assertThat(client.steps).containsExactly("next", "previous")
+
+            live.value = outside(cue = 3, totalCues = 8).copy(item = item)
+            assertThat(awaitItem().stepsEnabled).isFalse()
+            viewModel.onAction(SlideGridAction.OnNextClick)
+            assertThat(client.steps).containsExactly("next", "previous")
+        }
+        assertThat(client.triggeredPresentationCues).isEmpty()
+    }
+
+    @Test
+    fun `a playlist item's next and previous are always enabled`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitItem().stepsEnabled).isTrue()
+            viewModel.onAction(SlideGridAction.OnNextClick)
+            viewModel.onAction(SlideGridAction.OnPreviousClick)
+        }
+        assertThat(client.steps).containsExactly("next", "previous")
+    }
+
+    @Test
+    fun `list mode builds no thumbnail requests`() = runTest {
+        gridPreferences.modes.value = mapOf(WidthClass.COMPACT to ViewMode.LIST)
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            awaitItem()
+            viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
+            val list = viewModel.state.value
+            assertThat(list.viewMode).isEqualTo(ViewMode.LIST)
+            assertThat(list.cues.size).isEqualTo(8)
+            assertThat(list.cues.mapNotNull { it.thumbnail }).isEmpty()
+
+            viewModel.onAction(SlideGridAction.OnViewModeChange(ViewMode.GRID))
+            assertThat(viewModel.state.value.cues.mapNotNull { it.thumbnail }.size).isEqualTo(8)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the first visible cue is kept across a view mode switch`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            awaitItem()
+            viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
+            assertThat(viewModel.firstVisibleCue).isEqualTo(0)
+            viewModel.onAction(SlideGridAction.OnFirstVisibleCueChange(5))
+            viewModel.onAction(SlideGridAction.OnViewModeChange(ViewMode.LIST))
+            assertThat(viewModel.state.value.viewMode).isEqualTo(ViewMode.LIST)
+            assertThat(viewModel.firstVisibleCue).isEqualTo(5)
+            viewModel.onAction(SlideGridAction.OnViewModeChange(ViewMode.GRID))
+            assertThat(viewModel.firstVisibleCue).isEqualTo(5)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -375,7 +448,7 @@ class SlideGridViewModelTest {
 
         assertThat(client.triggeredPresentationCues).containsExactly(SONG_C to 3)
         assertThat(client.triggeredCues).isEmpty()
-        assertThat(client.steps).isEqualTo(0)
+        assertThat(client.steps).isEmpty()
     }
 
     @Test

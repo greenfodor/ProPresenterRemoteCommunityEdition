@@ -55,6 +55,7 @@ import com.greenfodor.ppremotece.feature.playlist.PlaylistsRoute
 import com.greenfodor.ppremotece.feature.playlist.SelectItemPlaceholder
 import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
 import com.greenfodor.ppremotece.feature.playlist.grid.SlideGridRoot
+import com.greenfodor.ppremotece.feature.playlist.tree.ListMode
 import com.greenfodor.ppremotece.feature.playlist.tree.PlaylistTreeRoot
 import com.greenfodor.ppremotece.feature.remote.RemoteRoot
 import com.greenfodor.ppremotece.feature.remote.RemoteRoute
@@ -88,6 +89,7 @@ fun AppShell(
     val presentation = rememberNavBackStack(PlaylistsRoute)
     val remote = rememberNavBackStack(RemoteRoute)
     var tab by rememberSaveable { mutableStateOf(ShellTab.PRESENTATION) }
+    var listMode by rememberSaveable { mutableStateOf(ListMode.PLAYLISTS) }
 
     fun stacks() = TabStacks(presentation = presentation.toList(), remote = remote.toList(), current = tab)
 
@@ -145,12 +147,14 @@ fun AppShell(
                 entryProvider = entryProvider {
                     entry<PlaylistsRoute>(
                         metadata =
-                            ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder() }) +
+                            ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder(listMode) }) +
                                 ListDetailSceneStrategy.preferredPaneSize(ListPaneWidth)
                     ) {
                         val detail = presentation.getOrNull(1)
                         val openGrid = detail as? SlideGridRoute
                         PlaylistTreeRoot(
+                            mode = listMode,
+                            onModeChange = { listMode = it },
                             openItem = openGrid?.let {
                                 PlaylistItemKey(playlistUuid = it.playlistUuid, index = it.itemIndex)
                             },

@@ -2,8 +2,6 @@ package com.greenfodor.ppremotece.core.designsystem.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -26,13 +24,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,18 +36,10 @@ import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 
-private val RingSlot = 4.dp
-private val RingGap = 4.dp
-private val LiveRingWidth = 4.dp
-private val SecondaryRingWidth = 2.dp
 private val FrameWidth = 4.dp
-private val FrameCorner = 4.dp
 private val LabelStripHeight = 28.dp
 private val BadgeIconSize = 16.dp
-private const val DISABLED_ALPHA = 0.38f
 private const val PREVIEW_ASPECT = 1920f / 858f
-
-private val RingShape = RoundedCornerShape(FrameCorner + RingGap + RingSlot)
 
 /** The state a cue cell is marked with: a ring and a badge, or nothing. */
 enum class CueMark {
@@ -86,28 +73,10 @@ fun CueCell(
 ) {
     val groupColors = PPRemoteTheme.groupColors
     val frameColor = groupColor?.takeIf { it.alpha > 0f }?.toColor() ?: MaterialTheme.colorScheme.outlineVariant
-    val ringModifier = when (mark) {
-        CueMark.LIVE -> Modifier.border(LiveRingWidth, MaterialTheme.colorScheme.tertiary, RingShape)
-        CueMark.NEXT, CueMark.CUED -> Modifier.border(
-            SecondaryRingWidth,
-            MaterialTheme.colorScheme.secondary,
-            RingShape
-        )
-        CueMark.NONE -> Modifier
-    }
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .alpha(if (enabled) 1f else DISABLED_ALPHA)
-            .then(ringModifier)
-            .clip(RingShape)
-            .then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
-            .semantics { selected = mark == CueMark.LIVE }
-            .padding(RingSlot + RingGap)
-    ) {
+    CueMarkFrame(mark = mark, enabled = enabled, onClick = onClick, modifier = modifier) {
         Column(
             modifier = Modifier
-                .clip(RoundedCornerShape(FrameCorner))
+                .clip(RoundedCornerShape(CueContentCorner))
                 .background(frameColor)
                 .padding(start = FrameWidth, top = FrameWidth, end = FrameWidth)
         ) {

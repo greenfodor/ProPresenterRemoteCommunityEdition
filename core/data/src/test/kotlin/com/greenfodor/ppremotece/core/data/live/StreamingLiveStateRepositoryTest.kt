@@ -4,10 +4,10 @@ import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.containsExactly
-import assertk.assertions.isBetween
 import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThanOrEqualTo
 import assertk.assertions.isNull
+import com.greenfodor.ppremotece.core.data.network.CapturedLiveBodies
 import com.greenfodor.ppremotece.core.data.network.FakeProPresenter
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
@@ -33,6 +33,7 @@ import mockwebserver3.junit5.StartStop
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -96,17 +97,88 @@ class StreamingLiveStateRepositoryTest {
 
     @Test
     fun `each slide change re-reads the slide index`() = runBlocking {
-        val delivered = AtomicInteger()
-        fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL, delivered = delivered))
+        fake.slideIndexBodies += (1..3).map { FakeProPresenter.SLIDE_INDEX.replace("\"index\":3,", "\"index\":$it,") }
+        fake.enqueueStream(
+            fake.frames(
+                listOf(FakeProPresenter.playlistActiveFrame(liveItem), FakeProPresenter.SLIDE_FRAME),
+                listOf(FakeProPresenter.SLIDE_FRAME),
+                listOf(FakeProPresenter.SLIDE_FRAME),
+                awaitSlideReads = true
+            )
+        )
 
         repository.liveState.test(timeout = 5.seconds) {
-            val slideChanges = StreamReplay.frameCount("su-long", "status/slide")
-            awaitCondition { delivered.get() == StreamReplay.chunkCount("su-long") }
-            delay(50.milliseconds)
-            assertThat(fake.count("GET", SLIDE_INDEX)).isBetween(1, slideChanges)
-            assertThat(fake.count("POST", "/v1/status/updates")).isEqualTo(1)
+            assertThat(awaitUntil { it.slide?.index == 3 }.item).isEqualTo(liveItem)
             cancelAndIgnoreRemainingEvents()
         }
+        val reads = generateSequence { server.takeRequest(5, TimeUnit.SECONDS) }
+            .map { "${it.method} ${it.url.encodedPath}" }
+            .filter { it != "GET /version" }
+            .take(7)
+            .toList()
+        assertThat(reads.first()).isEqualTo("POST /v1/status/updates")
+        assertThat(reads.drop(1).groupingBy { it }.eachCount())
+            .isEqualTo(mapOf("GET $SLIDE_INDEX" to 3, "GET $PLAYLIST_ACTIVE" to 3))
+    }
+
+    @Test
+    fun `a slide of item 1 read before item 1's playlist active frame is attributed to item 1`() = runBlocking {
+        replayStage7Probe(throughChunk = ITEM_1_SLIDE_INDEX_CHUNK)
+        val item1 = PlaylistItemKey(ARRANGEMENT_TEST_PLAYLIST_UUID, index = 1)
+
+        repository.liveState.test(timeout = 5.seconds) {
+            val live = awaitUntil { it.slide?.totalCues == 7 }
+            assertThat(live.item).isEqualTo(item1)
+            assertThat(live.slide).isEqualTo(LiveSlide(FakeProPresenter.SONG_A_UUID, index = 2, totalCues = 7))
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(repository.lastLive.value)
+            .isEqualTo(LiveCue(CueSource.PlaylistItem(item1), FakeProPresenter.SONG_A_UUID, cueIndex = 2))
+    }
+
+    @Test
+    fun `a presentation route slide read before its playlist active frame has a presentation source`() =
+        runBlocking {
+            replayStage7Probe(throughChunk = PRESENTATION_ROUTE_SLIDE_INDEX_CHUNK)
+
+            repository.liveState.test(timeout = 5.seconds) {
+                val live = awaitUntil { it.slide?.totalCues == 15 }
+                assertThat(live.item).isNull()
+                cancelAndIgnoreRemainingEvents()
+            }
+            assertThat(repository.lastLive.value)
+                .isEqualTo(
+                    LiveCue(CueSource.Presentation(FakeProPresenter.SONG_A_UUID), FakeProPresenter.SONG_A_UUID, 3)
+                )
+        }
+
+    @Test
+    fun `a same item step without a playlist active frame keeps the item`() = runBlocking {
+        replayStage7Probe(throughChunk = SAME_ITEM_SLIDE_INDEX_CHUNK)
+        val item0 = PlaylistItemKey(ARRANGEMENT_TEST_PLAYLIST_UUID, index = 0)
+
+        repository.liveState.test(timeout = 5.seconds) {
+            val live = awaitUntil { it.slide?.index == 1 }
+            assertThat(live.item).isEqualTo(item0)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(repository.lastLive.value)
+            .isEqualTo(LiveCue(CueSource.PlaylistItem(item0), FakeProPresenter.SONG_A_UUID, cueIndex = 1))
+    }
+
+    private fun replayStage7Probe(throughChunk: Int) {
+        val delivered = AtomicInteger()
+        val captured = CapturedLiveBodies(STAGE_7_PROBE)
+        fake.liveBodies = { captured.after(delivered.get()) }
+        fake.enqueueStream(
+            fake.stream(
+                STAGE_7_PROBE,
+                StreamEnd.STALL,
+                timeScale = 0.05,
+                delivered = delivered,
+                chunkLimit = throughChunk
+            )
+        )
     }
 
     @Test
@@ -340,6 +412,12 @@ class StreamingLiveStateRepositoryTest {
         val WATCHDOG = 300.milliseconds
         val RELAXED_WATCHDOG = 1.seconds
         const val SLIDE_INDEX = "/v1/presentation/slide_index"
+        const val PLAYLIST_ACTIVE = "/v1/playlist/active"
+        const val STAGE_7_PROBE = "stage7-probe"
+        const val ARRANGEMENT_TEST_PLAYLIST_UUID = "6f760dbf-04b9-46f2-9bb3-33eeea6a6d90"
+        const val ITEM_1_SLIDE_INDEX_CHUNK = 10
+        const val PRESENTATION_ROUTE_SLIDE_INDEX_CHUNK = 16
+        const val SAME_ITEM_SLIDE_INDEX_CHUNK = 28
         const val SLIDE_READS = 10
         const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active","status/layers"]"""
     }

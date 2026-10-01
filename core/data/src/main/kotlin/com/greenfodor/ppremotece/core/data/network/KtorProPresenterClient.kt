@@ -27,6 +27,8 @@ import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.map
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
+import com.greenfodor.ppremotece.core.domain.status.StatusEvent
+import com.greenfodor.ppremotece.core.domain.status.playlistActiveOf
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.timeout
@@ -43,6 +45,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
@@ -85,6 +88,9 @@ class KtorProPresenterClient(
     override suspend fun slideIndex(): Result<LiveSlide?, DataError.Network> =
         safeCall<SlideIndexResponseDto> { httpClient.get("$baseUrl/v1/presentation/slide_index") }
             .map { it.toDomain() }
+
+    override suspend fun activePlaylistItem(): Result<StatusEvent.PlaylistActive, DataError.Network> =
+        safeCall<JsonObject> { httpClient.get("$baseUrl/v1/playlist/active") }.map(::playlistActiveOf)
 
     override suspend fun triggerCue(item: PlaylistItemKey, cueIndex: Int): EmptyResult<DataError.Network> =
         safeEmptyCall {

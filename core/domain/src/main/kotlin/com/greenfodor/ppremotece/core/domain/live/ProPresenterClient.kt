@@ -14,6 +14,7 @@ import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
+import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 
 /** Reads and triggers on one ProPresenter host over its HTTP API. */
 @Suppress("TooManyFunctions")
@@ -32,6 +33,9 @@ interface ProPresenterClient {
     suspend fun presentation(uuid: String): Result<Presentation, DataError.Network>
 
     suspend fun slideIndex(): Result<LiveSlide?, DataError.Network>
+
+    /** The live playlist item, as `GET /v1/playlist/active` reports it. */
+    suspend fun activePlaylistItem(): Result<StatusEvent.PlaylistActive, DataError.Network>
 
     suspend fun triggerCue(item: PlaylistItemKey, cueIndex: Int): EmptyResult<DataError.Network>
 

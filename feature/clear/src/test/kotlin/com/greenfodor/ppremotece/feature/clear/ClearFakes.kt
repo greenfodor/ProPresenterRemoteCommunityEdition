@@ -18,6 +18,7 @@ import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
+import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** Records the clears it is sent; groups in [failingGroups] fail with a server error. */
@@ -54,6 +55,8 @@ class FakeClearClient : ProPresenterClient {
     override suspend fun presentation(uuid: String): Result<Presentation, DataError.Network> = notServed()
 
     override suspend fun slideIndex(): Result<LiveSlide?, DataError.Network> = notServed()
+
+    override suspend fun activePlaylistItem(): Result<StatusEvent.PlaylistActive, DataError.Network> = notServed()
 
     override suspend fun triggerCue(item: PlaylistItemKey, cueIndex: Int): EmptyResult<DataError.Network> = notServed()
 

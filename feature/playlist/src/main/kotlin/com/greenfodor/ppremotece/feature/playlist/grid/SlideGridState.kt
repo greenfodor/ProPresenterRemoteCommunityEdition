@@ -18,7 +18,7 @@ data class SlideGridState(
     val liveCueIndex: Int? = null,
     val nextCueIndex: Int? = null,
     val thumbnailGeneration: Int = 0,
-    val stepButtons: Boolean = true,
+    val stepsEnabled: Boolean = false,
     val gridStep: GridStep? = null,
     val viewMode: ViewMode? = null,
     val isLoading: Boolean = true,
@@ -41,6 +41,10 @@ sealed interface SlideGridAction {
     ) : SlideGridAction
 
     data object OnNextClick : SlideGridAction
+
+    data class OnFirstVisibleCueChange(
+        val cueIndex: Int
+    ) : SlideGridAction
 
     data object OnPreviousClick : SlideGridAction
 
