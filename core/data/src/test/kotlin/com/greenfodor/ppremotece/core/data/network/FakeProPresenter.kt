@@ -25,6 +25,10 @@ class FakeProPresenter(
     @Volatile
     var failSlideIndexReads = 0
 
+    /** The body served for every clear group icon. */
+    @Volatile
+    var iconBody: String = ICON_SVG
+
     /** Bodies served by the next `slide_index` reads, in order, before [SLIDE_INDEX]. */
     val slideIndexBodies = ConcurrentLinkedQueue<String>()
     private val streams = LinkedBlockingQueue<MockResponse>()
@@ -95,7 +99,7 @@ class FakeProPresenter(
             path == "/v1/clear/groups" -> json(Fixtures.text("clear-groups.json"))
             CLEAR_GROUP_TRIGGER.matches(path) -> status(204)
             CLEAR_GROUP_ICON.matches(path) ->
-                MockResponse.Builder().addHeader("Content-Type", "image/svg+xml").body(ICON_SVG).build()
+                MockResponse.Builder().addHeader("Content-Type", "image/svg+xml").body(iconBody).build()
             else -> status(404)
         }
 

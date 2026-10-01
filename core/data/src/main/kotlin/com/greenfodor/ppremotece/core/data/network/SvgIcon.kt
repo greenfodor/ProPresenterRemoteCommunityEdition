@@ -11,13 +11,18 @@ import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.ParserConfigurationException
 
 private val DECLARATION = Regex("<!(DOCTYPE|ENTITY)", RegexOption.IGNORE_CASE)
+private val STYLE_FILL = Regex("(?:^|;)\\s*fill\\s*:\\s*([^;]+)")
+private val STYLE_FILL_RULE = Regex("(?:^|;)\\s*fill-rule\\s*:\\s*([^;]+)")
+private val NOT_DRAWN = setOf("defs", "clipPath", "mask", "symbol", "pattern", "marker")
 private val NUMBERS = Regex("[\\s,]+")
 private const val VIEWBOX_PARTS = 4
 
 /**
- * The filled `<path>` elements of an SVG icon with the `fill` and `fill-rule` they set or inherit,
- * in the `viewBox` (else `width` × `height`), or null when it cannot be read, has a document type
- * declaration or has no filled path.
+ * The filled `<path>` elements of an SVG icon with the `fill` and `fill-rule` they set (as
+ * attributes or in `style`) or inherit, in the `viewBox` (else `width` × `height`). Paths inside
+ * definitions, clip paths, masks, symbols, patterns and markers are not drawn. Null when the icon
+ * cannot be read, has a document type declaration, a `transform`, a `viewBox` not at 0,0, or no
+ * filled path.
  */
 internal fun parseSvgIcon(svg: String): ClearGroupIcon.Vector? =
     svgRoot(svg)?.let { root ->
@@ -35,7 +40,7 @@ private fun svgRoot(svg: String): Element? =
                 .newDocumentBuilder()
                 .parse(InputSource(StringReader(it)))
                 .documentElement
-                .takeIf { root -> root.tagName == "svg" }
+                .takeIf { root -> root.tagName == "svg" && !root.hasTransform() }
         }
     } catch (_: SAXException) {
         null
@@ -45,8 +50,15 @@ private fun svgRoot(svg: String): Element? =
         null
     }
 
+private fun Element.hasTransform(): Boolean {
+    val elements = getElementsByTagName("*")
+    return hasAttribute("transform") ||
+        (0 until elements.length).any { (elements.item(it) as Element).hasAttribute("transform") }
+}
+
 private fun viewportOf(root: Element): Pair<Float, Float>? {
     val viewBox = root.getAttribute("viewBox").trim().split(NUMBERS).mapNotNull { it.toFloatOrNull() }
+    if (viewBox.take(2).any { it != 0f }) return null
     val width = (viewBox.getOrNull(2) ?: root.getAttribute("width").removeSuffix("px").toFloatOrNull())
         ?.takeIf { it > 0f }
     val height = (
@@ -59,8 +71,9 @@ private fun viewportOf(root: Element): Pair<Float, Float>? {
 }
 
 private fun collectPaths(element: Element, filled: Boolean, evenOdd: Boolean, into: MutableList<IconPath>) {
-    val isFilled = element.getAttribute("fill").takeIf { it.isNotEmpty() }?.let { it != "none" } ?: filled
-    val isEvenOdd = element.getAttribute("fill-rule").takeIf { it.isNotEmpty() }?.let { it == "evenodd" } ?: evenOdd
+    if (element.tagName in NOT_DRAWN) return
+    val isFilled = element.paint("fill", STYLE_FILL)?.let { it != "none" } ?: filled
+    val isEvenOdd = element.paint("fill-rule", STYLE_FILL_RULE)?.let { it == "evenodd" } ?: evenOdd
     val pathData = element.getAttribute("d")
     if (element.tagName == "path" && isFilled && pathData.isNotBlank()) into += IconPath(pathData, isEvenOdd)
     val children = element.childNodes
@@ -68,3 +81,8 @@ private fun collectPaths(element: Element, filled: Boolean, evenOdd: Boolean, in
         (children.item(i) as? Element)?.let { collectPaths(it, isFilled, isEvenOdd, into) }
     }
 }
+
+/** The value of [attribute] set in `style`, else as an attribute, else null. */
+private fun Element.paint(attribute: String, inStyle: Regex): String? =
+    inStyle.find(getAttribute("style"))?.groupValues?.get(1)?.trim()
+        ?: getAttribute(attribute).takeIf { it.isNotEmpty() }

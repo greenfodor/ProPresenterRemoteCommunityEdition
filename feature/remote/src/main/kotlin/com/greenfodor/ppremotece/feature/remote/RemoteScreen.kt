@@ -61,6 +61,7 @@ import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 private val NextUpHeight = 48.dp
 private val StepButtonHeight = 72.dp
 private val BoxGap = 12.dp
+private val FabClearance = 72.dp
 private const val CURRENT_SHARE = 0.6f
 private const val NEXT_SHARE = 0.4f
 
@@ -69,7 +70,7 @@ fun RemoteRoot(
     widthClass: WidthClass,
     reconnecting: Boolean,
     modifier: Modifier = Modifier,
-    floatingActionButton: @Composable (SnackbarHostState) -> Unit = {},
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
     viewModel: RemoteViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -116,7 +117,7 @@ fun RemoteScreen(
     modifier: Modifier = Modifier,
     reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    floatingActionButton: @Composable (SnackbarHostState) -> Unit = {}
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -188,14 +189,14 @@ private fun RemoteScaffold(
     onAction: (RemoteAction) -> Unit,
     reconnecting: Boolean,
     snackbarHostState: SnackbarHostState,
-    floatingActionButton: @Composable (SnackbarHostState) -> Unit,
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)?,
     sideBySide: Boolean,
     onOpenCues: (() -> Unit)?
 ) {
     val display = state.display
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = { floatingActionButton(snackbarHostState) },
+        floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -230,7 +231,13 @@ private fun RemoteScaffold(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
-            Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(BoxGap)) {
+            val fabClearance = if (floatingActionButton != null) FabClearance else 0.dp
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(start = BoxGap, top = BoxGap, end = BoxGap, bottom = BoxGap + fabClearance)
+            ) {
                 when (display.status) {
                     RemoteStatus.LOADING -> state.error?.let { error ->
                         Column(

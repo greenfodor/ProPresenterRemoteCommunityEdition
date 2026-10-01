@@ -29,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,13 +93,13 @@ fun ClearFab(
         scope.launch { (if (open) sheetSnackbars else snackbarHostState).showSnackbar(message) }
     }
     FloatingActionButton(
-        onClick = {
-            open = true
-            viewModel.onAction(ClearAction.OnSheetOpen)
-        },
+        onClick = { open = true },
         modifier = modifier
     ) {
         Icon(painterResource(DesignR.drawable.ic_ink_eraser), stringResource(R.string.clear_open))
+    }
+    LaunchedEffect(open) {
+        if (open) viewModel.onAction(ClearAction.OnSheetOpen)
     }
     if (open) {
         ClearSheet(

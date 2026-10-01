@@ -14,18 +14,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val GroupPillHeight = 56.dp
 private val GroupIconSize = 24.dp
@@ -55,16 +61,20 @@ internal fun GroupPill(name: String, icon: ClearGroupIcon?, tint: Color, onClick
     }
 }
 
-/** A clear group's icon: vector paths drawn in [tint], or a PNG or JPEG image as it is. */
+/** A clear group's icon: vector paths drawn in [tint], or a PNG or JPEG image, decoded off the main thread at icon size. */
 @Composable
 private fun GroupIcon(icon: ClearGroupIcon, tint: Color) {
     when (icon) {
         is ClearGroupIcon.Vector -> remember(icon) { icon.toImageVector() }?.let {
             Icon(it, contentDescription = null, tint = tint, modifier = Modifier.size(GroupIconSize))
         }
-        is ClearGroupIcon.Image -> remember(icon) {
-            BitmapFactory.decodeByteArray(icon.bytes, 0, icon.bytes.size)?.asImageBitmap()
-        }?.let { Image(it, contentDescription = null, modifier = Modifier.size(GroupIconSize)) }
+        is ClearGroupIcon.Image -> {
+            val sizePx = with(LocalDensity.current) { GroupIconSize.roundToPx() }
+            val bitmap by produceState<ImageBitmap?>(null, icon, sizePx) {
+                value = withContext(Dispatchers.Default) { decodeSampled(icon.bytes, sizePx) }
+            }
+            bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.size(GroupIconSize)) }
+        }
     }
 }
 
@@ -85,3 +95,13 @@ private fun ClearGroupIcon.Vector.toImageVector(): ImageVector? =
             }
         }.build()
     }.getOrNull()
+
+/** [bytes] decoded at the smallest power-of-two sample that keeps both sides at least [sizePx]. */
+private fun decodeSampled(bytes: ByteArray, sizePx: Int): ImageBitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    var sample = 1
+    while (bounds.outWidth / (sample * 2) >= sizePx && bounds.outHeight / (sample * 2) >= sizePx) sample *= 2
+    val options = BitmapFactory.Options().apply { inSampleSize = sample }
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)?.asImageBitmap()
+}

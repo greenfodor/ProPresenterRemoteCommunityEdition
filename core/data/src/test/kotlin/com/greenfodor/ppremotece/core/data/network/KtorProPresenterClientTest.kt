@@ -145,6 +145,21 @@ class KtorProPresenterClientTest {
     }
 
     @Test
+    fun `a clear group icon is read once per connection`() = runBlocking {
+        client.clearGroupIcon(CLEAR_GROUP_UUID)
+        client.clearGroupIcon(CLEAR_GROUP_UUID)
+
+        assertThat(fake.count("GET", "/v1/clear/group/$CLEAR_GROUP_UUID/icon")).isEqualTo(1)
+    }
+
+    @Test
+    fun `an icon larger than the limit is not read`() = runBlocking {
+        fake.iconBody = """<svg viewBox="0 0 18 18"><path d="M1,1"/>""" + " ".repeat(300 * 1024) + "</svg>"
+
+        assertThat(client.clearGroupIcon(CLEAR_GROUP_UUID)).isEqualTo(Result.Failure(DataError.Network.SERIALIZATION))
+    }
+
+    @Test
     fun `every call uses only allowed methods and paths`() = runBlocking {
         fake.enqueueStream(fake.stream("status-updates", StreamEnd.EOF, timeScale = 0.0))
         val item = PlaylistItemKey(playlistUuid = FakeProPresenter.SERVICE_PLAYLIST_UUID, index = 4)

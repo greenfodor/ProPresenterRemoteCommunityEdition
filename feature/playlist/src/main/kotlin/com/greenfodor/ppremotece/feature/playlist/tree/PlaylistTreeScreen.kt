@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
@@ -73,7 +74,7 @@ fun PlaylistTreeRoot(
     onOpenItem: (PlaylistItemKey) -> Unit,
     onDisconnected: () -> Unit,
     modifier: Modifier = Modifier,
-    floatingActionButton: @Composable (SnackbarHostState) -> Unit = {},
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
     viewModel: PlaylistTreeViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -109,13 +110,13 @@ fun PlaylistTreeScreen(
     openItem: PlaylistItemKey? = null,
     reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    floatingActionButton: @Composable (SnackbarHostState) -> Unit = {}
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = { floatingActionButton(snackbarHostState) },
+        floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.playlists_title)) },
@@ -141,14 +142,24 @@ fun PlaylistTreeScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
-            TreeContent(state = state, openItem = openItem, onAction = onAction)
+            TreeContent(
+                state = state,
+                openItem = openItem,
+                onAction = onAction,
+                bottomPadding = if (floatingActionButton != null) FabClearance else 0.dp
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TreeContent(state: PlaylistTreeState, openItem: PlaylistItemKey?, onAction: (PlaylistTreeAction) -> Unit) {
+private fun TreeContent(
+    state: PlaylistTreeState,
+    openItem: PlaylistItemKey?,
+    onAction: (PlaylistTreeAction) -> Unit,
+    bottomPadding: Dp
+) {
     PullToRefreshBox(
         isRefreshing = state.isRefreshing,
         onRefresh = { onAction(PlaylistTreeAction.OnRefresh) },
@@ -158,7 +169,7 @@ private fun TreeContent(state: PlaylistTreeState, openItem: PlaylistItemKey?, on
             state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             state.error != null -> TreeError(state.error, onRetry = { onAction(PlaylistTreeAction.OnRetryClick) })
             else -> LazyColumn(
-                contentPadding = PaddingValues(bottom = FabClearance),
+                contentPadding = PaddingValues(bottom = bottomPadding),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(state.rows, key = { it.id }) { row ->

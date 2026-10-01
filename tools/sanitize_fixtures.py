@@ -28,6 +28,7 @@ PRESENTATIONS = [
 ]
 VERSION = "t/version.json"
 CLEAR_GROUPS = "../stage5/v1_clear_groups.json"
+CLEAR_GROUPS_OUT = "clear-groups.json"
 CLEAR_GROUP_LAYERS = {
     "music", "audio_effects", "messages", "props", "announcements", "presentation", "presentation_media",
     "video_input",
@@ -54,7 +55,7 @@ VERBATIM_ALLOWED = {
     "ProPresenter 21.4.2", "10.0.26200",
     "status/slide", "presentation/active", "presentation/slide_index", "playlist/active", "timer/system_time",
     "status/layers",
-} | CLEAR_GROUP_LAYERS | CLEAR_GROUP_ICONS | DEFAULT_CLEAR_GROUP_NAMES
+}
 CHUNK_LINE = re.compile(r"^# \+(?P<time>[\d.]+)s chunk (?P<n>\d+) \((?P<size>\d+) B\) tail=.*$")
 TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
 PLACEHOLDER_WORDS = {
@@ -342,8 +343,10 @@ def output_strings(path):
         yield from json_strings(json.loads(content))
 
 
-def is_allowed_verbatim(sanitizer, value):
+def is_allowed_verbatim(sanitizer, value, path):
     return (
+        path.name == CLEAR_GROUPS_OUT and value in CLEAR_GROUP_LAYERS | CLEAR_GROUP_ICONS | DEFAULT_CLEAR_GROUP_NAMES
+    ) or (
         value.strip() == ""
         or UUID.match(value) is not None
         or GROUP_WHITELIST.match(value) is not None
@@ -369,7 +372,7 @@ def leak_check(sanitizer, out_dir):
         for value in output_strings(path):
             if value in sanitizer.leaked_names:
                 leaks.append(f"{path}: original name as a value")
-            elif value in sanitizer.input_strings and not is_allowed_verbatim(sanitizer, value):
+            elif value in sanitizer.input_strings and not is_allowed_verbatim(sanitizer, value, path):
                 leaks.append(f"{path}: input value copied unchanged: {value!r}")
         for name in substring_names:
             if name.lower() in lowered:
@@ -429,7 +432,7 @@ def main():
     clear_groups = load(CLEAR_GROUPS)
     for group in clear_groups:
         sanitizer.clear_group(group)
-    write_json(out_dir / "clear-groups.json", clear_groups)
+    write_json(out_dir / CLEAR_GROUPS_OUT, clear_groups)
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)

@@ -36,6 +36,26 @@ class SvgIconTest {
     }
 
     @Test
+    fun `paths inside definitions, clip paths and masks are not drawn and style fills are honoured`() {
+        val svg = """<svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">""" +
+            """<defs><path d="M9,9"/></defs><clipPath><path d="M8,8"/></clipPath><mask><path d="M7,7"/></mask>""" +
+            """<symbol><path d="M6,6"/></symbol><path d="M5,5" style="stroke:red; fill: none"/>""" +
+            """<path d="M1,1"/></svg>"""
+
+        assertThat(parseSvgIcon(svg)).isEqualTo(
+            ClearGroupIcon.Vector(18f, 18f, listOf(IconPath("M1,1", evenOdd = false)))
+        )
+    }
+
+    @Test
+    fun `transforms and a shifted view box are not read`() {
+        assertThat(
+            parseSvgIcon("""<svg viewBox="0 0 18 18"><g transform="translate(2,2)"><path d="M1,1"/></g></svg>""")
+        ).isNull()
+        assertThat(parseSvgIcon("""<svg viewBox="-2 -2 22 22"><path d="M1,1"/></svg>""")).isNull()
+    }
+
+    @Test
     fun `malformed markup and document type declarations are not read`() {
         assertThat(parseSvgIcon("<svg><path d=")).isNull()
         assertThat(

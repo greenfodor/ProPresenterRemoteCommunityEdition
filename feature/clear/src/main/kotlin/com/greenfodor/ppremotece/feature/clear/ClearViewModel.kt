@@ -43,6 +43,7 @@ class ClearViewModel(
     private val groups = MutableStateFlow<List<ClearGroup>>(emptyList())
     private val armed = MutableStateFlow(false)
     private val icons = MutableStateFlow<Map<String, ClearGroupIcon>>(emptyMap())
+    private val iconsReading = mutableSetOf<String>()
     private var disarm: Job? = null
 
     val state: StateFlow<ClearState> =
@@ -102,9 +103,11 @@ class ClearViewModel(
     private fun bigButtonGroup(groups: List<ClearGroup>): ClearGroup? = groups.singleOrNull()?.takeIf { it.isClearAll }
 
     private fun readIcons(groups: List<ClearGroup>) {
-        groups.filterNot { it.uuid in icons.value }.forEach { group ->
+        groups.filterNot { it.uuid in icons.value || it.uuid in iconsReading }.forEach { group ->
+            iconsReading += group.uuid
             viewModelScope.launch {
                 client.clearGroupIcon(group.uuid).onSuccess { icon -> icons.update { it + (group.uuid to icon) } }
+                iconsReading -= group.uuid
             }
         }
     }

@@ -21,6 +21,7 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.map
+import com.greenfodor.ppremotece.core.domain.result.onSuccess
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.timeout
@@ -33,14 +34,18 @@ import io.ktor.http.contentType
 import io.ktor.http.encodeURLPathPart
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readAvailable
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * [ProPresenterClient] for the ProPresenter HTTP API at [baseUrl], plus the `status/updates`
- * stream. Sends only GET reads (including clear-group icons, read as PNG, JPEG or SVG), the item-cue,
- * item, next and previous triggers, the layer and clear-group clears, and the stream POST.
+ * stream. Sends only GET reads (including clear-group icons, read once per uuid as PNG, JPEG or SVG
+ * of at most 256 KB), the item-cue, item, next and previous triggers, the layer and clear-group
+ * clears, and the stream POST.
  */
 @Suppress("TooManyFunctions")
 class KtorProPresenterClient(
@@ -48,6 +53,7 @@ class KtorProPresenterClient(
     baseUrl: String
 ) : ProPresenterClient {
     private val baseUrl = baseUrl.trimEnd('/')
+    private val icons = ConcurrentHashMap<String, ClearGroupIcon>()
 
     override suspend fun version(): Result<ProPresenterVersion, DataError.Network> =
         safeCall<VersionDto> { httpClient.get("$baseUrl/version") }.map { it.toDomain() }
@@ -87,14 +93,19 @@ class KtorProPresenterClient(
         safeEmptyCall { httpClient.get("$baseUrl/v1/clear/group/${uuid.encodeURLPathPart()}/trigger") }
 
     override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> =
+        icons[uuid]?.let { Result.Success(it) } ?: readClearGroupIcon(uuid).onSuccess { icons[uuid] = it }
+
+    private suspend fun readClearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> =
         when (
             val read = safeCall<ByteArray> {
                 httpClient.get("$baseUrl/v1/clear/group/${uuid.encodeURLPathPart()}/icon")
             }
         ) {
             is Result.Failure -> Result.Failure(read.error)
-            is Result.Success -> iconOf(read.data)?.let { Result.Success(it) }
-                ?: Result.Failure(DataError.Network.SERIALIZATION)
+            is Result.Success ->
+                withContext(Dispatchers.Default) { read.data.takeIf { it.size <= MAX_ICON_BYTES }?.let(::iconOf) }
+                    ?.let { Result.Success(it) }
+                    ?: Result.Failure(DataError.Network.SERIALIZATION)
         }
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> =
@@ -138,6 +149,7 @@ class KtorProPresenterClient(
 
     private companion object {
         const val READ_BUFFER_SIZE = 8 * 1024
+        const val MAX_ICON_BYTES = 256 * 1024
         val IMAGE_SIGNATURES = listOf(
             listOf(0x89, 0x50, 0x4E, 0x47).map { it.toByte() },
             listOf(0xFF, 0xD8, 0xFF).map { it.toByte() }

@@ -61,7 +61,6 @@ import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val ListPaneWidth = 360.dp
 private val clearFab: @Composable (SnackbarHostState) -> Unit = { ClearFab(snackbarHostState = it) }
-private val noFab: @Composable (SnackbarHostState) -> Unit = {}
 
 private enum class ShellDestination(
     val tab: ShellTab,
@@ -150,7 +149,7 @@ fun AppShell(
                                 )
                             },
                             onDisconnected = onDisconnected,
-                            floatingActionButton = if (openGrid == null) clearFab else noFab
+                            floatingActionButton = clearFab.takeIf { openGrid == null }
                         )
                     }
                     entry<SlideGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
