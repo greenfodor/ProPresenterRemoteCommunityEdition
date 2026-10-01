@@ -8,13 +8,15 @@ import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
-import com.greenfodor.ppremotece.core.domain.result.onSuccess
+import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import com.greenfodor.ppremotece.core.domain.status.StatusFrameParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,12 +41,13 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * Keeps one `status/updates` stream open while [liveState] has subscribers and starts from
  * [LiveState.Initial] each time it is subscribed again. Within each chunk, `playlist/active` sets
  * the live item first; then, if the chunk held a `status/slide` frame or changed the item, or an
- * earlier read failed, `slide_index` is read once. Any chunk resets the watchdog. When no chunk
- * arrives for [watchdogTimeout], or the stream ends or fails, the stream is closed and reopened
- * after [reconnectDelay] with the same subscriptions, and the slide index is read again.
- * [onReconnected] is called when the first chunk of a reopened stream arrives. Each `status/slide`
- * frame sets the slide text; each slide read of the live item's presentation, or of a presentation
- * live without a playlist item, sets [lastLive], which outlives clears, reconnects and resubscriptions.
+ * earlier read failed, `slide_index` and `playlist/active` are read once, in parallel, and that
+ * pair, when both reads succeed, sets the live slide and item. Any chunk resets the watchdog. When no chunk arrives for
+ * [watchdogTimeout], or the stream ends or fails, the stream is closed and reopened after
+ * [reconnectDelay] with the same subscriptions, and the pair is read again. [onReconnected] is
+ * called when the first chunk of a reopened stream arrives. Each `status/slide` frame sets the
+ * slide text; each pair read naming a slide of the live item's presentation, or a slide live
+ * without a playlist item, sets [lastLive], which outlives clears, reconnects and resubscriptions.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
@@ -89,10 +92,16 @@ class StreamingLiveStateRepository(
                             }
                         }
                         if (slideReadNeeded) {
-                            client.slideIndex().onSuccess { slide ->
-                                next = next.copy(slide = slide)
+                            val (slideRead, activeRead) = coroutineScope {
+                                val slide = async { client.slideIndex() }
+                                val active = async { client.activePlaylistItem() }
+                                slide.await() to active.await()
+                            }
+                            if (slideRead is Result.Success && activeRead is Result.Success) {
+                                next = next.copy(item = activeRead.data.item, slide = slideRead.data)
+                                itemPresentation = activeRead.data.presentationUuid
                                 slideReadNeeded = false
-                                remember(next.item, itemPresentation, slide)
+                                remember(next.item, itemPresentation, slideRead.data)
                             }
                         }
                         state = next

@@ -5,10 +5,14 @@ import java.text.Normalizer
 import java.util.Locale
 
 private val CombiningMarks = Regex("\\p{Mn}+")
+private val BaseLetters = mapOf('ł' to "l", 'ø' to "o", 'đ' to "d", 'ß' to "ss")
 
-/** [text] lower-cased with its diacritics removed, for matching search queries. */
+/** [text] lower-cased with its diacritics removed and ł, ø, đ, ß spelled l, o, d, ss, for matching search queries. */
 fun foldForSearch(text: String): String =
-    Normalizer.normalize(text, Normalizer.Form.NFD).replace(CombiningMarks, "").lowercase(Locale.ROOT)
+    Normalizer.normalize(text, Normalizer.Form.NFD)
+        .replace(CombiningMarks, "")
+        .lowercase(Locale.ROOT)
+        .let { folded -> buildString(folded.length) { folded.forEach { append(BaseLetters[it] ?: it) } } }
 
 /**
  * The presentations of [libraries] whose names contain [query], compared with [foldForSearch];

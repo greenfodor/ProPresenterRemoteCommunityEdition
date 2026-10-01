@@ -15,12 +15,13 @@ import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
+import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 
 /** Records triggers; reads are not served. */
 class FakeProPresenterClient : ProPresenterClient {
     val triggeredCues = mutableListOf<Pair<PlaylistItemKey, Int>>()
     val triggeredPresentationCues = mutableListOf<Pair<String, Int>>()
-    var steps = 0
+    val steps = mutableListOf<String>()
 
     override suspend fun version(): Result<ProPresenterVersion, DataError.Network> = notServed()
 
@@ -31,6 +32,8 @@ class FakeProPresenterClient : ProPresenterClient {
     override suspend fun presentation(uuid: String): Result<Presentation, DataError.Network> = notServed()
 
     override suspend fun slideIndex(): Result<LiveSlide?, DataError.Network> = notServed()
+
+    override suspend fun activePlaylistItem(): Result<StatusEvent.PlaylistActive, DataError.Network> = notServed()
 
     override suspend fun triggerCue(item: PlaylistItemKey, cueIndex: Int): EmptyResult<DataError.Network> {
         triggeredCues += item to cueIndex
@@ -60,12 +63,12 @@ class FakeProPresenterClient : ProPresenterClient {
     override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> = notServed()
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> {
-        steps++
+        steps += "next"
         return Result.Success(Unit)
     }
 
     override suspend fun triggerPrevious(): EmptyResult<DataError.Network> {
-        steps++
+        steps += "previous"
         return Result.Success(Unit)
     }
 

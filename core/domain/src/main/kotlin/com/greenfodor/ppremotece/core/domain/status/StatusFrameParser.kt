@@ -51,13 +51,7 @@ class StatusFrameParser {
             "presentation/slide_index" -> StatusEvent.SlideIndex(data.child("presentation_index").toLiveSlide())
             "presentation/active" ->
                 StatusEvent.PresentationActive(data.child("presentation").child("id").child("uuid").stringOrNull())
-            "playlist/active" -> data.child("presentation").let { live ->
-                StatusEvent.PlaylistActive(
-                    item = live.toPlaylistItemKey(),
-                    presentationUuid = live.child("playlist_item").child("presentation_info")
-                        .child("presentation_uuid").stringOrNull()
-                )
-            }
+            "playlist/active" -> playlistActiveOf(data)
             "status/layers" -> (data as? JsonObject)?.let { layers ->
                 StatusEvent.Layers(
                     layers
@@ -82,12 +76,6 @@ class StatusFrameParser {
             null
         }
 
-    private fun JsonElement?.child(key: String): JsonElement? = (this as? JsonObject)?.get(key)
-
-    private fun JsonElement?.stringOrNull(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.content
-
-    private fun JsonElement?.intOrNull(): Int? = (this as? JsonPrimitive)?.intOrNull
-
     private fun JsonElement?.toLiveSlide(): LiveSlide? {
         val uuid = child("presentation_id").child("uuid").stringOrNull()
         val index = child("index").intOrNull()
@@ -106,12 +94,6 @@ class StatusFrameParser {
             )
         }
 
-    private fun JsonElement?.toPlaylistItemKey(): PlaylistItemKey? {
-        val playlistUuid = child("playlist").child("uuid").stringOrNull()
-        val itemIndex = child("item").child("index").intOrNull()
-        return if (playlistUuid != null && itemIndex != null) PlaylistItemKey(playlistUuid, itemIndex) else null
-    }
-
     private fun indexOfSeparator(bytes: ByteArray, from: Int): Int {
         for (i in from..bytes.size - SEPARATOR.size) {
             if (SEPARATOR.indices.all { bytes[i + it] == SEPARATOR[it] }) return i
@@ -123,4 +105,26 @@ class StatusFrameParser {
         const val MAX_PENDING_BYTES = 1 shl 20
         private val SEPARATOR = "\r\n\r\n".encodeToByteArray()
     }
+}
+
+/** The live playlist item named by a `playlist/active` frame's `data`, or by a `GET /v1/playlist/active` body. */
+fun playlistActiveOf(data: JsonElement?): StatusEvent.PlaylistActive =
+    data.child("presentation").let { live ->
+        StatusEvent.PlaylistActive(
+            item = live.toPlaylistItemKey(),
+            presentationUuid = live.child("playlist_item").child("presentation_info")
+                .child("presentation_uuid").stringOrNull()
+        )
+    }
+
+private fun JsonElement?.child(key: String): JsonElement? = (this as? JsonObject)?.get(key)
+
+private fun JsonElement?.stringOrNull(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+private fun JsonElement?.intOrNull(): Int? = (this as? JsonPrimitive)?.intOrNull
+
+private fun JsonElement?.toPlaylistItemKey(): PlaylistItemKey? {
+    val playlistUuid = child("playlist").child("uuid").stringOrNull()
+    val itemIndex = child("item").child("index").intOrNull()
+    return if (playlistUuid != null && itemIndex != null) PlaylistItemKey(playlistUuid, itemIndex) else null
 }

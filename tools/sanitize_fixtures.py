@@ -45,6 +45,7 @@ STREAMS = [
     "streams/session2-status-updates",
     "../stage5-device/streams/stage5-status-updates",
     "../stage6/streams/stage6-probe",
+    "../stage7/streams/stage7-probe",
 ]
 
 FRAME_SEPARATOR = b"\r\n\r\n"
@@ -71,6 +72,7 @@ TEST_RESOURCES = Path(__file__).resolve().parent.parent / "core" / "data" / "src
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bin"}
 MIN_NAME_SUBSTRING = 4
 MIN_LYRIC_LINE = 5
+PRESENTATION_NUMBER_WIDTH = 3
 
 
 class Sanitizer:
@@ -101,7 +103,8 @@ class Sanitizer:
     def generate(self, kind, key):
         if (kind, key) not in self.generated_names:
             self.counters[kind] = self.counters.get(kind, 0) + 1
-            self.generated_names[(kind, key)] = f"{kind} {self.counters[kind]:02d}"
+            width = PRESENTATION_NUMBER_WIDTH if kind == "Presentation" else 2
+            self.generated_names[(kind, key)] = f"{kind} {self.counters[kind]:0{width}d}"
         return self.generated_names[(kind, key)]
 
     def replaced(self, original, replacement):
@@ -204,6 +207,12 @@ class Sanitizer:
             arrangement["id"]["name"] = self.arrangement_name(uuid, arrangement["id"]["name"])
         if presentation.get("presentation_path"):
             presentation["presentation_path"] = self.replaced(presentation["presentation_path"], f"C:\\PP\\{name}.pro")
+
+    def number_library_entries(self, entries):
+        for position, entry in enumerate(entries, start=1):
+            if entry["uuid"] not in self.curated_presentations:
+                self.presentation_names[entry["uuid"]] = f"Presentation {position:0{PRESENTATION_NUMBER_WIDTH}d}"
+        self.counters["Presentation"] = len(entries)
 
     def library(self, library):
         library["name"] = self.replaced(library["name"], self.generate("Library", library["uuid"]))
@@ -420,6 +429,9 @@ def main():
     def load(relative):
         return sanitizer.remember(json.loads((source_dir / relative).read_text(encoding="utf-8")))
 
+    library_listing = load(LIBRARY)
+    sanitizer.number_library_entries(library_listing["items"])
+
     tree = load(PLAYLIST_TREE)
     for node in tree:
         sanitizer.folder_or_playlist(node)
@@ -450,10 +462,9 @@ def main():
         sanitizer.library(library)
     write_json(out_dir / "libraries.json", libraries)
 
-    library = load(LIBRARY)
-    for entry in library["items"]:
+    for entry in library_listing["items"]:
         sanitizer.library_entry(entry)
-    write_json(out_dir / f"library-{library_uuid[:8]}.json", library)
+    write_json(out_dir / f"library-{library_uuid[:8]}.json", library_listing)
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)

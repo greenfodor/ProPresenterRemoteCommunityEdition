@@ -1,0 +1,94 @@
+# HTTP/1.1 200 OK  ttfb=331ms  transfer-encoding: chunked; connection: close; content-type: application/octet-stream; vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers; date: Thu, 01 Oct 2026 18:51:06 GMT
+# +0.335s chunk 1 (697 B) tail=b'}}\r\n\r\n'
+
+# +0.335s chunk 2 (149 B) tail=b'}}\r\n\r\n'
+
+# +0.335s chunk 3 (5190 B) tail=b'}}\r\n\r\n'
+
+# +0.335s chunk 4 (208 B) tail=b'}}\r\n\r\n'
+
+# +0.335s chunk 5 (49 B) tail=b'7}\r\n\r\n'
+
+# +0.335s chunk 6 (215 B) tail=b'}}\r\n\r\n'
+
+# +0.693s chunk 7 (49 B) tail=b'7}\r\n\r\n'
+
+# +1.694s chunk 8 (49 B) tail=b'8}\r\n\r\n'
+
+# +2.090s chunk 9 (254 B) tail=b'}}\r\n\r\n'
+
+# +2.138s chunk 10 (206 B) tail=b'}}\r\n\r\n'
+
+# +2.185s chunk 11 (704 B) tail=b'}}\r\n\r\n'
+
+# +2.693s chunk 12 (49 B) tail=b'9}\r\n\r\n'
+
+# +3.694s chunk 13 (49 B) tail=b'0}\r\n\r\n'
+
+# +4.693s chunk 14 (49 B) tail=b'1}\r\n\r\n'
+
+# +5.028s chunk 15 (248 B) tail=b'}}\r\n\r\n'
+
+# +5.075s chunk 16 (208 B) tail=b'}}\r\n\r\n'
+
+# +5.120s chunk 17 (171 B) tail=b'}}\r\n\r\n'
+
+# +5.692s chunk 18 (49 B) tail=b'2}\r\n\r\n'
+
+# +6.694s chunk 19 (49 B) tail=b'3}\r\n\r\n'
+
+# +7.693s chunk 20 (49 B) tail=b'4}\r\n\r\n'
+
+# +8.010s chunk 21 (250 B) tail=b'}}\r\n\r\n'
+
+# +8.056s chunk 22 (208 B) tail=b'}}\r\n\r\n'
+
+# +8.088s chunk 23 (697 B) tail=b'}}\r\n\r\n'
+
+# +8.694s chunk 24 (49 B) tail=b'5}\r\n\r\n'
+
+# +9.693s chunk 25 (49 B) tail=b'6}\r\n\r\n'
+
+# +10.693s chunk 26 (49 B) tail=b'7}\r\n\r\n'
+
+# +10.946s chunk 27 (240 B) tail=b'}}\r\n\r\n'
+
+# +10.992s chunk 28 (208 B) tail=b'}}\r\n\r\n'
+
+# +11.694s chunk 29 (49 B) tail=b'8}\r\n\r\n'
+
+# +12.693s chunk 30 (49 B) tail=b'9}\r\n\r\n'
+
+# +13.694s chunk 31 (49 B) tail=b'0}\r\n\r\n'
+
+# +13.862s chunk 32 (244 B) tail=b'}}\r\n\r\n'
+
+# +13.911s chunk 33 (208 B) tail=b'}}\r\n\r\n'
+
+# +14.692s chunk 34 (49 B) tail=b'1}\r\n\r\n'
+
+# +15.694s chunk 35 (49 B) tail=b'2}\r\n\r\n'
+
+# +16.695s chunk 36 (49 B) tail=b'3}\r\n\r\n'
+
+# +16.877s chunk 37 (215 B) tail=b'}}\r\n\r\n'
+
+# +16.932s chunk 38 (208 B) tail=b'}}\r\n\r\n'
+
+# +16.946s chunk 39 (697 B) tail=b'}}\r\n\r\n'
+
+# +17.693s chunk 40 (49 B) tail=b'4}\r\n\r\n'
+
+# +18.695s chunk 41 (49 B) tail=b'5}\r\n\r\n'
+
+# +19.694s chunk 42 (49 B) tail=b'6}\r\n\r\n'
+
+# +20.693s chunk 43 (49 B) tail=b'7}\r\n\r\n'
+
+# +21.694s chunk 44 (49 B) tail=b'8}\r\n\r\n'
+
+# +22.693s chunk 45 (49 B) tail=b'9}\r\n\r\n'
+
+# +23.693s chunk 46 (49 B) tail=b'0}\r\n\r\n'
+
+# total=12650 B in 24004 ms chunks=46

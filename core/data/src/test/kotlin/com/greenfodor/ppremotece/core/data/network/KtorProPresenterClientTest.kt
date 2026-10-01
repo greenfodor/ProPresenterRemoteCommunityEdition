@@ -15,6 +15,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
+import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -94,6 +95,21 @@ class KtorProPresenterClientTest {
             .isEqualTo(
                 Result.Success(LiveSlide(presentationUuid = FakeProPresenter.SONG_A_UUID, index = 3, totalCues = 7))
             )
+    }
+
+    @Test
+    fun `the active playlist item is mapped like the playlist active frame`() = runBlocking {
+        val item = PlaylistItemKey(playlistUuid = FakeProPresenter.SERVICE_PLAYLIST_UUID, index = 4)
+        val body = requireNotNull(playlistActiveData(FakeProPresenter.playlistActiveFrame(item)))
+        fake.liveBodies = { LiveBodies(FakeProPresenter.SLIDE_INDEX, body) }
+
+        assertThat(client.activePlaylistItem())
+            .isEqualTo(Result.Success(StatusEvent.PlaylistActive(item, FakeProPresenter.SONG_A_UUID)))
+    }
+
+    @Test
+    fun `no active playlist item is mapped to no item`() = runBlocking {
+        assertThat(client.activePlaylistItem()).isEqualTo(Result.Success(StatusEvent.PlaylistActive(null, null)))
     }
 
     @Test
@@ -208,6 +224,7 @@ class KtorProPresenterClientTest {
         client.playlist(FakeProPresenter.SERVICE_PLAYLIST_UUID)
         client.presentation(FakeProPresenter.SONG_A_UUID)
         client.slideIndex()
+        client.activePlaylistItem()
         client.triggerCue(item, cueIndex = 2)
         client.triggerItem(item)
         client.clearLayer(OutputLayer.SLIDE)
@@ -218,7 +235,7 @@ class KtorProPresenterClientTest {
         client.triggerPrevious()
         client.statusUpdates(listOf("status/slide")).first()
 
-        assertThat(fake.requests.size).isEqualTo(17)
+        assertThat(fake.requests.size).isEqualTo(18)
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
     }
 

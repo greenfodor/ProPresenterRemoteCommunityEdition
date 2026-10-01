@@ -59,12 +59,14 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * Slide grid for one [source]: a playlist item's cues in the item's arrangement, or a library
  * presentation's cues in its current arrangement, read through the [ContentRepository], with the
  * live and next cues while ProPresenter shows that source. A playlist item triggers by item and
- * cue index plus next and previous; a presentation triggers by presentation and cue index and has
- * no next and previous buttons. Disabled cues are not triggered. Each cue carries its thumbnail
- * request, except when the arrangement did not fully resolve; a successful "Reload slides" also
- * evicts the thumbnails and loads them again, as does each new host connection. The slide size
- * step and the view mode are read for the window's width class; a step being dragged is shown at
- * once and saved when the drag ends, and a chosen view mode is saved for the width class.
+ * cue index; a presentation triggers by presentation and cue index. Next and previous send
+ * `trigger/next|previous`, always for a playlist item and for a presentation only while it is live
+ * outside a playlist. Disabled cues are not triggered. Each cue carries its thumbnail request,
+ * except in List mode or when the arrangement did not fully resolve; a successful "Reload slides"
+ * also evicts the thumbnails and loads them again, as does each new host connection. The slide
+ * size step and the view mode are read for the window's width class; a step being dragged is shown
+ * at once and saved when the drag ends, and a chosen view mode is saved for the width class.
+ * [firstVisibleCue] keeps the first cue shown across view mode switches.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SlideGridViewModel(
@@ -90,7 +92,7 @@ class SlideGridViewModel(
         ) : Content
     }
 
-    private val stepButtons = source is CueSource.PlaylistItem
+    private val alwaysSteps = source is CueSource.PlaylistItem
     private val retries = MutableStateFlow(0)
     private val thumbnailGeneration = MutableStateFlow(0)
     private val widthClass = MutableStateFlow<WidthClass?>(null)
@@ -122,37 +124,47 @@ class SlideGridViewModel(
         }.onEach { loaded = it as? Content.Loaded }
 
     private val grid: Flow<Pair<SlideGridState, Content.Loaded?>> =
-        combine(content, thumbnailSource.thumbnailRequests.withIndex(), thumbnailGeneration) {
+        combine(content, thumbnailSource.thumbnailRequests.withIndex(), thumbnailGeneration, viewMode) {
             content,
             requests,
-            reloads
+            reloads,
+            mode
             ->
             when (content) {
-                Content.Loading -> SlideGridState(stepButtons = stepButtons, isLoading = true) to null
+                Content.Loading -> SlideGridState(stepsEnabled = alwaysSteps, isLoading = true) to null
                 is Content.Failed ->
-                    SlideGridState(stepButtons = stepButtons, isLoading = false, error = content.error) to null
-                is Content.Loaded -> gridState(content, requests.value, reloads + requests.index) to content
-            }
+                    SlideGridState(stepsEnabled = alwaysSteps, isLoading = false, error = content.error) to null
+                is Content.Loaded -> gridState(
+                    content,
+                    requests.value.takeIf { mode != ViewMode.LIST },
+                    reloads + requests.index
+                ) to content
+            }.let { (state, loaded) -> state.copy(viewMode = mode) to loaded }
         }
 
     val state: StateFlow<SlideGridState> =
-        combine(grid, liveStateRepository.liveState, gridStep, viewMode) { (state, loaded), live, step, mode ->
+        combine(grid, liveStateRepository.liveState, gridStep) { (state, loaded), live, step ->
             if (loaded == null) {
-                state.copy(gridStep = step, viewMode = mode)
+                state.copy(gridStep = step)
             } else {
                 val presentationUuid = loaded.presentation.uuid
+                val liveIndex = liveCueIndex(live, source, presentationUuid, loaded.cueList.cues)
                 state.copy(
-                    liveCueIndex = liveCueIndex(live, source, presentationUuid, loaded.cueList.cues),
+                    liveCueIndex = liveIndex,
                     nextCueIndex = nextCueIndex(live, source, presentationUuid, loaded.cueList.cues),
-                    gridStep = step,
-                    viewMode = mode
+                    stepsEnabled = alwaysSteps || liveIndex != null,
+                    gridStep = step
                 )
             }
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            SlideGridState(stepButtons = stepButtons)
+            SlideGridState(stepsEnabled = alwaysSteps)
         )
+
+    /** The index of the first cue shown, as last reported by [SlideGridAction.OnFirstVisibleCueChange]. */
+    var firstVisibleCue: Int = 0
+        private set
 
     private val _events = Channel<SlideGridEvent>()
     val events = _events.receiveAsFlow()
@@ -160,8 +172,9 @@ class SlideGridViewModel(
     fun onAction(action: SlideGridAction) {
         when (action) {
             is SlideGridAction.OnCueClick -> if (isEnabled(action.index)) send { trigger(action.index) }
-            SlideGridAction.OnNextClick -> if (source is CueSource.PlaylistItem) send { client.triggerNext() }
-            SlideGridAction.OnPreviousClick -> if (source is CueSource.PlaylistItem) send { client.triggerPrevious() }
+            SlideGridAction.OnNextClick -> step { client.triggerNext() }
+            SlideGridAction.OnPreviousClick -> step { client.triggerPrevious() }
+            is SlideGridAction.OnFirstVisibleCueChange -> firstVisibleCue = action.cueIndex
             SlideGridAction.OnRetryClick -> retries.value++
             SlideGridAction.OnReloadClick -> reload()
             is SlideGridAction.OnWidthClassChange -> {
@@ -200,7 +213,6 @@ class SlideGridViewModel(
             aspect = slideAspect(content.presentation),
             countMismatch = content.cueList.countMismatch,
             thumbnailGeneration = thumbnailGeneration,
-            stepButtons = stepButtons,
             isLoading = false
         )
     }
@@ -278,6 +290,10 @@ class SlideGridViewModel(
             is Result.Failure -> Content.Failed(result.error.toUiText())
             is Result.Success -> Content.Loaded(result.data.name, result.data, currentCueList(result.data))
         }
+
+    private fun step(trigger: suspend () -> EmptyResult<DataError.Network>) {
+        if (state.value.stepsEnabled) send(trigger)
+    }
 
     private fun send(trigger: suspend () -> EmptyResult<DataError.Network>) {
         viewModelScope.launch {

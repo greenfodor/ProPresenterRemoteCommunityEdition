@@ -1,0 +1,92 @@
+{"url":"playlist/active","data":{"presentation":{"playlist":{"uuid":"6f760dbf-04b9-46f2-9bb3-33eeea6a6d90","name":"Arrangement Test","index":7},"item":{"uuid":"68ab1ee1-427f-4bb2-b9b8-2f77451011a4","name":"Song A","index":0},"playlist_item":{"id":{"uuid":"68ab1ee1-427f-4bb2-b9b8-2f77451011a4","name":"Song A","index":0},"type":"presentation","is_hidden":false,"is_pco":false,"presentation_info":{"presentation_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","arrangement_name":"Full","arrangement_uuid":"4adc3b58-27f1-42a5-8ff0-80dfd1afa8a5"},"target_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","destination":"presentation"}},"announcements":{"playlist":null,"item":null,"playlist_item":null}}}
+
+{"url":"status/layers","data":{"video_input":false,"media":true,"slide":true,"announcements":false,"props":false,"messages":false,"audio":false}}
+
+{"url":"presentation/active","data":{"presentation":{"id":{"uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","name":"Song A","index":0},"groups":[{"name":"Loop","color":{"red":0.4117647111415863,"green":0.4117647111415863,"blue":0.4117647111415863,"alpha":1.0},"slides":[{"enabled":true,"notes":"","text":"","label":"Label 01","size":{"width":1920,"height":858}}],"uuid":"fbc30c52-fc7b-49c4-be14-f485749a4fa3"},{"name":"Verse 1","color":{"red":0.0,"green":0.46666666865348816,"blue":0.800000011920929,"alpha":1.0},"slides":[{"enabled":true,"notes":"Verse 1 · 1 notes","text":"Text 05","label":"","size":{"width":1920,"height":858}},{"enabled":true,"notes":"Verse 1 · 2 notes","text":"Text 03","label":"","size":{"width":1920,"height":858}}],"uuid":"b5f887d2-bce4-468e-930f-3a2047a206ff"},{"name":"Pre-Chorus1","color":{"red":0.9843137264251709,"green":0.007843137718737125,"blue":1.0,"alpha":1.0},"slides":[{"enabled":true,"notes":"Pre-Chorus1 · 1 notes","text":"Text 04","label":"","size":{"width":1920,"height":858}},{"enabled":true,"notes":"Pre-Chorus1 · 2 notes","text":"Text 06","label":"","size":{"width":1920,"height":858}}],"uuid":"54ccac8c-1487-47c5-a624-5180c4058c63"},{"name":"Verse 2","color":{"red":0.0,"green":0.3490196168422699,"blue":0.6000000238418579,"alpha":1.0},"slides":[{"enabled":true,"notes":"Verse 2 · 1 notes","text":"Verse 2 · 1","label":"","size":{"width":1920,"height":858}},{"enabled":true,"notes":"Verse 2 · 2 notes","text":"Verse 2 · 2","label":"","size":{"width":1920,"height":858}}],"uuid":"e62bb489-86ad-4d77-a469-95f7b13c7e2b"},{"name":"Pre-Chorus2","color":{"red":0.7529411911964417,"green":0.0,"blue":0.7215686440467834,"alpha":1.0},"slides":[{"enabled":true,"notes":"Pre-Chorus2 · 1 notes","text":"Pre-Chorus2 · 1","label":"","size":{"width":1920,"height":858}},{"enabled":true,"notes":"Pre-Chorus2 · 2 notes","text":"Pre-Chorus2 · 2","label":"","size":{"width":1920,"height":858}}],"uuid":"3939835b-d1cb-49b6-94bd-1695443cc8cd"},{"name":"Chorus 1","color":{"red":0.800000011920929,"green":0.0,"blue":0.30588236451148987,"alpha":1.0},"slides":[{"enabled":true,"notes":"Chorus 1 · 1 notes","text":"Chorus 1 · 1","label":"","size":{"width":1920,"height":858}},{"enabled":true,"notes":"Chorus 1 · 2 notes","text":"Chorus 1 · 2","label":"","size":{"width":1920,"height":858}}],"uuid":"8de227b5-1f42-4f60-bb27-1a4c19974a83"},{"name":"Chorus 2","color":{"red":0.6000000238418579,"green":0.0,"blue":0.23137255012989044,"alpha":1.0},"slides":[{"enabled":true,"notes":"Chorus 2 · 1 notes","text":"Chorus 2 · 1","label":"","size":{"width":1920,"height":858}}],"uuid":"fbb7ca5f-7213-4625-8db2-34274708d38f"},{"name":"Verse 4","color":{"red":0.0,"green":0.0,"blue":0.545098066329956,"alpha":1.0},"slides":[{"enabled":true,"notes":"Verse 4 · 1 notes","text":"Verse 4 · 1","label":"","size":{"width":1920,"height":858}},{"enabled":true,"notes":"Verse 4 · 2 notes","text":"Verse 4 · 2","label":"","size":{"width":1920,"height":858}}],"uuid":"d9f224da-512b-4b1c-8674-c95c5244b578"},{"name":"Tag","color":{"red":0.0,"green":0.545098066329956,"blue":0.545098066329956,"alpha":1.0},"slides":[{"enabled":true,"notes":"Tag · 1 notes","text":"Tag · 1","label":"","size":{"width":1920,"height":858}}],"uuid":"48ee985e-8862-433d-ae9c-9ea7c30239ec"}],"has_timeline":false,"presentation_path":"C:\\PP\\Song A.pro","destination":"presentation","arrangements":[{"id":{"uuid":"4adc3b58-27f1-42a5-8ff0-80dfd1afa8a5","name":"Full","index":0},"groups":["fbc30c52-fc7b-49c4-be14-f485749a4fa3","b5f887d2-bce4-468e-930f-3a2047a206ff","54ccac8c-1487-47c5-a624-5180c4058c63","e62bb489-86ad-4d77-a469-95f7b13c7e2b","3939835b-d1cb-49b6-94bd-1695443cc8cd","8de227b5-1f42-4f60-bb27-1a4c19974a83","fbb7ca5f-7213-4625-8db2-34274708d38f","8de227b5-1f42-4f60-bb27-1a4c19974a83","fbb7ca5f-7213-4625-8db2-34274708d38f","d9f224da-512b-4b1c-8674-c95c5244b578","d9f224da-512b-4b1c-8674-c95c5244b578","48ee985e-8862-433d-ae9c-9ea7c30239ec","8de227b5-1f42-4f60-bb27-1a4c19974a83","fbb7ca5f-7213-4625-8db2-34274708d38f","8de227b5-1f42-4f60-bb27-1a4c19974a83","fbb7ca5f-7213-4625-8db2-34274708d38f"],"total_cues":26},{"id":{"uuid":"90da45ff-1c54-4bd0-89e2-aae33ca23ebb","name":"Chorus Only","index":1},"groups":["fbc30c52-fc7b-49c4-be14-f485749a4fa3","8de227b5-1f42-4f60-bb27-1a4c19974a83","fbb7ca5f-7213-4625-8db2-34274708d38f","8de227b5-1f42-4f60-bb27-1a4c19974a83","fbb7ca5f-7213-4625-8db2-34274708d38f"],"total_cues":7},{"id":{"uuid":"e5c2816e-644a-4359-bb92-b77e48c12ffb","name":"Short","index":2},"groups":["fbc30c52-fc7b-49c4-be14-f485749a4fa3","48ee985e-8862-433d-ae9c-9ea7c30239ec","b5f887d2-bce4-468e-930f-3a2047a206ff","54ccac8c-1487-47c5-a624-5180c4058c63","e62bb489-86ad-4d77-a469-95f7b13c7e2b","3939835b-d1cb-49b6-94bd-1695443cc8cd","8de227b5-1f42-4f60-bb27-1a4c19974a83","fbb7ca5f-7213-4625-8db2-34274708d38f","d9f224da-512b-4b1c-8674-c95c5244b578","8de227b5-1f42-4f60-bb27-1a4c19974a83","fbb7ca5f-7213-4625-8db2-34274708d38f"],"total_cues":18},{"id":{"uuid":"e215b702-1c7c-4442-bb5f-029d84d15320","name":"","index":3},"groups":[],"total_cues":0}],"current_arrangement":"e215b702-1c7c-4442-bb5f-029d84d15320","type":"standard","is_authorized":true,"total_cues":15}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":0,"presentation_id":{"uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","name":"Song A","index":0},"total_cues":26,"remaining_cues":25}}}
+
+{"url":"timer/system_time","data":1790880667}
+
+{"url":"status/slide","data":{"current":{"text":"","notes":"","uuid":"e2503372-dcaa-4a9b-8c04-e187e997a17c"},"next":{"text":"Text 05","notes":"Verse 1 · 1 notes","uuid":"138e93bb-cf7a-4f10-85ae-9bcd581d573b"}}}
+
+{"url":"timer/system_time","data":1790880667}
+
+{"url":"timer/system_time","data":1790880668}
+
+{"url":"status/slide","data":{"current":{"text":"Chorus 1 · 2","notes":"Chorus 1 · 2 notes","uuid":"44004aa8-2169-417f-b519-470b01026794"},"next":{"text":"Chorus 2 · 1","notes":"Chorus 2 · 1 notes","uuid":"1867a8a1-0f35-449c-afc4-4e9ed4c09e28"}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":2,"presentation_id":{"uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","name":"Song A","index":0},"total_cues":7,"remaining_cues":4}}}
+
+{"url":"playlist/active","data":{"presentation":{"playlist":{"uuid":"6f760dbf-04b9-46f2-9bb3-33eeea6a6d90","name":"Arrangement Test","index":7},"item":{"uuid":"924ad3fe-35c3-4065-91ee-844ba92d5d36","name":"Song A","index":1},"playlist_item":{"id":{"uuid":"924ad3fe-35c3-4065-91ee-844ba92d5d36","name":"Song A","index":1},"type":"presentation","is_hidden":false,"is_pco":false,"presentation_info":{"presentation_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","arrangement_name":"Chorus Only","arrangement_uuid":"90da45ff-1c54-4bd0-89e2-aae33ca23ebb"},"target_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","destination":"presentation"}},"announcements":{"playlist":null,"item":null,"playlist_item":null}}}
+
+{"url":"timer/system_time","data":1790880669}
+
+{"url":"timer/system_time","data":1790880670}
+
+{"url":"timer/system_time","data":1790880671}
+
+{"url":"status/slide","data":{"current":{"text":"Text 04","notes":"Pre-Chorus1 · 1 notes","uuid":"7655d261-adb7-428d-bed8-0ab459108637"},"next":{"text":"Text 06","notes":"Pre-Chorus1 · 2 notes","uuid":"9d2877f1-60ac-4d93-822b-3290836aa732"}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":3,"presentation_id":{"uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","name":"Song A","index":0},"total_cues":15,"remaining_cues":11}}}
+
+{"url":"playlist/active","data":{"presentation":{"playlist":null,"item":null,"playlist_item":null},"announcements":{"playlist":null,"item":null,"playlist_item":null}}}
+
+{"url":"timer/system_time","data":1790880672}
+
+{"url":"timer/system_time","data":1790880673}
+
+{"url":"timer/system_time","data":1790880674}
+
+{"url":"status/slide","data":{"current":{"text":"Verse 2 · 1","notes":"Verse 2 · 1 notes","uuid":"97b1c3f2-499f-48f3-89d3-8d2a375ad93c"},"next":{"text":"Verse 2 · 2","notes":"Verse 2 · 2 notes","uuid":"d21dad24-592b-4d0f-921e-9a6720ae4a48"}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":5,"presentation_id":{"uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","name":"Song A","index":0},"total_cues":26,"remaining_cues":20}}}
+
+{"url":"playlist/active","data":{"presentation":{"playlist":{"uuid":"6f760dbf-04b9-46f2-9bb3-33eeea6a6d90","name":"Arrangement Test","index":7},"item":{"uuid":"68ab1ee1-427f-4bb2-b9b8-2f77451011a4","name":"Song A","index":0},"playlist_item":{"id":{"uuid":"68ab1ee1-427f-4bb2-b9b8-2f77451011a4","name":"Song A","index":0},"type":"presentation","is_hidden":false,"is_pco":false,"presentation_info":{"presentation_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","arrangement_name":"Full","arrangement_uuid":"4adc3b58-27f1-42a5-8ff0-80dfd1afa8a5"},"target_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","destination":"presentation"}},"announcements":{"playlist":null,"item":null,"playlist_item":null}}}
+
+{"url":"timer/system_time","data":1790880675}
+
+{"url":"timer/system_time","data":1790880676}
+
+{"url":"timer/system_time","data":1790880677}
+
+{"url":"status/slide","data":{"current":{"text":"Text 05","notes":"Verse 1 · 1 notes","uuid":"138e93bb-cf7a-4f10-85ae-9bcd581d573b"},"next":{"text":"Text 03","notes":"Verse 1 · 2 notes","uuid":"92ffcaf0-6382-446e-854d-7e2a2c48d579"}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":1,"presentation_id":{"uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","name":"Song A","index":0},"total_cues":26,"remaining_cues":24}}}
+
+{"url":"timer/system_time","data":1790880678}
+
+{"url":"timer/system_time","data":1790880679}
+
+{"url":"timer/system_time","data":1790880680}
+
+{"url":"status/slide","data":{"current":{"text":"Text 03","notes":"Verse 1 · 2 notes","uuid":"92ffcaf0-6382-446e-854d-7e2a2c48d579"},"next":{"text":"Text 04","notes":"Pre-Chorus1 · 1 notes","uuid":"7655d261-adb7-428d-bed8-0ab459108637"}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":2,"presentation_id":{"uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","name":"Song A","index":0},"total_cues":26,"remaining_cues":23}}}
+
+{"url":"timer/system_time","data":1790880681}
+
+{"url":"timer/system_time","data":1790880682}
+
+{"url":"timer/system_time","data":1790880683}
+
+{"url":"status/slide","data":{"current":{"text":"","notes":"","uuid":"e2503372-dcaa-4a9b-8c04-e187e997a17c"},"next":{"text":"Text 05","notes":"Verse 1 · 1 notes","uuid":"138e93bb-cf7a-4f10-85ae-9bcd581d573b"}}}
+
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":0,"presentation_id":{"uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","name":"Song A","index":0},"total_cues":26,"remaining_cues":25}}}
+
+{"url":"playlist/active","data":{"presentation":{"playlist":{"uuid":"6f760dbf-04b9-46f2-9bb3-33eeea6a6d90","name":"Arrangement Test","index":7},"item":{"uuid":"68ab1ee1-427f-4bb2-b9b8-2f77451011a4","name":"Song A","index":0},"playlist_item":{"id":{"uuid":"68ab1ee1-427f-4bb2-b9b8-2f77451011a4","name":"Song A","index":0},"type":"presentation","is_hidden":false,"is_pco":false,"presentation_info":{"presentation_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","arrangement_name":"Full","arrangement_uuid":"4adc3b58-27f1-42a5-8ff0-80dfd1afa8a5"},"target_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","destination":"presentation"}},"announcements":{"playlist":null,"item":null,"playlist_item":null}}}
+
+{"url":"timer/system_time","data":1790880684}
+
+{"url":"timer/system_time","data":1790880685}
+
+{"url":"timer/system_time","data":1790880686}
+
+{"url":"timer/system_time","data":1790880687}
+
+{"url":"timer/system_time","data":1790880688}
+
+{"url":"timer/system_time","data":1790880689}
+
+{"url":"timer/system_time","data":1790880690}
+

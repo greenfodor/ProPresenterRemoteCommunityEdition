@@ -32,7 +32,7 @@
 
 {"url":"status/slide","data":{"current":{"text":"Text 01","notes":"","uuid":"a66bd68e-a072-4a78-b6ac-090d8b95cb51"},"next":{"text":"Text 02","notes":"","uuid":"c5531e34-4f4f-4a52-b868-246e72df812d"}}}
 
-{"url":"presentation/slide_index","data":{"presentation_index":{"index":1,"presentation_id":{"uuid":"2bf84db5-63fc-4dbf-b336-8582f6074990","name":"Presentation 03","index":0},"total_cues":33,"remaining_cues":31}}}
+{"url":"presentation/slide_index","data":{"presentation_index":{"index":1,"presentation_id":{"uuid":"2bf84db5-63fc-4dbf-b336-8582f6074990","name":"Presentation 111","index":0},"total_cues":33,"remaining_cues":31}}}
 
 {"url":"status/slide","data":{"current":{"text":"","notes":"","uuid":"9b9338c1-b6c1-4783-a3eb-6203d1a4dd8b"},"next":{"text":"Text 01","notes":"","uuid":"a66bd68e-a072-4a78-b6ac-090d8b95cb51"}}}
 
