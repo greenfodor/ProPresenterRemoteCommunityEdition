@@ -12,7 +12,8 @@ data class PresentationResponseDto(
 data class PresentationDto(
     val id: IdDto,
     val groups: List<GroupDto> = emptyList(),
-    val arrangements: List<ArrangementDto> = emptyList()
+    val arrangements: List<ArrangementDto> = emptyList(),
+    @SerialName("current_arrangement") val currentArrangement: String? = null
 )
 
 @Serializable

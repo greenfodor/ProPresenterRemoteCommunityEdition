@@ -4,7 +4,14 @@ import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 
+/** Which list the Presentation tab's list pane shows. */
+enum class ListMode {
+    PLAYLISTS,
+    LIBRARY
+}
+
 data class PlaylistTreeState(
+    val mode: ListMode = ListMode.PLAYLISTS,
     val rows: List<TreeRowUi> = emptyList(),
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
@@ -64,6 +71,10 @@ sealed interface PlaylistTreeAction {
     data object OnRetryClick : PlaylistTreeAction
 
     data object OnRefresh : PlaylistTreeAction
+
+    data class OnModeChange(
+        val mode: ListMode
+    ) : PlaylistTreeAction
 }
 
 sealed interface PlaylistTreeEvent {

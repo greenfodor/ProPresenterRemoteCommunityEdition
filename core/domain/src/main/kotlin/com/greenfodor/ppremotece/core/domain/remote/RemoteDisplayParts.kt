@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.core.domain.remote
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementExpander
 import com.greenfodor.ppremotece.core.domain.arrangement.CueList
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
 import com.greenfodor.ppremotece.core.domain.model.Presentation
@@ -43,17 +44,17 @@ internal fun cardDisplay(item: PlaylistItem, mark: BoxMark) =
         tapCurrent = RemoteCommand.TriggerItem(item.key)
     )
 
-internal fun headerOf(item: PlaylistItem, cueList: CueList, cueIndex: Int?) =
+internal fun headerOf(name: String, cueList: CueList, cueIndex: Int?) =
     RemoteHeader(
-        itemName = item.name,
+        itemName = name,
         arrangement = cueList.choice.takeIf { it is ArrangementChoice.Resolved },
         cueNumber = cueIndex?.plus(1),
         cueCount = cueList.cues.size
     )
 
-internal fun slideBox(item: PlaylistItem, presentation: Presentation, cueList: CueList, cueIndex: Int, mark: BoxMark) =
+internal fun slideBox(source: CueSource, presentation: Presentation, cueList: CueList, cueIndex: Int, mark: BoxMark) =
     RemoteBox.Slide(
-        item = item.key,
+        source = source,
         presentationUuid = presentation.uuid,
         cue = cueList.cues.first { it.index == cueIndex },
         mark = mark,
@@ -69,14 +70,14 @@ internal fun nextUpOf(item: PlaylistItem, presentations: Map<String, Presentatio
 }
 
 internal fun sidebarOf(
-    item: PlaylistItem,
+    source: CueSource,
     presentation: Presentation,
     cueList: CueList,
     current: Int?,
     currentMark: BoxMark,
     next: Int?
 ) = RemoteSidebar(
-    item = item.key,
+    source = source,
     presentationUuid = presentation.uuid,
     cues = cueList.cues,
     marks = buildMap {

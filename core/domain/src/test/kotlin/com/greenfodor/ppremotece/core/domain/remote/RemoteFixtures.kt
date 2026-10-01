@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.core.domain.remote
 
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.Group
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
@@ -24,6 +25,7 @@ object RemoteFixtures {
     const val PLAYLIST = "pl"
     const val SONG_A = "song-a"
     const val SONG_C = "song-c"
+    const val SONG_L = "song-l"
 
     fun key(index: Int) = PlaylistItemKey(PLAYLIST, index)
 
@@ -58,7 +60,10 @@ object RemoteFixtures {
         )
     )
 
-    val presentations = mapOf(SONG_A to songA, SONG_C to songC)
+    /** Song C's shape played from a library: current arrangement "A", 8 cues, cues 1 and 6 disabled. */
+    val songL = songC.copy(uuid = SONG_L, name = "Song L", currentArrangementUuid = "a")
+
+    val presentations = mapOf(SONG_A to songA, SONG_C to songC, SONG_L to songL)
 
     val playlist = Playlist(
         uuid = PLAYLIST,
@@ -89,5 +94,18 @@ object RemoteFixtures {
     /** A cleared output: nothing live, with the text of the last `status/slide` frame. */
     val cleared = LiveState(connection = ConnectionStatus.CONNECTED, item = null, slide = null)
 
-    fun remembered(item: Int, presentation: String, cue: Int) = LiveCue(key(item), presentation, cue)
+    fun remembered(item: Int, presentation: String, cue: Int) =
+        LiveCue(CueSource.PlaylistItem(key(item)), presentation, cue)
+
+    /** A slide live outside a playlist, as a presentation-route trigger leaves it. */
+    fun liveOutside(presentation: String, cue: Int, totalCues: Int, text: SlideText? = null) =
+        LiveState(
+            connection = ConnectionStatus.CONNECTED,
+            item = null,
+            slide = LiveSlide(presentation, cue, totalCues),
+            slideText = text
+        )
+
+    fun rememberedPresentation(presentation: String, cue: Int) =
+        LiveCue(CueSource.Presentation(presentation), presentation, cue)
 }

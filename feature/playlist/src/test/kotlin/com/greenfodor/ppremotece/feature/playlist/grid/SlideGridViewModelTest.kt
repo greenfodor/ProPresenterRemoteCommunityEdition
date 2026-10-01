@@ -5,6 +5,7 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
@@ -14,6 +15,7 @@ import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.Group
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
@@ -57,9 +59,13 @@ class SlideGridViewModelTest {
     }
     private val thumbnailSource = object : ThumbnailSource {
         override val thumbnailRequests = MutableStateFlow<ThumbnailRequests?>(
-            ThumbnailRequests { item, presentationUuid, cue, _ ->
+            ThumbnailRequests { source, presentationUuid, cue, _ ->
+                val path = when (source) {
+                    is CueSource.PlaylistItem -> "${source.key.playlistUuid}/${source.key.index}"
+                    is CueSource.Presentation -> "presentation/${source.uuid}"
+                }
                 ThumbnailRequest(
-                    url = "http://host/${item.playlistUuid}/${item.index}/thumbnail/${cue.index}",
+                    url = "http://host/$path/thumbnail/${cue.index}",
                     cacheKey = "$presentationUuid:${cue.groupUuid}:${cue.slideIndexInGroup}"
                 )
             }
@@ -218,8 +224,8 @@ class SlideGridViewModelTest {
         viewModel.state.test {
             assertThat(awaitItem().thumbnailGeneration).isEqualTo(0)
 
-            thumbnailSource.thumbnailRequests.value = ThumbnailRequests { item, presentationUuid, cue, _ ->
-                ThumbnailRequest("http://other/${item.index}/${cue.index}", "$presentationUuid:${cue.index}")
+            thumbnailSource.thumbnailRequests.value = ThumbnailRequests { _, presentationUuid, cue, _ ->
+                ThumbnailRequest("http://other/${cue.index}", "$presentationUuid:${cue.index}")
             }
 
             assertThat(awaitItem().thumbnailGeneration).isEqualTo(1)
@@ -297,8 +303,83 @@ class SlideGridViewModelTest {
         assertThat(thumbnailCache.removed).isEmpty()
     }
 
-    private fun viewModel() =
-        SlideGridViewModel(item, content, client, liveStateRepository, thumbnailSource, thumbnailCache, gridPreferences)
+    @Test
+    fun `a library presentation shows its current arrangement's cues and is live only outside a playlist`() = runTest {
+        val viewModel = viewModel(CueSource.Presentation(SONG_C))
+
+        viewModel.state.test {
+            val state = awaitItem()
+            assertThat(state.title).isEqualTo("Song C")
+            assertThat(state.cues.map { it.index }).containsExactly(0, 1, 2, 3, 4, 5, 6, 7)
+            assertThat(state.stepButtons).isFalse()
+            assertThat(state.cues[0].thumbnail?.url).isEqualTo("http://host/presentation/$SONG_C/thumbnail/0")
+
+            live.value = outside(cue = 2, totalCues = 8)
+            assertThat(awaitItem().liveCueIndex).isEqualTo(2)
+            live.value = outside(cue = 2, totalCues = 9)
+            assertThat(awaitItem().liveCueIndex).isNull()
+            live.value = outside(cue = 0, totalCues = 8)
+            assertThat(awaitItem().nextCueIndex).isEqualTo(2)
+            live.value = outside(cue = 0, totalCues = 8).copy(item = item)
+            assertThat(awaitItem().liveCueIndex).isNull()
+        }
+    }
+
+    @Test
+    fun `a playlist item is not live while its presentation plays outside the playlist`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            awaitItem()
+            live.value = outside(cue = 2, totalCues = 8)
+            expectNoEvents()
+            assertThat(viewModel.state.value.liveCueIndex).isNull()
+        }
+    }
+
+    @Test
+    fun `a tap on a library presentation's cue sends the presentation trigger`() = runTest {
+        val viewModel = viewModel(CueSource.Presentation(SONG_C))
+
+        viewModel.state.test {
+            awaitItem()
+            viewModel.onAction(SlideGridAction.OnCueClick(3))
+            viewModel.onAction(SlideGridAction.OnCueClick(1))
+            viewModel.onAction(SlideGridAction.OnNextClick)
+            viewModel.onAction(SlideGridAction.OnPreviousClick)
+        }
+
+        assertThat(client.triggeredPresentationCues).containsExactly(SONG_C to 3)
+        assertThat(client.triggeredCues).isEmpty()
+        assertThat(client.steps).isEqualTo(0)
+    }
+
+    @Test
+    fun `reloading a library presentation reads only the presentation`() = runTest {
+        val viewModel = viewModel(CueSource.Presentation(SONG_C))
+
+        viewModel.state.test {
+            awaitItem()
+            viewModel.onAction(SlideGridAction.OnReloadClick)
+            assertThat(awaitItem().thumbnailGeneration).isEqualTo(1)
+        }
+
+        assertThat(content.refreshed).containsExactly(SONG_C)
+    }
+
+    private fun outside(cue: Int, totalCues: Int) =
+        LiveState(ConnectionStatus.CONNECTED, item = null, slide = LiveSlide(SONG_C, cue, totalCues))
+
+    private fun viewModel(source: CueSource = CueSource.PlaylistItem(item)) =
+        SlideGridViewModel(
+            source,
+            content,
+            client,
+            liveStateRepository,
+            thumbnailSource,
+            thumbnailCache,
+            gridPreferences
+        )
 
     private fun songC(chorusText: String): Presentation {
         val size = SlideSize(1920, 858)
@@ -322,7 +403,8 @@ class SlideGridViewModelTest {
             uuid = SONG_C,
             name = "Song C",
             groups = listOf(verse, chorus),
-            arrangements = listOf(Arrangement("a-a", "A", listOf("g-verse", "g-chorus", "g-verse"), totalCues = 8))
+            arrangements = listOf(Arrangement("a-a", "A", listOf("g-verse", "g-chorus", "g-verse"), totalCues = 8)),
+            currentArrangementUuid = "a-a"
         )
     }
 

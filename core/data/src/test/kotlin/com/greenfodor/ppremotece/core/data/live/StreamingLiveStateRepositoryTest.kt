@@ -14,6 +14,7 @@ import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.data.network.StreamEnd
 import com.greenfodor.ppremotece.core.data.network.StreamReplay
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
@@ -48,7 +49,7 @@ class StreamingLiveStateRepositoryTest {
 
     private val liveItem = PlaylistItemKey(playlistUuid = FakeProPresenter.SERVICE_PLAYLIST_UUID, index = 4)
     private val liveSlide = LiveSlide(presentationUuid = FakeProPresenter.SONG_A_UUID, index = 3, totalCues = 7)
-    private val lastLiveCue = LiveCue(liveItem, FakeProPresenter.SONG_A_UUID, cueIndex = 3)
+    private val lastLiveCue = LiveCue(CueSource.PlaylistItem(liveItem), FakeProPresenter.SONG_A_UUID, cueIndex = 3)
 
     @BeforeEach
     fun setUp() {
@@ -244,6 +245,43 @@ class StreamingLiveStateRepositoryTest {
     }
 
     @Test
+    fun `a presentation live outside a playlist is remembered through a clear`() = runBlocking {
+        fake.slideIndexBodies += listOf(FakeProPresenter.SLIDE_INDEX, FakeProPresenter.NO_SLIDE_INDEX)
+        fake.enqueueStream(
+            fake.frames(
+                listOf(FakeProPresenter.playlistActiveFrame(null), FakeProPresenter.SLIDE_FRAME),
+                listOf(FakeProPresenter.playlistActiveFrame(null), FakeProPresenter.SLIDE_FRAME)
+            )
+        )
+        val remembered = LiveCue(CueSource.Presentation(FakeProPresenter.SONG_A_UUID), FakeProPresenter.SONG_A_UUID, 3)
+
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitUntil { it.slide != null }
+            assertThat(repository.lastLive.value).isEqualTo(remembered)
+            awaitUntil { it.slide == null }
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(repository.lastLive.value).isEqualTo(remembered)
+    }
+
+    @Test
+    fun `the stage 6 capture of a presentation trigger leaves no live item and song A's slide`() = runBlocking {
+        val songA15 = FakeProPresenter.SLIDE_INDEX.replace("\"total_cues\":7", "\"total_cues\":15")
+        repeat(SLIDE_READS) { fake.slideIndexBodies += songA15 }
+        val delivered = AtomicInteger()
+        fake.enqueueStream(fake.stream("stage6-probe", StreamEnd.STALL, delivered = delivered))
+
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitCondition { delivered.get() == StreamReplay.chunkCount("stage6-probe") }
+            val live = awaitUntil { it.item == null && it.slide != null }
+            assertThat(live.slide).isEqualTo(LiveSlide(FakeProPresenter.SONG_A_UUID, index = 3, totalCues = 15))
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(repository.lastLive.value)
+            .isEqualTo(LiveCue(CueSource.Presentation(FakeProPresenter.SONG_A_UUID), FakeProPresenter.SONG_A_UUID, 3))
+    }
+
+    @Test
     fun `a live slide of another presentation than the live item's is not remembered`() = runBlocking {
         fake.enqueueStream(
             fake.frames(
@@ -302,6 +340,7 @@ class StreamingLiveStateRepositoryTest {
         val WATCHDOG = 300.milliseconds
         val RELAXED_WATCHDOG = 1.seconds
         const val SLIDE_INDEX = "/v1/presentation/slide_index"
+        const val SLIDE_READS = 10
         const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active","status/layers"]"""
     }
 }

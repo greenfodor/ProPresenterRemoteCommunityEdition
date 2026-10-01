@@ -17,6 +17,7 @@ data class SlideGridState(
     val liveCueIndex: Int? = null,
     val nextCueIndex: Int? = null,
     val thumbnailGeneration: Int = 0,
+    val stepButtons: Boolean = true,
     val gridStep: GridStep? = null,
     val isLoading: Boolean = true,
     val error: UiText? = null

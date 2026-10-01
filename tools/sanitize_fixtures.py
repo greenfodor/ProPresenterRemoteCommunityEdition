@@ -28,6 +28,9 @@ PRESENTATIONS = [
 ]
 VERSION = "t/version.json"
 CLEAR_GROUPS = "../stage5/v1_clear_groups.json"
+LIBRARIES = "../stage6/libraries.json"
+LIBRARY = "../stage6/library-0.json"
+LIBRARY_INDEX = 0
 CLEAR_GROUPS_OUT = "clear-groups.json"
 CLEAR_GROUP_LAYERS = {
     "music", "audio_effects", "messages", "props", "announcements", "presentation", "presentation_media",
@@ -41,6 +44,7 @@ STREAMS = [
     "streams/session1-status-updates",
     "streams/session2-status-updates",
     "../stage5-device/streams/stage5-status-updates",
+    "../stage6/streams/stage6-probe",
 ]
 
 FRAME_SEPARATOR = b"\r\n\r\n"
@@ -51,7 +55,7 @@ USER_DIRS = ("Users", "home")
 USER_PATH = re.compile(r"(?:[A-Za-z]:[\\/]+|/)(?:" + "|".join(USER_DIRS) + r")[\\/].*", re.IGNORECASE)
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 VERBATIM_ALLOWED = {
-    "presentation", "header", "media", "playlist", "group", "standard", "win", "v1",
+    "presentation", "header", "media", "playlist", "group", "standard", "win", "v1", "all",
     "ProPresenter 21.4.2", "10.0.26200",
     "status/slide", "presentation/active", "presentation/slide_index", "playlist/active", "timer/system_time",
     "status/layers",
@@ -61,7 +65,7 @@ TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
 PLACEHOLDER_WORDS = {
     "presentation", "playlist", "folder", "arrangement", "group", "header", "media", "label",
     "text", "notes", "item", "host", "song", "full", "chorus", "only", "short", "bridge",
-    "service", "test", "+", "·",
+    "service", "test", "total", "+", "·",
 }
 TEST_RESOURCES = Path(__file__).resolve().parent.parent / "core" / "data" / "src" / "test" / "resources"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bin"}
@@ -200,6 +204,12 @@ class Sanitizer:
             arrangement["id"]["name"] = self.arrangement_name(uuid, arrangement["id"]["name"])
         if presentation.get("presentation_path"):
             presentation["presentation_path"] = self.replaced(presentation["presentation_path"], f"C:\\PP\\{name}.pro")
+
+    def library(self, library):
+        library["name"] = self.replaced(library["name"], self.generate("Library", library["uuid"]))
+
+    def library_entry(self, entry):
+        entry["name"] = self.presentation_name(entry["uuid"], entry["name"])
 
     def clear_group(self, group):
         if group["id"]["name"] not in DEFAULT_CLEAR_GROUP_NAMES:
@@ -433,6 +443,17 @@ def main():
     for group in clear_groups:
         sanitizer.clear_group(group)
     write_json(out_dir / CLEAR_GROUPS_OUT, clear_groups)
+
+    libraries = load(LIBRARIES)
+    library_uuid = libraries[LIBRARY_INDEX]["uuid"]
+    for library in libraries:
+        sanitizer.library(library)
+    write_json(out_dir / "libraries.json", libraries)
+
+    library = load(LIBRARY)
+    for entry in library["items"]:
+        sanitizer.library_entry(entry)
+    write_json(out_dir / f"library-{library_uuid[:8]}.json", library)
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)

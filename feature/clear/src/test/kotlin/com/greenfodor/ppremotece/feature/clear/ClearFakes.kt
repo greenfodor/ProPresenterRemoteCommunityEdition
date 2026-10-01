@@ -4,6 +4,8 @@ import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
+import com.greenfodor.ppremotece.core.domain.model.Library
+import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
@@ -56,6 +58,15 @@ class FakeClearClient : ProPresenterClient {
     override suspend fun triggerCue(item: PlaylistItemKey, cueIndex: Int): EmptyResult<DataError.Network> = notServed()
 
     override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun libraries(): Result<List<Library>, DataError.Network> = notServed()
+
+    override suspend fun library(uuid: String): Result<List<LibraryEntry>, DataError.Network> = notServed()
+
+    override suspend fun triggerPresentationCue(
+        presentationUuid: String,
+        cueIndex: Int
+    ): EmptyResult<DataError.Network> = notServed()
 
     override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> {
         iconReads += uuid

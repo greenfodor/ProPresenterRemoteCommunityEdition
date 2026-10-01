@@ -5,6 +5,9 @@ import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
+import com.greenfodor.ppremotece.core.domain.model.CueSource
+import com.greenfodor.ppremotece.core.domain.model.Library
+import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
@@ -44,6 +47,13 @@ class FakeProPresenterClient : ProPresenterClient {
 
     override suspend fun triggerItem(item: PlaylistItemKey) = record(RemoteCommand.TriggerItem(item))
 
+    override suspend fun triggerPresentationCue(presentationUuid: String, cueIndex: Int) =
+        record(RemoteCommand.TriggerPresentationCue(presentationUuid, cueIndex))
+
+    override suspend fun libraries(): Result<List<Library>, DataError.Network> = notServed()
+
+    override suspend fun library(uuid: String): Result<List<LibraryEntry>, DataError.Network> = notServed()
+
     override suspend fun clearLayer(layer: OutputLayer): EmptyResult<DataError.Network> = notServed()
 
     override suspend fun clearGroups(): Result<List<ClearGroup>, DataError.Network> = notServed()
@@ -68,11 +78,13 @@ class FakeLiveStateRepository : LiveStateRepository {
     override val liveState = MutableStateFlow(LiveState.Initial)
     override val lastLive = MutableStateFlow<LiveCue?>(null)
 
-    /** Reports [cue] live, as the stream does, and remembers it. */
-    fun goLive(cue: LiveCue) {
+    /** Reports [cue] live, as the stream does, and remembers it; a presentation cue is live with [totalCues]. */
+    fun goLive(cue: LiveCue, totalCues: Int = 0) {
         lastLive.value = cue
-        liveState.value =
-            liveState.value.copy(item = cue.item, slide = LiveSlide(cue.presentationUuid, cue.cueIndex, 0))
+        liveState.value = liveState.value.copy(
+            item = (cue.source as? CueSource.PlaylistItem)?.key,
+            slide = LiveSlide(cue.presentationUuid, cue.cueIndex, totalCues)
+        )
     }
 
     fun clear() {
@@ -104,6 +116,15 @@ class FakeContentRepository(
     override suspend fun refreshPlaylist(uuid: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
     override suspend fun refreshPresentation(uuid: String): EmptyResult<DataError.Network> = Result.Success(Unit)
+
+    override fun libraries(): Flow<Result<List<Library>, DataError.Network>> = flowOf(Result.Success(emptyList()))
+
+    override fun library(uuid: String): Flow<Result<List<LibraryEntry>, DataError.Network>> =
+        flowOf(Result.Success(emptyList()))
+
+    override suspend fun refreshLibraries(): EmptyResult<DataError.Network> = Result.Success(Unit)
+
+    override suspend fun refreshLibrary(uuid: String): EmptyResult<DataError.Network> = Result.Success(Unit)
 
     private fun <T : Any> read(uuid: String, value: T?): Result<T, DataError.Network> {
         reads += uuid

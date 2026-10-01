@@ -1,6 +1,8 @@
 package com.greenfodor.ppremotece.feature.playlist
 
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
+import com.greenfodor.ppremotece.core.domain.model.Library
+import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
@@ -13,9 +15,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.onStart
 
-/** Serves [playlists] and [presentations] as the host's current content; each open or refresh reads them. */
+/**
+ * Serves [tree], [playlists], [presentations], [libraries] and [libraryEntries] as the host's
+ * current content; each open or refresh reads them.
+ */
 class FakeContentRepository : ContentRepository {
     var tree: List<PlaylistTreeNode> = emptyList()
+    var libraries: List<Library> = emptyList()
+    val libraryEntries = mutableMapOf<String, List<LibraryEntry>>()
     val playlists = mutableMapOf<String, Playlist>()
     val presentations = mutableMapOf<String, Presentation>()
     var failWith: DataError.Network? = null
@@ -29,6 +36,16 @@ class FakeContentRepository : ContentRepository {
 
     override fun presentation(uuid: String): Flow<Result<Presentation, DataError.Network>> =
         observe(uuid) { presentations[uuid] }
+
+    override fun libraries(): Flow<Result<List<Library>, DataError.Network>> = observe(LIBRARIES) { libraries }
+
+    override fun library(uuid: String): Flow<Result<List<LibraryEntry>, DataError.Network>> =
+        observe("library/$uuid") { libraryEntries[uuid] }
+
+    override suspend fun refreshLibraries(): EmptyResult<DataError.Network> = refresh(LIBRARIES) { libraries }
+
+    override suspend fun refreshLibrary(uuid: String): EmptyResult<DataError.Network> =
+        refresh("library/$uuid") { libraryEntries[uuid] }
 
     override suspend fun refreshPlaylists(): EmptyResult<DataError.Network> = refresh(TREE) { tree }
 
@@ -60,5 +77,6 @@ class FakeContentRepository : ContentRepository {
 
     private companion object {
         const val TREE = "tree"
+        const val LIBRARIES = "libraries"
     }
 }

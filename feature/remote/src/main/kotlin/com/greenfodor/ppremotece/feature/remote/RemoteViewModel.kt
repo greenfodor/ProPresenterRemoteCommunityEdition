@@ -6,6 +6,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.toUiText
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
@@ -52,7 +53,8 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * item and a triggered media item are dropped once another cue is reported live. Each needed
  * presentation is read once and stays available with its latest read; a failed read that leaves
  * the display loading is shown as an error, and retry reads the content again. A tap on an
- * enabled cue of the sidebar sends its item-cue trigger. The current and next boxes ask for
+ * enabled cue of the sidebar sends its item-cue trigger, or its presentation-cue trigger for a
+ * presentation played outside a playlist. The current and next boxes ask for
  * thumbnails at their measured widths; the sidebar asks for grid thumbnails.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -150,7 +152,7 @@ class RemoteViewModel(
                 error = failure?.toUiText(),
                 sidebar = display.sidebar?.rows(requests).orEmpty(),
                 sidebarFocus = display.sidebar?.focus,
-                sidebarItem = display.sidebar?.item
+                sidebarSource = display.sidebar?.source
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), RemoteState())
 
@@ -176,9 +178,13 @@ class RemoteViewModel(
 
     private fun sendSidebarCue(index: Int, display: RemoteDisplay) {
         val sidebar = display.sidebar ?: return
-        sidebar.cues
-            .firstOrNull { it.index == index && it.enabled }
-            ?.let { send(RemoteCommand.TriggerCue(sidebar.item, it.index)) }
+        val cue = sidebar.cues.firstOrNull { it.index == index && it.enabled } ?: return
+        send(
+            when (val source = sidebar.source) {
+                is CueSource.PlaylistItem -> RemoteCommand.TriggerCue(source.key, cue.index)
+                is CueSource.Presentation -> RemoteCommand.TriggerPresentationCue(source.uuid, cue.index)
+            }
+        )
     }
 
     private fun cue(item: PlaylistItemKey, display: RemoteDisplay) {
@@ -193,6 +199,8 @@ class RemoteViewModel(
                 is RemoteCommand.TriggerItem -> client.triggerItem(command.item).also {
                     if (it is Result.Success) mediaLive.value = Chosen(command.item, liveStateRepository.lastLive.value)
                 }
+                is RemoteCommand.TriggerPresentationCue ->
+                    client.triggerPresentationCue(command.presentationUuid, command.cueIndex)
                 RemoteCommand.TriggerNext -> client.triggerNext()
                 RemoteCommand.TriggerPrevious -> client.triggerPrevious()
             }
@@ -216,7 +224,9 @@ class RemoteViewModel(
             SidebarCueUi(
                 cue = cue,
                 mark = marks[cue.index] ?: BoxMark.NONE,
-                thumbnail = requests?.takeIf { thumbnails }?.request(item, presentationUuid, cue, ThumbnailQuality.Grid)
+                thumbnail = requests?.takeIf {
+                    thumbnails
+                }?.request(source, presentationUuid, cue, ThumbnailQuality.Grid)
             )
         }
 
@@ -224,6 +234,6 @@ class RemoteViewModel(
         val quality = if (px > 0) ThumbnailQuality.Box(px) else ThumbnailQuality.Grid
         return (this as? RemoteBox.Slide)
             ?.takeIf { it.thumbnails }
-            ?.let { requests?.request(it.item, it.presentationUuid, it.cue, quality) }
+            ?.let { requests?.request(it.source, it.presentationUuid, it.cue, quality) }
     }
 }

@@ -12,6 +12,7 @@ import com.greenfodor.ppremotece.core.data.Fixtures
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementExpander
 import com.greenfodor.ppremotece.core.domain.arrangement.CueList
+import com.greenfodor.ppremotece.core.domain.arrangement.currentCueList
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistFolder
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
@@ -25,6 +26,14 @@ class FixtureArrangementTest {
     private val songB = Fixtures.presentation(Fixtures.SONG_B).toDomain()
     private val arrangementTest = Fixtures.playlist(Fixtures.ARRANGEMENT_TEST_PLAYLIST).toDomain()
     private val service = Fixtures.playlist(Fixtures.SERVICE_PLAYLIST).toDomain()
+
+    @Test
+    fun `song A's current arrangement is the placeholder and plays its 15 slides in group order`() {
+        val cues = currentCueList(songA)
+
+        assertThat(cues.choice).isEqualTo(ArrangementChoice.SongOrder)
+        assertThat(cues.cues.size).isEqualTo(15)
+    }
 
     @Test
     fun `song A items expand to the cue counts of their own arrangements`() {

@@ -1,0 +1,52 @@
+[
+  {
+    "uuid": "77f0d0b5-95e5-4767-9081-c7a4d8b3b622",
+    "name": "Library 01",
+    "index": 0
+  },
+  {
+    "uuid": "21165608-53be-43d1-8d0f-22e4245ba768",
+    "name": "Library 02",
+    "index": 1
+  },
+  {
+    "uuid": "a66fc56f-01ab-482a-8d8c-1d5b718dd37a",
+    "name": "Library 03",
+    "index": 2
+  },
+  {
+    "uuid": "4e49f7c8-87cc-4233-ac6e-a3ee1c7adf84",
+    "name": "Library 04",
+    "index": 3
+  },
+  {
+    "uuid": "cde44501-2dcb-4723-9f3c-00bcfa8105aa",
+    "name": "Library 05",
+    "index": 4
+  },
+  {
+    "uuid": "3da3ee6c-47cb-41a4-9203-2327d9920f91",
+    "name": "Library 06",
+    "index": 5
+  },
+  {
+    "uuid": "380b2574-b0a5-482c-9bdc-fa62a3790ec8",
+    "name": "Library 07",
+    "index": 6
+  },
+  {
+    "uuid": "8bac5197-493b-4a87-9892-96c7d0bdede8",
+    "name": "Library 08",
+    "index": 7
+  },
+  {
+    "uuid": "ac76f8a8-f6b2-489f-a5cb-3202b25b4661",
+    "name": "Library 09",
+    "index": 8
+  },
+  {
+    "uuid": "e3268ffe-cbbb-4aeb-8e07-c711a0048041",
+    "name": "Library 10",
+    "index": 9
+  }
+]

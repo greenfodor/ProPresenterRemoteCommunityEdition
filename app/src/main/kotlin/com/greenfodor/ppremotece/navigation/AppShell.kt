@@ -47,8 +47,10 @@ import com.greenfodor.ppremotece.core.domain.layout.NavigationLayout
 import com.greenfodor.ppremotece.core.domain.layout.navigationLayout
 import com.greenfodor.ppremotece.core.domain.layout.paneCount
 import com.greenfodor.ppremotece.core.domain.layout.widthClassOf
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.feature.clear.ClearFab
+import com.greenfodor.ppremotece.feature.playlist.LibraryGridRoute
 import com.greenfodor.ppremotece.feature.playlist.PlaylistsRoute
 import com.greenfodor.ppremotece.feature.playlist.SelectItemPlaceholder
 import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
@@ -135,11 +137,13 @@ fun AppShell(
                             ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder() }) +
                                 ListDetailSceneStrategy.preferredPaneSize(ListPaneWidth)
                     ) {
-                        val openGrid = presentation.lastOrNull { it is SlideGridRoute } as? SlideGridRoute
+                        val detail = presentation.getOrNull(1)
+                        val openGrid = detail as? SlideGridRoute
                         PlaylistTreeRoot(
                             openItem = openGrid?.let {
                                 PlaylistItemKey(playlistUuid = it.playlistUuid, index = it.itemIndex)
                             },
+                            openPresentation = (detail as? LibraryGridRoute)?.presentationUuid,
                             reconnecting = reconnecting,
                             onOpenItem = { item ->
                                 update(
@@ -148,13 +152,26 @@ fun AppShell(
                                     )
                                 )
                             },
+                            onOpenPresentation = { uuid -> update(stacks().openDetail(LibraryGridRoute(uuid))) },
                             onDisconnected = onDisconnected,
-                            floatingActionButton = clearFab.takeIf { openGrid == null }
+                            floatingActionButton = clearFab.takeIf { detail == null }
+                        )
+                    }
+                    entry<LibraryGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
+                        SlideGridRoot(
+                            source = CueSource.Presentation(route.presentationUuid),
+                            widthClass = widthClass,
+                            headerScrollsWithGrid = compactHeight,
+                            reconnecting = reconnecting,
+                            onBack = { update(stacks().back()) },
+                            floatingActionButton = clearFab
                         )
                     }
                     entry<SlideGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
                         SlideGridRoot(
-                            item = PlaylistItemKey(playlistUuid = route.playlistUuid, index = route.itemIndex),
+                            source = CueSource.PlaylistItem(
+                                PlaylistItemKey(playlistUuid = route.playlistUuid, index = route.itemIndex)
+                            ),
                             widthClass = widthClass,
                             headerScrollsWithGrid = compactHeight,
                             reconnecting = reconnecting,

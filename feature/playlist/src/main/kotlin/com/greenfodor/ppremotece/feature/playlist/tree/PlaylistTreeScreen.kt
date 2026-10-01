@@ -23,6 +23,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -56,6 +59,9 @@ import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.R
+import com.greenfodor.ppremotece.feature.playlist.library.LibraryEvent
+import com.greenfodor.ppremotece.feature.playlist.library.LibraryList
+import com.greenfodor.ppremotece.feature.playlist.library.LibraryViewModel
 import com.greenfodor.ppremotece.feature.playlist.text
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -67,17 +73,25 @@ private val HeaderHeight = 48.dp
 private val DepthIndent = 16.dp
 private val ProgressSize = 20.dp
 
+/**
+ * The Presentation tab's list pane: the playlist tree or, in Library mode, the library list.
+ * [openItem] and [openPresentation] are highlighted.
+ */
 @Composable
 fun PlaylistTreeRoot(
     openItem: PlaylistItemKey?,
+    openPresentation: String?,
     reconnecting: Boolean,
     onOpenItem: (PlaylistItemKey) -> Unit,
+    onOpenPresentation: (String) -> Unit,
     onDisconnected: () -> Unit,
     modifier: Modifier = Modifier,
     floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
-    viewModel: PlaylistTreeViewModel = koinViewModel()
+    viewModel: PlaylistTreeViewModel = koinViewModel(),
+    libraryViewModel: LibraryViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val libraryState by libraryViewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -90,6 +104,14 @@ fun PlaylistTreeRoot(
             }
         }
     }
+    ObserveAsEvents(libraryViewModel.events) { event ->
+        when (event) {
+            is LibraryEvent.OpenPresentation -> onOpenPresentation(event.uuid)
+            is LibraryEvent.ShowError -> scope.launch {
+                snackbarHostState.showSnackbar(event.message.asString(context))
+            }
+        }
+    }
     PlaylistTreeScreen(
         state = state,
         onAction = viewModel::onAction,
@@ -97,7 +119,15 @@ fun PlaylistTreeRoot(
         reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
         floatingActionButton = floatingActionButton,
-        modifier = modifier
+        modifier = modifier,
+        libraryContent = { bottomPadding ->
+            LibraryList(
+                state = libraryState,
+                onAction = libraryViewModel::onAction,
+                openPresentation = openPresentation,
+                bottomPadding = bottomPadding
+            )
+        }
     )
 }
 
@@ -110,7 +140,8 @@ fun PlaylistTreeScreen(
     openItem: PlaylistItemKey? = null,
     reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
+    libraryContent: @Composable (bottomPadding: Dp) -> Unit = {}
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Scaffold(
@@ -119,7 +150,13 @@ fun PlaylistTreeScreen(
         floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.playlists_title)) },
+                title = {
+                    Text(
+                        stringResource(
+                            if (state.mode == ListMode.LIBRARY) R.string.library_title else R.string.playlists_title
+                        )
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 ),
@@ -142,12 +179,17 @@ fun PlaylistTreeScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
-            TreeContent(
-                state = state,
-                openItem = openItem,
-                onAction = onAction,
-                bottomPadding = if (floatingActionButton != null) FabClearance else 0.dp
-            )
+            ModeSwitch(mode = state.mode, onModeChange = { onAction(PlaylistTreeAction.OnModeChange(it)) })
+            val bottomPadding = if (floatingActionButton != null) FabClearance else 0.dp
+            when (state.mode) {
+                ListMode.PLAYLISTS -> TreeContent(
+                    state = state,
+                    openItem = openItem,
+                    onAction = onAction,
+                    bottomPadding = bottomPadding
+                )
+                ListMode.LIBRARY -> libraryContent(bottomPadding)
+            }
         }
     }
 }
@@ -182,7 +224,38 @@ private fun TreeContent(
 }
 
 @Composable
-private fun TreeError(error: UiText, onRetry: () -> Unit) {
+private fun ModeSwitch(mode: ListMode, onModeChange: (ListMode) -> Unit) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        ListMode.entries.forEachIndexed { index, entry ->
+            SegmentedButton(
+                selected = mode == entry,
+                onClick = { onModeChange(entry) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = ListMode.entries.size),
+                label = {
+                    Text(
+                        stringResource(
+                            if (entry ==
+                                ListMode.LIBRARY
+                            ) {
+                                R.string.mode_library
+                            } else {
+                                R.string.mode_playlists
+                            }
+                        )
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+internal fun TreeError(error: UiText, onRetry: () -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Column(
@@ -232,7 +305,7 @@ private fun TreeRow(row: TreeRowUi, openItem: PlaylistItemKey?, onAction: (Playl
 }
 
 @Composable
-private fun ExpandableRow(depth: Int, name: String, expanded: Boolean, isLoading: Boolean, onClick: () -> Unit) {
+internal fun ExpandableRow(depth: Int, name: String, expanded: Boolean, isLoading: Boolean, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),

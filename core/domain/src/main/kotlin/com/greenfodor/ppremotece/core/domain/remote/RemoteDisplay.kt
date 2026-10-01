@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.core.domain.remote
 
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.model.Cue
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.Playlist
@@ -32,6 +33,12 @@ sealed interface RemoteCommand {
         val item: PlaylistItemKey
     ) : RemoteCommand
 
+    /** A cue of a presentation played outside a playlist. */
+    data class TriggerPresentationCue(
+        val presentationUuid: String,
+        val cueIndex: Int
+    ) : RemoteCommand
+
     data object TriggerNext : RemoteCommand
 
     data object TriggerPrevious : RemoteCommand
@@ -46,9 +53,9 @@ enum class BoxMark {
 
 /** The content of the current or the next box. */
 sealed interface RemoteBox {
-    /** A cue of [item]; [thumbnails] is false when the item's arrangement did not fully resolve. */
+    /** A cue of [source]; [thumbnails] is false when its arrangement did not fully resolve. */
     data class Slide(
-        val item: PlaylistItemKey,
+        val source: CueSource,
         val presentationUuid: String,
         val cue: Cue,
         val mark: BoxMark,
@@ -68,7 +75,7 @@ sealed interface RemoteBox {
     data object Empty : RemoteBox
 }
 
-/** The shown item's name, its arrangement (null for no chip) and the 1-based cue number of the current box. */
+/** The shown item's or presentation's name, its arrangement (null for no chip) and the 1-based cue number of the current box. */
 data class RemoteHeader(
     val itemName: String,
     val arrangement: ArrangementChoice?,
@@ -84,12 +91,12 @@ data class NextUp(
 )
 
 /**
- * The cues of the shown item for the cue sidebar, with the mark of each marked cue and the index of
- * the live or cued cue in [focus]; [thumbnails] is false when the expanded cue count differs from
- * the arrangement's total.
+ * The cues of the shown item or presentation for the cue sidebar, with the mark of each marked cue
+ * and the index of the live or cued cue in [focus]; [thumbnails] is false when the expanded cue
+ * count differs from the arrangement's total.
  */
 data class RemoteSidebar(
-    val item: PlaylistItemKey,
+    val source: CueSource,
     val presentationUuid: String,
     val cues: List<Cue>,
     val marks: Map<Int, BoxMark>,
@@ -106,6 +113,8 @@ enum class RemoteStatus {
 /**
  * Everything the Remote tab shows and sends. Null commands and item targets are disabled.
  * [baseItem] is the live, remembered or app-triggered media item that the cued item replaces.
+ * [showsNextUp] is false for a presentation played outside a playlist, which has no Next Up row
+ * and no item steps.
  */
 data class RemoteDisplay(
     val status: RemoteStatus,
@@ -123,32 +132,43 @@ data class RemoteDisplay(
     val tapNext: RemoteCommand? = null,
     val nextButton: RemoteCommand? = null,
     val previousButton: RemoteCommand? = null,
-    val sidebar: RemoteSidebar? = null
+    val sidebar: RemoteSidebar? = null,
+    val showsNextUp: Boolean = true
 ) {
     companion object {
         /** The playlist [reduce] needs for [inputs], or null when it needs none. */
         fun playlistNeeded(inputs: RemoteInputs): String? = baseOf(inputs).item?.playlistUuid
 
-        /** The presentations [reduce] needs for [inputs] once [playlist] is read. */
+        /**
+         * The presentations [reduce] needs for [inputs] once [playlist] is read; for a presentation
+         * played outside a playlist, that presentation alone.
+         */
         fun presentationsNeeded(inputs: RemoteInputs, playlist: Playlist?): Set<String> {
-            val focus = playlist?.let { focusOf(inputs, it) } ?: return emptySet()
-            return listOfNotNull(focus, adjacentItem(playlist, focus, ItemDirection.NEXT))
-                .mapNotNull { playlist.item(it)?.presentation?.presentationUuid }
-                .toSet()
+            val base = baseOf(inputs)
+            val focus = playlist?.let { focusOf(inputs, it) }
+            return when {
+                base is Base.Presentation -> setOf(base.presentationUuid)
+                playlist == null || focus == null -> emptySet()
+                else -> listOfNotNull(focus, adjacentItem(playlist, focus, ItemDirection.NEXT))
+                    .mapNotNull { playlist.item(it)?.presentation?.presentationUuid }
+                    .toSet()
+            }
         }
 
         /**
          * What the Remote tab shows for [inputs], given the [playlist] and [presentations] read so far.
          *
          * The base is the media item this app triggered, else the live slide, else the last live
-         * cue. A live slide without a playlist item, or of another presentation than its item's,
-         * shows the `status/slide` text and steps with trigger next and previous. A cued item other
-         * than the base item is shown in place of the base, from its first enabled cue.
+         * cue. A live slide of another presentation than its item's shows the `status/slide` text
+         * and steps with trigger next and previous. A live slide without a playlist item is shown
+         * with the cues of its presentation's current arrangement when their count is the live cue
+         * count, and as the text otherwise. A cued item other than the base item is shown in place
+         * of the base, from its first enabled cue.
          */
         fun reduce(inputs: RemoteInputs, playlist: Playlist?, presentations: Map<String, Presentation>): RemoteDisplay =
             when (val base = baseOf(inputs)) {
                 Base.None -> RemoteDisplay(status = RemoteStatus.NOTHING_LIVE)
-                Base.Text -> textDisplay(inputs.live.slideText)
+                is Base.Presentation -> presentationDisplay(base, presentations, inputs.live.slideText)
                 is Base.Cue, is Base.Media -> when {
                     playlist == null -> RemoteDisplay(status = RemoteStatus.LOADING)
                     !base.matches(playlist) -> textDisplay(inputs.live.slideText)

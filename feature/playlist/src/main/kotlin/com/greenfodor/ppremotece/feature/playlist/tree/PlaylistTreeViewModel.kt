@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.feature.playlist.tree
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.greenfodor.ppremotece.core.designsystem.ui.toUiText
@@ -34,12 +35,16 @@ import kotlinx.coroutines.launch
  * Playlist tree: folders and playlists expand in place. The tree, each expanded playlist and the
  * presentations of its items are read through the [ContentRepository] and shown again whenever
  * they change; each item is labelled with its arrangement. Pull-to-refresh reads them all again.
+ * The list pane's [ListMode] is kept in [savedStateHandle].
  */
 class PlaylistTreeViewModel(
     private val contentRepository: ContentRepository,
-    private val connectionRepository: ConnectionRepository
+    private val connectionRepository: ConnectionRepository,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    private val _state = MutableStateFlow(PlaylistTreeState())
+    private val _state = MutableStateFlow(
+        PlaylistTreeState(mode = savedStateHandle.get<ListMode>(MODE_KEY) ?: ListMode.PLAYLISTS)
+    )
     val state = _state.asStateFlow()
 
     private val _events = Channel<PlaylistTreeEvent>()
@@ -74,6 +79,10 @@ class PlaylistTreeViewModel(
             }
             PlaylistTreeAction.OnRetryClick -> loadTree()
             PlaylistTreeAction.OnRefresh -> refresh()
+            is PlaylistTreeAction.OnModeChange -> {
+                savedStateHandle[MODE_KEY] = action.mode
+                _state.update { it.copy(mode = action.mode) }
+            }
         }
     }
 
@@ -204,6 +213,8 @@ class PlaylistTreeViewModel(
             presentations[ref.presentationUuid]?.let { ArrangementExpander.expand(it, ref).choice.toArrangementLabel() }
         }
 }
+
+private const val MODE_KEY = "list_mode"
 
 private fun Playlist.presentationUuids(): List<String> = items.mapNotNull {
     it.presentation?.presentationUuid

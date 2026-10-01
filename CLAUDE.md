@@ -54,9 +54,12 @@ Versions come only from `gradle/libs.versions.toml`.
 ## ProPresenter network rule (P-10)
 
 The app talks to ProPresenter's HTTP `/v1` API and sends only:
-- `GET` reads (including `GET /v1/clear/group/{id}/icon`, the clear group's icon), the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
+- `GET` reads (including `GET /v1/clear/group/{id}/icon`, the clear group's icon, `GET /v1/libraries`
+  and `GET /v1/library/{uuid}`), the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
   trigger `GET /v1/playlist/{pl}/{item}/trigger`, `GET /v1/trigger/next`,
   `GET /v1/trigger/previous` and the clear calls;
+- the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode and
+  when a presentation is live outside a playlist;
 - one `POST /v1/status/updates` stream.
 
 Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content) is out of bounds.

@@ -2,10 +2,12 @@ package com.greenfodor.ppremotece.core.data.session
 
 import com.greenfodor.ppremotece.core.data.live.StreamingLiveStateRepository
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
+import com.greenfodor.ppremotece.core.data.thumbnail.presentationThumbnailUrl
 import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailUrl
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
@@ -18,7 +20,6 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
-import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRoute
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import com.greenfodor.ppremotece.core.domain.thumbnail.boxQuality
 import io.ktor.client.HttpClient
@@ -126,11 +127,14 @@ class ProPresenterSession(
     }
 
     private fun thumbnailRequests(baseUrl: String, instanceName: String) =
-        ThumbnailRequests { item, presentationUuid, cue, quality ->
-            val box = (quality as? ThumbnailQuality.Box)?.let { boxQuality(ThumbnailRoute.PLAYLIST, it.px) }
+        ThumbnailRequests { source, presentationUuid, cue, quality ->
+            val box = (quality as? ThumbnailQuality.Box)?.let { boxQuality(it.px) }
             val gridKey = ThumbnailKey.of(instanceName, presentationUuid, cue)
             ThumbnailRequest(
-                url = thumbnailUrl(baseUrl, item, cue.index, box),
+                url = when (source) {
+                    is CueSource.PlaylistItem -> thumbnailUrl(baseUrl, source.key, cue.index, box)
+                    is CueSource.Presentation -> presentationThumbnailUrl(baseUrl, source.uuid, cue.index, box)
+                },
                 cacheKey = ThumbnailKey.of(instanceName, presentationUuid, cue, box),
                 placeholderKey = gridKey.takeIf { box != null }
             )

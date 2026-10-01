@@ -1,7 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.thumbnail
 
 import com.greenfodor.ppremotece.core.domain.model.Cue
-import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -16,7 +16,7 @@ data class ThumbnailRequest(
 
 /** Builds thumbnail requests for one connected host. */
 fun interface ThumbnailRequests {
-    fun request(item: PlaylistItemKey, presentationUuid: String, cue: Cue, quality: ThumbnailQuality): ThumbnailRequest
+    fun request(source: CueSource, presentationUuid: String, cue: Cue, quality: ThumbnailQuality): ThumbnailRequest
 }
 
 /** Thumbnail requests of the connected host. */

@@ -1,15 +1,20 @@
 package com.greenfodor.ppremotece.core.data.network
 
 import com.greenfodor.ppremotece.core.data.dto.ClearGroupDto
+import com.greenfodor.ppremotece.core.data.dto.IdDto
+import com.greenfodor.ppremotece.core.data.dto.LibraryResponseDto
 import com.greenfodor.ppremotece.core.data.dto.PlaylistDto
 import com.greenfodor.ppremotece.core.data.dto.PlaylistTreeNodeDto
 import com.greenfodor.ppremotece.core.data.dto.PresentationResponseDto
 import com.greenfodor.ppremotece.core.data.dto.SlideIndexResponseDto
 import com.greenfodor.ppremotece.core.data.dto.VersionDto
 import com.greenfodor.ppremotece.core.data.mapper.toDomain
+import com.greenfodor.ppremotece.core.data.mapper.toLibrary
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
+import com.greenfodor.ppremotece.core.domain.model.Library
+import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.Playlist
@@ -44,8 +49,8 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * [ProPresenterClient] for the ProPresenter HTTP API at [baseUrl], plus the `status/updates`
  * stream. Sends only GET reads (including clear-group icons, read once per uuid as PNG, JPEG or SVG
- * of at most 256 KB), the item-cue, item, next and previous triggers, the layer and clear-group
- * clears, and the stream POST.
+ * of at most 256 KB), the item-cue, item, presentation-cue, next and previous triggers, the layer
+ * and clear-group clears, and the stream POST.
  */
 @Suppress("TooManyFunctions")
 class KtorProPresenterClient(
@@ -66,6 +71,13 @@ class KtorProPresenterClient(
         safeCall<PlaylistDto> { httpClient.get("$baseUrl/v1/playlist/${uuid.encodeURLPathPart()}") }
             .map { it.toDomain() }
 
+    override suspend fun libraries(): Result<List<Library>, DataError.Network> =
+        safeCall<List<IdDto>> { httpClient.get("$baseUrl/v1/libraries") }.map { ids -> ids.map { it.toLibrary() } }
+
+    override suspend fun library(uuid: String): Result<List<LibraryEntry>, DataError.Network> =
+        safeCall<LibraryResponseDto> { httpClient.get("$baseUrl/v1/library/${uuid.encodeURLPathPart()}") }
+            .map { it.toDomain() }
+
     override suspend fun presentation(uuid: String): Result<Presentation, DataError.Network> =
         safeCall<PresentationResponseDto> { httpClient.get("$baseUrl/v1/presentation/${uuid.encodeURLPathPart()}") }
             .map { it.toDomain() }
@@ -81,6 +93,14 @@ class KtorProPresenterClient(
 
     override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/${playlistItemPath(item)}/trigger") }
+
+    override suspend fun triggerPresentationCue(
+        presentationUuid: String,
+        cueIndex: Int
+    ): EmptyResult<DataError.Network> =
+        safeEmptyCall {
+            httpClient.get("$baseUrl/v1/presentation/${presentationUuid.encodeURLPathPart()}/$cueIndex/trigger")
+        }
 
     override suspend fun clearLayer(layer: OutputLayer): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/clear/layer/${layer.apiName}") }

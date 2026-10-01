@@ -12,6 +12,7 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.Group
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
@@ -52,13 +53,17 @@ class RemoteViewModelTest {
     private val thumbnails = object : ThumbnailSource {
         override val thumbnailRequests = MutableStateFlow<ThumbnailRequests?>(
             ThumbnailRequests {
-                item,
+                source,
                 _,
                 cue,
                 quality
                 ->
                 val box = (quality as? ThumbnailQuality.Box)?.let { "@${it.px}" }.orEmpty()
-                ThumbnailRequest("http://host/${item.index}/${cue.index}$box", "k${cue.index}$box")
+                val path = when (source) {
+                    is CueSource.PlaylistItem -> source.key.index.toString()
+                    is CueSource.Presentation -> source.uuid
+                }
+                ThumbnailRequest("http://host/$path/${cue.index}$box", "k${cue.index}$box")
             }
         )
     }
@@ -78,7 +83,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `taps and buttons send the display's commands`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -102,7 +107,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `item steps cue an item and send nothing`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -130,7 +135,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `tapping a cued item sends its cue 0 and next sends the same`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 1))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 1))
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -153,7 +158,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `back to live leaves the cued item`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -168,14 +173,14 @@ class RemoteViewModelTest {
 
     @Test
     fun `another cue going live ends the cued state`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         val viewModel = viewModel()
 
         viewModel.state.test {
             awaitShowing()
             viewModel.onAction(RemoteAction.OnNextItemClick)
             awaitUntil { it.display.cued }
-            live.goLive(LiveCue(key(0), SONG_A, 3))
+            live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 3))
             val live = awaitUntil { it.display.header?.cueNumber == 4 }
             assertThat(live.display.cued).isFalse()
             assertThat(live.display.current).isInstanceOf(RemoteBox.Slide::class)
@@ -185,7 +190,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `a triggered media item shows live until a slide goes live`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -200,7 +205,7 @@ class RemoteViewModelTest {
             assertThat(media.display.cued).isFalse()
             assertThat(media.display.nextButton == null).isTrue()
 
-            live.goLive(LiveCue(key(4), SONG_C, 0))
+            live.goLive(LiveCue(CueSource.PlaylistItem(key(4)), SONG_C, 0))
             awaitUntil { (it.display.current as? RemoteBox.Slide)?.mark == BoxMark.LIVE }
             cancelAndIgnoreRemainingEvents()
         }
@@ -210,16 +215,16 @@ class RemoteViewModelTest {
 
     @Test
     fun `a cued item does not come back when the live cue returns to the cue it was chosen under`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 1))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 1))
         val viewModel = viewModel()
 
         viewModel.state.test {
             awaitShowing()
             viewModel.onAction(RemoteAction.OnNextItemClick)
             awaitUntil { it.display.cued }
-            live.goLive(LiveCue(key(0), SONG_A, 2))
+            live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
             awaitUntil { it.display.header?.cueNumber == 3 }
-            live.goLive(LiveCue(key(0), SONG_A, 1))
+            live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 1))
             val back = awaitUntil { it.display.header?.cueNumber == 2 }
             assertThat(back.display.cued).isFalse()
             cancelAndIgnoreRemainingEvents()
@@ -228,7 +233,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `a failed presentation read shows an error and retry reads it again`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         content.failing += SONG_A
         val viewModel = viewModel()
 
@@ -244,7 +249,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `item steps read each playlist and presentation once`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -264,8 +269,33 @@ class RemoteViewModelTest {
     }
 
     @Test
+    fun `a presentation live outside a playlist is shown and stepped over the presentation route`() = runTest {
+        live.goLive(LiveCue(CueSource.Presentation(SONG_C), SONG_C, 0), totalCues = 3)
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            val state = awaitShowing()
+            assertThat(state.display.showsNextUp).isFalse()
+            assertThat(state.currentThumbnail).isEqualTo(ThumbnailRequest("http://host/$SONG_C/0", "k0"))
+            assertThat(state.sidebarSource).isEqualTo(CueSource.Presentation(SONG_C))
+            viewModel.onAction(RemoteAction.OnCurrentClick)
+            viewModel.onAction(RemoteAction.OnNextClick)
+            viewModel.onAction(RemoteAction.OnSidebarCueClick(1))
+            viewModel.onAction(RemoteAction.OnSidebarCueClick(2))
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.sent).containsExactly(
+            RemoteCommand.TriggerPresentationCue(SONG_C, 0),
+            RemoteCommand.TriggerPresentationCue(SONG_C, 2),
+            RemoteCommand.TriggerPresentationCue(SONG_C, 2)
+        )
+        assertThat(content.reads).containsExactly(SONG_C)
+    }
+
+    @Test
     fun `the boxes ask for thumbnails at their measured widths and the sidebar at the grid size`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -281,7 +311,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `the sidebar lists the shown item's cues and follows a cued item`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -308,7 +338,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `a sidebar tap triggers that cue of the shown item and a disabled cue sends nothing`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -326,7 +356,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `the sidebar is empty for a slide outside the playlist`() = runTest {
-        live.liveState.value = LiveState(ConnectionStatus.CONNECTED, item = null, slide = LiveSlide(SONG_A, 1, 5))
+        live.liveState.value = LiveState(ConnectionStatus.CONNECTED, item = null, slide = LiveSlide(SONG_A, 1, 26))
         val viewModel = viewModel()
 
         viewModel.state.test {
@@ -342,7 +372,7 @@ class RemoteViewModelTest {
         live.liveState.value = LiveState(
             ConnectionStatus.CONNECTED,
             item = null,
-            slide = LiveSlide(SONG_A, 1, 5),
+            slide = LiveSlide(SONG_A, 1, 26),
             slideText = SlideText("Text 03", "Text 04")
         )
         val viewModel = viewModel()
@@ -360,7 +390,7 @@ class RemoteViewModelTest {
 
     @Test
     fun `a failed trigger is reported`() = runTest {
-        live.goLive(LiveCue(key(0), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         client.failTriggers = DataError.Network.NO_CONNECTION
         val viewModel = viewModel()
 
@@ -406,7 +436,8 @@ class RemoteViewModelTest {
             groups = listOf(
                 Group("v", "Verse 1", null, listOf(Slide("V1 A"), Slide("V1 B", enabled = false), Slide("V1 C")))
             ),
-            arrangements = listOf(Arrangement("a", "A", listOf("v"), totalCues = 3))
+            arrangements = listOf(Arrangement("a", "A", listOf("v"), totalCues = 3)),
+            currentArrangementUuid = "a"
         )
 
         val playlist = Playlist(

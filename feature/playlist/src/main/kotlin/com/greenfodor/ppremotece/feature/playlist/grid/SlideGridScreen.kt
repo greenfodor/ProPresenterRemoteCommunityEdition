@@ -62,8 +62,8 @@ import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.SyntheticThumbnails
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
-import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.R
@@ -73,6 +73,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
+private const val PREVIEW_LIBRARY_CUES = 15
 private val GridPadding = 8.dp
 private val GridBottomPadding = 88.dp
 private const val HEADER_KEY = "header"
@@ -89,14 +90,14 @@ private object NoPrefetch : LazyGridPrefetchStrategy {
 
 @Composable
 fun SlideGridRoot(
-    item: PlaylistItemKey,
+    source: CueSource,
     widthClass: WidthClass,
     headerScrollsWithGrid: Boolean,
     reconnecting: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     floatingActionButton: @Composable (SnackbarHostState) -> Unit = {},
-    viewModel: SlideGridViewModel = koinViewModel(key = item.toString()) { parametersOf(item) }
+    viewModel: SlideGridViewModel = koinViewModel(key = source.toString()) { parametersOf(source) }
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -153,7 +154,7 @@ fun SlideGridScreen(
                 )
             )
         },
-        bottomBar = { StepButtons(onAction = onAction) }
+        bottomBar = { if (state.stepButtons) StepButtons(onAction = onAction) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
@@ -325,5 +326,28 @@ private fun SlideGridScreenPreview() {
                 onBack = {}
             )
         }
+    }
+}
+
+@Preview
+@Composable
+private fun LibraryGridScreenPreview() {
+    PPRemoteTheme {
+        SlideGridScreen(
+            state = SlideGridState(
+                title = "Song A",
+                label = null,
+                cues = List(PREVIEW_LIBRARY_CUES) {
+                    CueUi(it, "Verse 1", null, "Verse 1 · ${it + 1}", label = "", enabled = true)
+                },
+                aspect = 1920f / 858f,
+                liveCueIndex = 3,
+                nextCueIndex = 4,
+                stepButtons = false,
+                isLoading = false
+            ),
+            onAction = {},
+            onBack = {}
+        )
     }
 }

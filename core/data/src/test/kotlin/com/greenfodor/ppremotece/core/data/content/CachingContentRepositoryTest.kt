@@ -75,6 +75,34 @@ class CachingContentRepositoryTest {
     }
 
     @Test
+    fun `concurrent library list collectors share one read`() = runBlocking {
+        host.delayMillis = 300
+
+        val results = List(2) { async(Dispatchers.IO) { repository.libraries().first() } }.awaitAll()
+
+        assertThat(results.map { (it as Result.Success).data.first().name }).containsExactly("Library 01", "Library 01")
+        assertThat(host.reads(LIBRARIES_PATH)).isEqualTo(1)
+    }
+
+    @Test
+    fun `the library list and a library emit again only when their content changes`() = runBlocking {
+        repository.libraries().test(timeout = 5.seconds) {
+            assertThat((awaitItem() as Result.Success).data.first().name).isEqualTo("Library 01")
+            assertThat(repository.refreshLibraries()).isEqualTo(Result.Success(Unit))
+            host.libraryName = "Renamed"
+            assertThat(repository.refreshLibraries()).isEqualTo(Result.Success(Unit))
+            assertThat((awaitItem() as Result.Success).data.first().name).isEqualTo("Renamed")
+        }
+        repository.library(Fixtures.LIBRARY_ID).test(timeout = 5.seconds) {
+            assertThat((awaitItem() as Result.Success).data.size).isEqualTo(413)
+            assertThat(repository.refreshLibrary(Fixtures.LIBRARY_ID)).isEqualTo(Result.Success(Unit))
+            expectNoEvents()
+        }
+        assertThat(host.reads(LIBRARIES_PATH)).isEqualTo(3)
+        assertThat(host.reads(LIBRARY_PATH)).isEqualTo(2)
+    }
+
+    @Test
     fun `opening again emits the cached value, then the value read`() = runBlocking {
         assertThat(repository.playlist(PLAYLIST).first().name()).isEqualTo(ORIGINAL_NAME)
         host.playlistName = "Renamed"
@@ -221,6 +249,9 @@ class CachingContentRepositoryTest {
         @Volatile
         var playlistName = ORIGINAL_NAME
 
+        @Volatile
+        var libraryName = "Library 01"
+
         private val counts = ConcurrentHashMap<String, AtomicInteger>()
 
         fun reads(path: String): Int = counts[path]?.get() ?: 0
@@ -232,6 +263,8 @@ class CachingContentRepositoryTest {
                 PLAYLIST_PATH -> Fixtures.text(Fixtures.ARRANGEMENT_TEST_PLAYLIST)
                     .replace("\"$ORIGINAL_NAME\"", "\"$playlistName\"")
                 SONG_A_PATH -> Fixtures.text(Fixtures.SONG_A)
+                LIBRARIES_PATH -> Fixtures.text(Fixtures.LIBRARIES).replace("\"Library 01\"", "\"$libraryName\"")
+                LIBRARY_PATH -> Fixtures.text(Fixtures.LIBRARY)
                 else -> null
             }
             val code = failWith ?: if (body == null) 404 else 200
@@ -252,6 +285,8 @@ class CachingContentRepositoryTest {
         const val SONG_A = "08672906-49df-4947-8d4c-bed596d6fbf3"
         const val PLAYLIST_PATH = "/v1/playlist/$PLAYLIST"
         const val SONG_A_PATH = "/v1/presentation/$SONG_A"
+        const val LIBRARIES_PATH = "/v1/libraries"
+        const val LIBRARY_PATH = "/v1/library/${Fixtures.LIBRARY_ID}"
         const val ORIGINAL_NAME = "Arrangement Test"
     }
 }

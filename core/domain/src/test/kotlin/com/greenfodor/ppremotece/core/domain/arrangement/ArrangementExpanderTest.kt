@@ -114,6 +114,24 @@ class ArrangementExpanderTest {
     }
 
     @Test
+    fun `the current cue list expands the presentation's current arrangement`() {
+        val result = currentCueList(presentation.copy(currentArrangementUuid = "a-twice"))
+
+        assertThat(result.choice).isEqualTo(ArrangementChoice.Resolved(chorusTwice))
+        assertThat(result.cues.map { it.slideText }).containsExactly("C1", "C2", "B1", "C1", "C2")
+    }
+
+    @Test
+    fun `the current cue list of the placeholder or no current arrangement is the raw group order`() {
+        listOf("a-none", "").forEach { current ->
+            val result = currentCueList(presentation.copy(currentArrangementUuid = current))
+
+            assertThat(result.choice).isEqualTo(ArrangementChoice.SongOrder)
+            assertThat(result.cues.map { it.slideText }).containsExactly("V1", "V2", "C1", "C2", "B1")
+        }
+    }
+
+    @Test
     fun `placeholder arrangement with no groups falls back to raw group order`() {
         val result = ArrangementExpander.expand(presentation, ref("a-none", ""))
 
