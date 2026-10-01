@@ -1,0 +1,5 @@
+<resources>
+    <string name="more_title">More</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_back">Back</string>
+</resources>

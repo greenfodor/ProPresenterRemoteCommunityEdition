@@ -54,6 +54,7 @@ import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
@@ -79,29 +80,40 @@ fun ClearFab(
     viewModel: ClearViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    ClearSheetLauncher(state, viewModel.events, viewModel::onAction, snackbarHostState) { open ->
+        FloatingActionButton(onClick = open, modifier = modifier) {
+            Icon(painterResource(DesignR.drawable.ic_ink_eraser), stringResource(R.string.clear_open))
+        }
+    }
+}
+
+/** [button] with the Clear sheet it opens and the sheet's error messages. */
+@Composable
+internal fun ClearSheetLauncher(
+    state: ClearState,
+    events: Flow<ClearEvent>,
+    onAction: (ClearAction) -> Unit,
+    snackbarHostState: SnackbarHostState,
+    button: @Composable (open: () -> Unit) -> Unit
+) {
     var open by rememberSaveable { mutableStateOf(false) }
     val sheetSnackbars = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    ObserveAsEvents(viewModel.events) { event ->
+    ObserveAsEvents(events) { event ->
         val message = when (event) {
             is ClearEvent.ShowError -> event.message.asString(context)
         }
         scope.launch { (if (open) sheetSnackbars else snackbarHostState).showSnackbar(message) }
     }
-    FloatingActionButton(
-        onClick = { open = true },
-        modifier = modifier
-    ) {
-        Icon(painterResource(DesignR.drawable.ic_ink_eraser), stringResource(R.string.clear_open))
-    }
+    button { open = true }
     LaunchedEffect(open) {
-        if (open) viewModel.onAction(ClearAction.OnSheetOpen)
+        if (open) onAction(ClearAction.OnSheetOpen)
     }
     if (open) {
         ClearSheet(
             state = state,
-            onAction = viewModel::onAction,
+            onAction = onAction,
             onDismiss = {
                 sheetSnackbars.currentSnackbarData?.dismiss()
                 open = false

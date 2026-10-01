@@ -38,7 +38,8 @@ MVI presentation (State / Action / Event, `XxxRoot` / `XxxScreen`, `UiText`).
 | `:feature:connect`   | `ppremotece.android.feature`         | Discovery / manual host, connect screen, `ConnectRoute`                          |
 | `:feature:playlist`  | `ppremotece.android.feature`         | Playlist tree + slide grid                                                       |
 | `:feature:remote`    | `ppremotece.android.feature`         | Remote tab: live and next boxes, item steps, Prev/Next                           |
-| `:feature:clear`     | `ppremotece.android.feature`         | Clear FAB and sheet: layer clears and clear groups                               |
+| `:feature:clear`     | `ppremotece.android.feature`         | Clear FAB, rail item and sheet: layer clears and clear groups                    |
+| `:feature:settings`  | `ppremotece.android.feature`         | More list and Settings screen                                                    |
 
 **Dependency rules:** `domain` depends on nothing; `data` → `domain`; `designsystem` → `domain`;
 features → `domain` + `designsystem`, never `data` and never each other; `:app` → everything and
