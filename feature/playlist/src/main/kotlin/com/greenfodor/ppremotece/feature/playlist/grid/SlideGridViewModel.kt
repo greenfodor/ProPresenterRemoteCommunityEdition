@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.designsystem.ui.toUiText
+import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementBanner
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementExpander
 import com.greenfodor.ppremotece.core.domain.arrangement.CueList
 import com.greenfodor.ppremotece.core.domain.arrangement.currentCueList
+import com.greenfodor.ppremotece.core.domain.arrangement.groupSequence
+import com.greenfodor.ppremotece.core.domain.arrangement.resyncCue
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
@@ -15,10 +18,10 @@ import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.liveCueIndex
-import com.greenfodor.ppremotece.core.domain.live.nextCueIndex
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
 import com.greenfodor.ppremotece.core.domain.model.Presentation
+import com.greenfodor.ppremotece.core.domain.model.PresentationRef
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
@@ -27,11 +30,8 @@ import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
-import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
-import com.greenfodor.ppremotece.core.domain.thumbnail.slideAspect
 import com.greenfodor.ppremotece.feature.playlist.R
-import com.greenfodor.ppremotece.feature.playlist.toArrangementLabel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -66,7 +66,10 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * also evicts the thumbnails and loads them again, as does each new host connection. The slide
  * size step and the view mode are read for the window's width class; a step being dragged is shown
  * at once and saved when the drag ends, and a chosen view mode is saved for the width class.
- * [firstVisibleCue] keeps the first cue shown across view mode switches.
+ * [firstVisibleCue] keeps the first cue shown across view mode switches. A playlist item's grid
+ * shows the [ArrangementBanner] while its presentation is live in another arrangement, and Re-sync
+ * triggers this item's cue at the live slide ([resyncCue]); the group strip lists the
+ * [groupSequence], and a pill tap scrolls to the occurrence's first cue.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SlideGridViewModel(
@@ -107,6 +110,23 @@ class SlideGridViewModel(
     private val viewMode: Flow<ViewMode?> =
         widthClass.flatMapLatest { it?.let(gridPreferences::viewMode) ?: flowOf(null) }
     private var loaded: Content.Loaded? = null
+    private var resyncTarget: Int? = null
+    private val live = liveStateRepository.liveState
+
+    private val liveItemRef: Flow<PresentationRef?> =
+        if (source is CueSource.PlaylistItem) {
+            live.map { it.item }.distinctUntilChanged().flatMapLatest { key ->
+                if (key == null || key == source.key) {
+                    flowOf(null)
+                } else {
+                    contentRepository.playlist(key.playlistUuid).map { result ->
+                        (result as? Result.Success)?.data?.items?.firstOrNull { it.key == key }?.presentation
+                    }
+                }
+            }
+        } else {
+            flowOf(null)
+        }
 
     private val content: Flow<Content> =
         retries.flatMapLatest {
@@ -135,7 +155,10 @@ class SlideGridViewModel(
                 is Content.Failed ->
                     SlideGridState(stepsEnabled = alwaysSteps, isLoading = false, error = content.error) to null
                 is Content.Loaded -> gridState(
-                    content,
+                    source,
+                    content.title,
+                    content.presentation,
+                    content.cueList,
                     requests.value.takeIf { mode != ViewMode.LIST },
                     reloads + requests.index
                 ) to content
@@ -143,18 +166,14 @@ class SlideGridViewModel(
         }
 
     val state: StateFlow<SlideGridState> =
-        combine(grid, liveStateRepository.liveState, gridStep) { (state, loaded), live, step ->
+        combine(grid, live, gridStep, liveItemRef) { (state, loaded), live, step, liveItemRef ->
             if (loaded == null) {
                 state.copy(gridStep = step)
             } else {
-                val presentationUuid = loaded.presentation.uuid
-                val liveIndex = liveCueIndex(live, source, presentationUuid, loaded.cueList.cues)
-                state.copy(
-                    liveCueIndex = liveIndex,
-                    nextCueIndex = nextCueIndex(live, source, presentationUuid, loaded.cueList.cues),
-                    stepsEnabled = alwaysSteps || liveIndex != null,
-                    gridStep = step
-                )
+                val withLive = state.withLive(source, loaded.presentation, loaded.cueList, live, liveItemRef)
+                resyncTarget =
+                    withLive.banner?.let { resyncTargetOf(loaded.presentation, loaded.cueList, live, liveItemRef) }
+                withLive.copy(stepsEnabled = alwaysSteps || withLive.liveCueIndex != null, gridStep = step)
             }
         }.stateIn(
             viewModelScope,
@@ -171,12 +190,26 @@ class SlideGridViewModel(
 
     fun onAction(action: SlideGridAction) {
         when (action) {
-            is SlideGridAction.OnCueClick -> if (isEnabled(action.index)) send { trigger(action.index) }
+            is SlideGridAction.OnCueClick ->
+                if (loaded?.cueList.isEnabled(action.index)) send { client.trigger(source, action.index) }
             SlideGridAction.OnNextClick -> step { client.triggerNext() }
             SlideGridAction.OnPreviousClick -> step { client.triggerPrevious() }
+            SlideGridAction.OnResyncClick -> resync()
+            is SlideGridAction.OnGroupPillClick -> viewModelScope.launch {
+                _events.send(SlideGridEvent.ScrollToCue(action.firstCueIndex))
+            }
             is SlideGridAction.OnFirstVisibleCueChange -> firstVisibleCue = action.cueIndex
             SlideGridAction.OnRetryClick -> retries.value++
             SlideGridAction.OnReloadClick -> reload()
+            is SlideGridAction.OnWidthClassChange,
+            is SlideGridAction.OnGridStepChange,
+            SlideGridAction.OnGridStepChangeFinished,
+            is SlideGridAction.OnViewModeChange -> onLayoutAction(action)
+        }
+    }
+
+    private fun onLayoutAction(action: SlideGridAction) {
+        when (action) {
             is SlideGridAction.OnWidthClassChange -> {
                 draggedStep.value = null
                 widthClass.value = action.widthClass
@@ -186,42 +219,15 @@ class SlideGridViewModel(
             is SlideGridAction.OnViewModeChange -> widthClass.value?.let { current ->
                 viewModelScope.launch { gridPreferences.setViewMode(current, action.mode) }
             }
+            else -> Unit
         }
     }
 
-    private fun gridState(
-        content: Content.Loaded,
-        requests: ThumbnailRequests?,
-        thumbnailGeneration: Int
-    ): SlideGridState {
-        val presentationUuid = content.presentation.uuid
-        val thumbnails = requests.takeUnless { content.cueList.countMismatch }
-        return SlideGridState(
-            title = content.title,
-            label = content.cueList.choice.toArrangementLabel(),
-            cues = content.cueList.cues.map { cue ->
-                CueUi(
-                    index = cue.index,
-                    groupName = cue.groupName,
-                    groupColor = cue.groupColor,
-                    text = cue.slideText,
-                    label = cue.slideLabel,
-                    enabled = cue.enabled,
-                    thumbnail = thumbnails?.request(source, presentationUuid, cue, ThumbnailQuality.Grid)
-                )
-            },
-            aspect = slideAspect(content.presentation),
-            countMismatch = content.cueList.countMismatch,
-            thumbnailGeneration = thumbnailGeneration,
-            isLoading = false
-        )
+    private fun resync() {
+        val item = (source as? CueSource.PlaylistItem)?.key ?: return
+        val cue = resyncTarget ?: return
+        send { client.triggerCue(item, cue) }
     }
-
-    private suspend fun trigger(cueIndex: Int): EmptyResult<DataError.Network> =
-        when (source) {
-            is CueSource.PlaylistItem -> client.triggerCue(source.key, cueIndex)
-            is CueSource.Presentation -> client.triggerPresentationCue(source.uuid, cueIndex)
-        }
 
     private fun saveDraggedStep() {
         val step = draggedStep.value ?: return
@@ -231,9 +237,6 @@ class SlideGridViewModel(
             draggedStep.compareAndSet(step, null)
         }
     }
-
-    private fun isEnabled(cueIndex: Int): Boolean =
-        loaded?.cueList?.cues?.firstOrNull { it.index == cueIndex }?.enabled == true
 
     private fun reload() {
         viewModelScope.launch {

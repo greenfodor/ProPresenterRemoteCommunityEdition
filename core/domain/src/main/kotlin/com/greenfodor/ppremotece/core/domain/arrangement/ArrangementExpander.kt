@@ -31,7 +31,7 @@ object ArrangementExpander {
         }
     }
 
-    private fun resolve(presentation: Presentation, ref: PresentationRef): Arrangement? {
+    internal fun resolve(presentation: Presentation, ref: PresentationRef): Arrangement? {
         if (ref.arrangementUuid.isEmpty()) return null
         return presentation.arrangements.firstOrNull { it.uuid == ref.arrangementUuid }
             ?: ref.arrangementName.takeIf { it.isNotEmpty() }?.let { name ->

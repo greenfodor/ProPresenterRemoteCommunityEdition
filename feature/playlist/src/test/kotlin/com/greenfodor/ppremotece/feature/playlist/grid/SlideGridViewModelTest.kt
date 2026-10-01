@@ -10,6 +10,7 @@ import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementBanner
 import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.ViewMode
@@ -52,6 +53,7 @@ import org.junit.jupiter.api.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class SlideGridViewModelTest {
     private val item = PlaylistItemKey(PLAYLIST, 6)
+    private val otherItem = PlaylistItemKey(PLAYLIST, 7)
     private val content = FakeContentRepository()
     private val client = FakeProPresenterClient()
     private val live = MutableStateFlow(LiveState.Initial)
@@ -115,6 +117,12 @@ class SlideGridViewModelTest {
                     name = "Song C",
                     type = PlaylistItemType.PRESENTATION,
                     presentation = PresentationRef(SONG_C, arrangementUuid = "a-a", arrangementName = "A")
+                ),
+                PlaylistItem(
+                    key = otherItem,
+                    name = "Song C",
+                    type = PlaylistItemType.PRESENTATION,
+                    presentation = PresentationRef(SONG_C, arrangementUuid = "a-b", arrangementName = "B")
                 )
             )
         )
@@ -299,7 +307,7 @@ class SlideGridViewModelTest {
     @Test
     fun `an arrangement that expands to fewer cues than expected is flagged`() = runTest {
         content.presentations[SONG_C] = songC(chorusText = "Chorus · 1").let {
-            it.copy(arrangements = listOf(it.arrangements.single().copy(totalCues = 9)))
+            it.copy(arrangements = it.arrangements.map { a -> if (a.uuid == "a-a") a.copy(totalCues = 9) else a })
         }
         val viewModel = viewModel()
 
@@ -485,6 +493,55 @@ class SlideGridViewModelTest {
             .isEqualTo(mapOf(WidthClass.EXPANDED to ViewMode.LIST, WidthClass.COMPACT to ViewMode.LIST))
     }
 
+    @Test
+    fun `another item live in another arrangement shows the banner`() = runTest {
+        val viewModel = viewModel()
+        live.value = LiveState(ConnectionStatus.CONNECTED, otherItem, LiveSlide(SONG_C, index = 1, totalCues = 5))
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().banner)
+                .isEqualTo(ArrangementBanner(arrangementName = "B", isSongOrder = false, totalCues = 5))
+            live.value = LiveState(ConnectionStatus.CONNECTED, item, LiveSlide(SONG_C, index = 4, totalCues = 8))
+            assertThat(expectMostRecentItem().banner).isNull()
+        }
+    }
+
+    @Test
+    fun `re-sync triggers this item's cue showing the live slide`() = runTest {
+        val viewModel = viewModel()
+        live.value = LiveState(ConnectionStatus.CONNECTED, otherItem, LiveSlide(SONG_C, index = 1, totalCues = 5))
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().banner).isNotNull()
+            viewModel.onAction(SlideGridAction.OnResyncClick)
+        }
+
+        assertThat(client.triggeredCues).containsExactly(item to 4)
+    }
+
+    @Test
+    fun `the group strip lists each group occurrence and marks the live one`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().groupSequence.pills.map { it.name to it.firstCueIndex })
+                .containsExactly("Verse 1" to 0, "Chorus" to 3, "Verse 1" to 5)
+            live.value = LiveState(ConnectionStatus.CONNECTED, item, LiveSlide(SONG_C, index = 6, totalCues = 8))
+            assertThat(expectMostRecentItem().groupSequence.livePill).isEqualTo(2)
+        }
+    }
+
+    @Test
+    fun `a group pill tap scrolls to the occurrence's first cue`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.events.test {
+            viewModel.onAction(SlideGridAction.OnGroupPillClick(firstCueIndex = 5))
+
+            assertThat(awaitItem()).isEqualTo(SlideGridEvent.ScrollToCue(5))
+        }
+    }
+
     private fun outside(cue: Int, totalCues: Int) =
         LiveState(ConnectionStatus.CONNECTED, item = null, slide = LiveSlide(SONG_C, cue, totalCues))
 
@@ -521,7 +578,10 @@ class SlideGridViewModelTest {
             uuid = SONG_C,
             name = "Song C",
             groups = listOf(verse, chorus),
-            arrangements = listOf(Arrangement("a-a", "A", listOf("g-verse", "g-chorus", "g-verse"), totalCues = 8)),
+            arrangements = listOf(
+                Arrangement("a-a", "A", listOf("g-verse", "g-chorus", "g-verse"), totalCues = 8),
+                Arrangement("a-b", "B", listOf("g-chorus", "g-verse"), totalCues = 5)
+            ),
             currentArrangementUuid = "a-a"
         )
     }
