@@ -19,18 +19,20 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 /**
- * The rail's "Clear" item; it opens the Clear sheet like [ClearFab]. Failures are shown in the
- * sheet while it is open and in [snackbarHostState] otherwise.
+ * The rail's "Clear" item; it opens the Clear sheet like [ClearFab], shown while [open]. Failures
+ * are shown in the sheet while it is open and in [snackbarHostState] otherwise.
  */
 @Composable
 fun ClearRailButton(
     snackbarHostState: SnackbarHostState,
+    open: Boolean,
+    onOpenChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ClearViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    ClearSheetLauncher(state, viewModel.events, viewModel::onAction, snackbarHostState) { open ->
-        ClearRailItem(onClick = open, modifier = modifier)
+    ClearSheetLauncher(state, viewModel.events, viewModel::onAction, snackbarHostState, open, onOpenChange) {
+        ClearRailItem(onClick = { onOpenChange(true) }, modifier = modifier)
     }
 }
 

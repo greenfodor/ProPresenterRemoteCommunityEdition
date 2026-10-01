@@ -29,11 +29,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -70,43 +68,48 @@ private val ActiveDotSize = 8.dp
 private const val LAYERS_PER_ROW = 4
 
 /**
- * The 56 dp Clear FAB; it opens the Clear sheet, which stays open after each clear. Failures are
- * shown in the sheet while it is open and in [snackbarHostState] otherwise.
+ * The 56 dp Clear FAB; it opens the Clear sheet, which stays open after each clear and is shown
+ * while [open]. Failures are shown in the sheet while it is open and in [snackbarHostState] otherwise.
  */
 @Composable
 fun ClearFab(
     snackbarHostState: SnackbarHostState,
+    open: Boolean,
+    onOpenChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ClearViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    ClearSheetLauncher(state, viewModel.events, viewModel::onAction, snackbarHostState) { open ->
-        FloatingActionButton(onClick = open, modifier = modifier) {
+    ClearSheetLauncher(state, viewModel.events, viewModel::onAction, snackbarHostState, open, onOpenChange) {
+        FloatingActionButton(onClick = { onOpenChange(true) }, modifier = modifier) {
             Icon(painterResource(DesignR.drawable.ic_ink_eraser), stringResource(R.string.clear_open))
         }
     }
 }
 
-/** [button] with the Clear sheet it opens and the sheet's error messages. */
+/** [button] with the Clear sheet, shown while [open], and the sheet's error messages. */
+@Suppress("LongParameterList")
 @Composable
 internal fun ClearSheetLauncher(
     state: ClearState,
     events: Flow<ClearEvent>,
     onAction: (ClearAction) -> Unit,
     snackbarHostState: SnackbarHostState,
-    button: @Composable (open: () -> Unit) -> Unit
+    open: Boolean,
+    onOpenChange: (Boolean) -> Unit,
+    button: @Composable () -> Unit
 ) {
-    var open by rememberSaveable { mutableStateOf(false) }
     val sheetSnackbars = remember { SnackbarHostState() }
+    val sheetShown by rememberUpdatedState(open)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     ObserveAsEvents(events) { event ->
         val message = when (event) {
             is ClearEvent.ShowError -> event.message.asString(context)
         }
-        scope.launch { (if (open) sheetSnackbars else snackbarHostState).showSnackbar(message) }
+        scope.launch { (if (sheetShown) sheetSnackbars else snackbarHostState).showSnackbar(message) }
     }
-    button { open = true }
+    button()
     LaunchedEffect(open) {
         if (open) onAction(ClearAction.OnSheetOpen)
     }
@@ -116,7 +119,7 @@ internal fun ClearSheetLauncher(
             onAction = onAction,
             onDismiss = {
                 sheetSnackbars.currentSnackbarData?.dismiss()
-                open = false
+                onOpenChange(false)
             },
             snackbarHostState = sheetSnackbars
         )

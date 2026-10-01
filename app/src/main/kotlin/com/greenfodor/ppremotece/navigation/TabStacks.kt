@@ -25,13 +25,8 @@ data class TabStacks(
     val displayed: List<NavKey>
         get() = if (current == ShellTab.PRESENTATION) presentation else presentation + stackOf(current)
 
-    fun select(tab: ShellTab): TabStacks = if (tab !=
-        current
-    ) {
-        copy(current = tab)
-    } else {
-        withStack(tab, stackOf(tab).take(1))
-    }
+    fun select(tab: ShellTab): TabStacks =
+        if (tab != current) copy(current = tab) else withStack(tab, stackOf(tab).take(1))
 
     fun back(): TabStacks {
         val stack = stackOf(current)

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -53,6 +54,7 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowSizeClass
 import com.greenfodor.ppremotece.R
 import com.greenfodor.ppremotece.core.domain.layout.NavigationLayout
+import com.greenfodor.ppremotece.core.domain.layout.RAIL_SLOT_DP
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.layout.navigationLayout
 import com.greenfodor.ppremotece.core.domain.layout.navigationSlots
@@ -80,8 +82,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val ListPaneWidth = 360.dp
-private val ClearRailSlot = 64.dp
-private val clearFab: @Composable (SnackbarHostState) -> Unit = { ClearFab(snackbarHostState = it) }
 
 /** A bar or rail item: the tab it selects, its icon and its label. */
 private data class ShellItem(
@@ -126,6 +126,7 @@ fun AppShell(
     val tab = shellStacks.current
     var listMode by rememberSaveable { mutableStateOf(ListMode.PLAYLISTS) }
     val shellSnackbars = remember { SnackbarHostState() }
+    var clearOpen by rememberSaveable { mutableStateOf(false) }
 
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val windowSizeClass = adaptiveInfo.windowSizeClass
@@ -134,7 +135,13 @@ fun AppShell(
     val widthClass = widthClassOf(windowSizeClass.minWidthDp)
     val compactHeight = !windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
     val layout = navigationLayout(windowSizeClass.minWidthDp)
-    val fab = clearFab.takeIf { layout == NavigationLayout.BAR }
+    val clearShown = layout == NavigationLayout.RAIL || tab == ShellTab.PRESENTATION || tab == ShellTab.REMOTE
+    LaunchedEffect(clearShown) { if (!clearShown) clearOpen = false }
+    val fab: (@Composable (SnackbarHostState) -> Unit)? = if (layout == NavigationLayout.BAR) {
+        { snackbars -> ClearFab(snackbarHostState = snackbars, open = clearOpen, onOpenChange = { clearOpen = it }) }
+    } else {
+        null
+    }
     val slideGrid = @Composable { source: CueSource ->
         SlideGridRoot(
             source = source,
@@ -154,19 +161,24 @@ fun AppShell(
         val availableDp = when (layout) {
             NavigationLayout.BAR -> maxWidth
             NavigationLayout.RAIL ->
-                maxHeight - insets.calculateTopPadding() - insets.calculateBottomPadding() - ClearRailSlot
+                maxHeight - insets.calculateTopPadding() - insets.calculateBottomPadding() - RAIL_SLOT_DP.dp
         }
         val slots = navigationSlots(layout, availableDp.value.toInt(), ShellDestination.entries)
         val items = slots.shown.map { it.item } + listOfNotNull(MoreItem.takeIf { slots.more.isNotEmpty() })
         val settingsInMore = ShellDestination.SETTINGS in slots.more
-        LaunchedEffect(settingsInMore) { update(stacks().withSettingsInMore(settingsInMore)) }
+        LaunchedEffect(settingsInMore) {
+            val next = stacks().withSettingsInMore(settingsInMore)
+            if (next != stacks()) update(next)
+        }
 
         ShellFrame(
             layout = layout,
             items = items,
             current = tab,
             onSelect = onSelect,
-            snackbars = shellSnackbars
+            snackbars = shellSnackbars,
+            clearOpen = clearOpen,
+            onClearOpenChange = { clearOpen = it }
         ) { padding ->
             NavDisplay(
                 backStack = stacks().displayed,
@@ -310,23 +322,28 @@ private fun ShellFrame(
     current: ShellTab,
     onSelect: (ShellTab) -> Unit,
     snackbars: SnackbarHostState,
+    clearOpen: Boolean,
+    onClearOpenChange: (Boolean) -> Unit,
     content: @Composable (PaddingValues) -> Unit
 ) {
     Row(modifier = Modifier.fillMaxSize()) {
         if (layout == NavigationLayout.RAIL) {
             ShellRail(items = items, current = current, onSelect = onSelect) {
-                ClearRailButton(snackbarHostState = snackbars)
+                ClearRailButton(snackbarHostState = snackbars, open = clearOpen, onOpenChange = onClearOpenChange)
             }
         }
         Scaffold(
             contentWindowInsets = WindowInsets(0),
-            snackbarHost = { SnackbarHost(snackbars) },
-            bottomBar = {
-                if (layout ==
-                    NavigationLayout.BAR
-                ) {
-                    ShellBar(items = items, current = current, onSelect = onSelect)
+            snackbarHost = {
+                if (layout == NavigationLayout.RAIL) {
+                    SnackbarHost(
+                        snackbars,
+                        modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                    )
                 }
+            },
+            bottomBar = {
+                if (layout == NavigationLayout.BAR) ShellBar(items = items, current = current, onSelect = onSelect)
             },
             modifier = Modifier
                 .weight(1f)

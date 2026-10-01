@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.layout
 
-private const val RAIL_SLOT_DP = 64
+/** The height of a rail slot. */
+const val RAIL_SLOT_DP = 64
 private const val BAR_SLOT_DP = 80
 private const val BAR_MAX_SLOTS = 5
 private const val ALWAYS_SHOWN = 2

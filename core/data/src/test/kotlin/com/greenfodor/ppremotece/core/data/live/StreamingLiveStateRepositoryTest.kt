@@ -123,7 +123,7 @@ class StreamingLiveStateRepositoryTest {
 
     @Test
     fun `a slide of item 1 read before item 1's playlist active frame is attributed to item 1`() = runBlocking {
-        replayStage7Probe(throughChunk = ITEM_1_SLIDE_INDEX_CHUNK)
+        replayProbe(STAGE_7_PROBE, throughChunk = ITEM_1_SLIDE_INDEX_CHUNK)
         val item1 = PlaylistItemKey(ARRANGEMENT_TEST_PLAYLIST_UUID, index = 1)
 
         repository.liveState.test(timeout = 5.seconds) {
@@ -139,7 +139,7 @@ class StreamingLiveStateRepositoryTest {
     @Test
     fun `a presentation route slide read before its playlist active frame has a presentation source`() =
         runBlocking {
-            replayStage7Probe(throughChunk = PRESENTATION_ROUTE_SLIDE_INDEX_CHUNK)
+            replayProbe(STAGE_7_PROBE, throughChunk = PRESENTATION_ROUTE_SLIDE_INDEX_CHUNK)
 
             repository.liveState.test(timeout = 5.seconds) {
                 val live = awaitUntil { it.slide?.totalCues == 15 }
@@ -154,7 +154,7 @@ class StreamingLiveStateRepositoryTest {
 
     @Test
     fun `a same item step without a playlist active frame keeps the item`() = runBlocking {
-        replayStage7Probe(throughChunk = SAME_ITEM_SLIDE_INDEX_CHUNK)
+        replayProbe(STAGE_7_PROBE, throughChunk = SAME_ITEM_SLIDE_INDEX_CHUNK)
         val item0 = PlaylistItemKey(ARRANGEMENT_TEST_PLAYLIST_UUID, index = 0)
 
         repository.liveState.test(timeout = 5.seconds) {
@@ -166,13 +166,13 @@ class StreamingLiveStateRepositoryTest {
             .isEqualTo(LiveCue(CueSource.PlaylistItem(item0), FakeProPresenter.SONG_A_UUID, cueIndex = 1))
     }
 
-    private fun replayStage7Probe(throughChunk: Int) {
+    private fun replayProbe(name: String, throughChunk: Int) {
         val delivered = AtomicInteger()
-        val captured = CapturedLiveBodies(STAGE_7_PROBE)
+        val captured = CapturedLiveBodies(name)
         fake.liveBodies = { captured.after(delivered.get()) }
         fake.enqueueStream(
             fake.stream(
-                STAGE_7_PROBE,
+                name,
                 StreamEnd.STALL,
                 timeScale = 0.05,
                 delivered = delivered,
@@ -357,14 +357,11 @@ class StreamingLiveStateRepositoryTest {
 
     @Test
     fun `the stage 6 capture of a presentation trigger leaves no live item and song A's slide`() = runBlocking {
-        val songA15 = FakeProPresenter.SLIDE_INDEX.replace("\"total_cues\":7", "\"total_cues\":15")
-        repeat(SLIDE_READS) { fake.slideIndexBodies += songA15 }
-        val delivered = AtomicInteger()
-        fake.enqueueStream(fake.stream("stage6-probe", StreamEnd.STALL, delivered = delivered))
+        replayProbe(STAGE_6_PROBE, throughChunk = STAGE_6_TRIGGER_CHUNK)
 
         repository.liveState.test(timeout = 5.seconds) {
-            awaitCondition { delivered.get() == StreamReplay.chunkCount("stage6-probe") }
-            val live = awaitUntil { it.item == null && it.slide != null }
+            val live = awaitUntil { it.slide?.totalCues == 15 }
+            assertThat(live.item).isNull()
             assertThat(live.slide).isEqualTo(LiveSlide(FakeProPresenter.SONG_A_UUID, index = 3, totalCues = 15))
             cancelAndIgnoreRemainingEvents()
         }
@@ -432,12 +429,13 @@ class StreamingLiveStateRepositoryTest {
         val RELAXED_WATCHDOG = 1.seconds
         const val SLIDE_INDEX = "/v1/presentation/slide_index"
         const val PLAYLIST_ACTIVE = "/v1/playlist/active"
+        const val STAGE_6_PROBE = "stage6-probe"
+        const val STAGE_6_TRIGGER_CHUNK = 10
         const val STAGE_7_PROBE = "stage7-probe"
         const val ARRANGEMENT_TEST_PLAYLIST_UUID = "6f760dbf-04b9-46f2-9bb3-33eeea6a6d90"
         const val ITEM_1_SLIDE_INDEX_CHUNK = 10
         const val PRESENTATION_ROUTE_SLIDE_INDEX_CHUNK = 16
         const val SAME_ITEM_SLIDE_INDEX_CHUNK = 28
-        const val SLIDE_READS = 10
         const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active","status/layers"]"""
     }
 }
