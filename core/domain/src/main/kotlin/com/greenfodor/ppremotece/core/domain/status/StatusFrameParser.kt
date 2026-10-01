@@ -58,14 +58,15 @@ class StatusFrameParser {
                         .child("presentation_uuid").stringOrNull()
                 )
             }
-            "status/layers" -> StatusEvent.Layers(
-                (data as? JsonObject)
-                    ?.filterValues { (it as? JsonPrimitive)?.booleanOrNull == true }
-                    ?.keys
-                    ?.mapNotNull(OutputLayer::fromApiName)
-                    ?.toSet()
-                    .orEmpty()
-            )
+            "status/layers" -> (data as? JsonObject)?.let { layers ->
+                StatusEvent.Layers(
+                    layers
+                        .filterValues { (it as? JsonPrimitive)?.booleanOrNull == true }
+                        .keys
+                        .mapNotNull(OutputLayer::fromApiName)
+                        .toSet()
+                )
+            } ?: StatusEvent.Unknown(url)
             "timer/system_time" -> (data as? JsonPrimitive)?.longOrNull?.let { StatusEvent.Heartbeat(it) }
                 ?: StatusEvent.Unknown(url)
             else -> StatusEvent.Unknown(url)

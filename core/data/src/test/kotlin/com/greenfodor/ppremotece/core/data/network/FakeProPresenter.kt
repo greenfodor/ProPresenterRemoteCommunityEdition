@@ -25,9 +25,6 @@ class FakeProPresenter(
     @Volatile
     var failSlideIndexReads = 0
 
-    /** Layers whose `clear/layer` answers 500. */
-    val failingLayers = CopyOnWriteArrayList<String>()
-
     /** Bodies served by the next `slide_index` reads, in order, before [SLIDE_INDEX]. */
     val slideIndexBodies = ConcurrentLinkedQueue<String>()
     private val streams = LinkedBlockingQueue<MockResponse>()
@@ -94,9 +91,11 @@ class FakeProPresenter(
 
     private fun dispatchClear(path: String): MockResponse =
         when {
-            CLEAR_LAYER.matches(path) -> status(if (path.substringAfterLast('/') in failingLayers) 500 else 204)
+            CLEAR_LAYER.matches(path) -> status(204)
             path == "/v1/clear/groups" -> json(Fixtures.text("clear-groups.json"))
             CLEAR_GROUP_TRIGGER.matches(path) -> status(204)
+            CLEAR_GROUP_ICON.matches(path) ->
+                MockResponse.Builder().addHeader("Content-Type", "image/svg+xml").body(ICON_SVG).build()
             else -> status(404)
         }
 
@@ -123,6 +122,9 @@ class FakeProPresenter(
         private val CLEAR_LAYER =
             Regex("^/v1/clear/layer/(slide|media|video_input|props|messages|announcements|audio)$")
         private val CLEAR_GROUP_TRIGGER = Regex("^/v1/clear/group/[0-9a-f-]+/trigger$")
+        private val CLEAR_GROUP_ICON = Regex("^/v1/clear/group/[0-9a-f-]+/icon$")
+        const val ICON_SVG = """<svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">""" +
+            """<path d="M1,1 L17,17" fill="#FFFFFF"/></svg>"""
         const val NO_SLIDE_INDEX = """{"presentation_index":null}"""
         const val SLIDE_FRAME =
             """{"url":"status/slide","data":{"current":{"text":"Text 01","notes":"","uuid":"s-1"},""" +
@@ -153,6 +155,7 @@ class FakeProPresenter(
             "GET" to Regex("^/v1/clear/layer/(slide|media|video_input|props|messages|announcements|audio)$"),
             "GET" to Regex("^/v1/clear/groups$"),
             "GET" to Regex("^/v1/clear/group/[0-9a-f-]+/trigger$"),
+            "GET" to Regex("^/v1/clear/group/[0-9a-f-]+/icon$"),
             "POST" to Regex("^/v1/status/updates$")
         )
 

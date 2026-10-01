@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.feature.clear
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
+import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
@@ -17,17 +18,19 @@ import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import kotlinx.coroutines.flow.MutableStateFlow
 
-/** Records the clears it is sent; layers in [failingLayers] fail with a server error. */
+/** Records the clears it is sent; groups in [failingGroups] fail with a server error. */
 class FakeClearClient : ProPresenterClient {
     val clearedLayers = mutableListOf<OutputLayer>()
     val triggeredGroups = mutableListOf<String>()
-    val failingLayers = mutableSetOf<OutputLayer>()
+    val failingGroups = mutableSetOf<String>()
     var groups: List<ClearGroup> = emptyList()
     var groupReads = 0
+    val icons = mutableMapOf<String, ClearGroupIcon>()
+    val iconReads = mutableListOf<String>()
 
     override suspend fun clearLayer(layer: OutputLayer): EmptyResult<DataError.Network> {
         clearedLayers += layer
-        return if (layer in failingLayers) Result.Failure(DataError.Network.SERVER) else Result.Success(Unit)
+        return Result.Success(Unit)
     }
 
     override suspend fun clearGroups(): Result<List<ClearGroup>, DataError.Network> {
@@ -37,7 +40,7 @@ class FakeClearClient : ProPresenterClient {
 
     override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> {
         triggeredGroups += uuid
-        return Result.Success(Unit)
+        return if (uuid in failingGroups) Result.Failure(DataError.Network.SERVER) else Result.Success(Unit)
     }
 
     override suspend fun version(): Result<ProPresenterVersion, DataError.Network> = notServed()
@@ -53,6 +56,11 @@ class FakeClearClient : ProPresenterClient {
     override suspend fun triggerCue(item: PlaylistItemKey, cueIndex: Int): EmptyResult<DataError.Network> = notServed()
 
     override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> {
+        iconReads += uuid
+        return icons[uuid]?.let { Result.Success(it) } ?: Result.Failure(DataError.Network.NOT_FOUND)
+    }
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> = notServed()
 

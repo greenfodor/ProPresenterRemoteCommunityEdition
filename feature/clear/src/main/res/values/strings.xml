@@ -13,8 +13,4 @@
     <string name="clear_layer_announcements">Announcements</string>
     <string name="clear_layer_audio">Audio</string>
     <string name="clear_layer_active">Has content</string>
-    <plurals name="clear_layers_failed">
-        <item quantity="one">%1$d layer failed to clear</item>
-        <item quantity="other">%1$d layers failed to clear</item>
-    </plurals>
 </resources>

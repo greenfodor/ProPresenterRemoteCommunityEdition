@@ -146,6 +146,13 @@ class StatusFrameParserTest {
     }
 
     @Test
+    fun `status layers without an object decodes to unknown`() {
+        assertThat(
+            parser.decode("""{"url":"status/layers","data":null}""")
+        ).isEqualTo(StatusEvent.Unknown("status/layers"))
+    }
+
+    @Test
     fun `system time decodes to a heartbeat`() {
         assertThat(parser.decode("""{"url":"timer/system_time","data":1790534128}"""))
             .isEqualTo(StatusEvent.Heartbeat(epochSeconds = 1790534128))

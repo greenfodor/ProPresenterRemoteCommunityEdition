@@ -23,7 +23,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -38,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -49,7 +49,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
+import com.greenfodor.ppremotece.core.designsystem.ui.toColor
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
+import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
+import com.greenfodor.ppremotece.core.domain.model.GroupColor
+import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -57,24 +61,35 @@ import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val LayerButtonHeight = 72.dp
 private val ClearAllHeight = 56.dp
+private val PreviewTint = GroupColor(red = 0.94f, green = 0.5f, blue = 0.5f, alpha = 1f)
+private val PreviewIcon = ClearGroupIcon.Vector(
+    18f,
+    18f,
+    listOf(IconPath("M2,2 L16,2 L16,16 L2,16 Z", evenOdd = false))
+)
 private val ActiveDotSize = 8.dp
 private const val LAYERS_PER_ROW = 4
 
-/** The 56 dp Clear FAB; it opens the Clear sheet, which stays open after each clear. */
+/**
+ * The 56 dp Clear FAB; it opens the Clear sheet, which stays open after each clear. Failures are
+ * shown in the sheet while it is open and in [snackbarHostState] otherwise.
+ */
 @Composable
-fun ClearFab(modifier: Modifier = Modifier, viewModel: ClearViewModel = koinViewModel()) {
+fun ClearFab(
+    snackbarHostState: SnackbarHostState,
+    modifier: Modifier = Modifier,
+    viewModel: ClearViewModel = koinViewModel()
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var open by rememberSaveable { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
+    val sheetSnackbars = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     ObserveAsEvents(viewModel.events) { event ->
         val message = when (event) {
-            is ClearEvent.LayersFailed ->
-                context.resources.getQuantityString(R.plurals.clear_layers_failed, event.count, event.count)
             is ClearEvent.ShowError -> event.message.asString(context)
         }
-        scope.launch { snackbarHostState.showSnackbar(message) }
+        scope.launch { (if (open) sheetSnackbars else snackbarHostState).showSnackbar(message) }
     }
     FloatingActionButton(
         onClick = {
@@ -89,8 +104,12 @@ fun ClearFab(modifier: Modifier = Modifier, viewModel: ClearViewModel = koinView
         ClearSheet(
             state = state,
             onAction = viewModel::onAction,
-            onDismiss = { open = false },
-            snackbarHostState = snackbarHostState
+            onDismiss = {
+                sheetSnackbars.currentSnackbarData?.dismiss()
+                open = false
+                viewModel.onAction(ClearAction.OnSheetDismiss)
+            },
+            snackbarHostState = sheetSnackbars
         )
     }
 }
@@ -109,7 +128,7 @@ private fun ClearSheet(
     ) {
         Box {
             ClearContent(state = state, onAction = onAction)
-            SnackbarHost(snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
+            SnackbarHost(snackbarHostState, modifier = Modifier.align(Alignment.TopCenter))
         }
     }
 }
@@ -141,15 +160,24 @@ fun ClearContent(state: ClearState, onAction: (ClearAction) -> Unit, modifier: M
         }
         if (state.groups.isNotEmpty()) {
             Text(stringResource(R.string.clear_groups), style = MaterialTheme.typography.titleSmall)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 state.groups.forEach { group ->
-                    OutlinedButton(onClick = { onAction(ClearAction.OnGroupClick(group.uuid)) }) {
-                        Text(group.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+                    GroupPill(
+                        name = group.name,
+                        icon = state.icons[group.uuid],
+                        tint = group.tint?.toColor() ?: Color.White,
+                        onClick = { onAction(ClearAction.OnGroupClick(group.uuid)) }
+                    )
                 }
             }
         }
-        ClearAllButton(armed = state.armed, onClick = { onAction(ClearAction.OnClearAllClick) })
+        if (state.clearAll != null) {
+            ClearAllButton(armed = state.armed, onClick = { onAction(ClearAction.OnClearAllClick) })
+        }
     }
 }
 
@@ -247,13 +275,36 @@ private fun OutputLayer.label(): Int =
 
 @Preview(widthDp = 411)
 @Composable
-private fun ClearContentPreview() {
+private fun ClearContentOnlyClearAllPreview() {
     PPRemoteTheme {
         Surface {
             ClearContent(
                 state = ClearState(
                     activeLayers = setOf(OutputLayer.SLIDE, OutputLayer.MEDIA),
-                    groups = listOf(ClearGroup("g-1", "Clear Group 01"))
+                    clearAll = ClearGroup("g-all", "Clear All")
+                ),
+                onAction = {}
+            )
+        }
+    }
+}
+
+@Preview(widthDp = 411)
+@Composable
+private fun ClearContentGroupsPreview() {
+    val clearAll = ClearGroup("g-all", "Clear All")
+    PPRemoteTheme {
+        Surface {
+            ClearContent(
+                state = ClearState(
+                    groups = listOf(
+                        clearAll,
+                        ClearGroup("g-2", "Clear Group 02", PreviewTint),
+                        ClearGroup("g-3", "Clear Group 03")
+                    ),
+                    icons = mapOf(
+                        "g-2" to PreviewIcon
+                    )
                 ),
                 onAction = {}
             )
@@ -266,7 +317,7 @@ private fun ClearContentPreview() {
 private fun ClearContentArmedPreview() {
     PPRemoteTheme {
         Surface {
-            ClearContent(state = ClearState(armed = true), onAction = {})
+            ClearContent(state = ClearState(clearAll = ClearGroup("g-all", "Clear All"), armed = true), onAction = {})
         }
     }
 }

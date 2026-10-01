@@ -4,6 +4,7 @@ import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
+import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
@@ -48,6 +49,8 @@ class FakeProPresenterClient : ProPresenterClient {
     override suspend fun clearGroups(): Result<List<ClearGroup>, DataError.Network> = notServed()
 
     override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> = notServed()
 
     override suspend fun triggerNext() = record(RemoteCommand.TriggerNext)
 

@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.core.data.session
 
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
+import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.Playlist
@@ -49,6 +50,9 @@ internal class CurrentHostClient(
 
     override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> =
         current()?.triggerClearGroup(uuid) ?: notConnected()
+
+    override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> =
+        current()?.clearGroupIcon(uuid) ?: notConnected()
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> = current()?.triggerNext() ?: notConnected()
 

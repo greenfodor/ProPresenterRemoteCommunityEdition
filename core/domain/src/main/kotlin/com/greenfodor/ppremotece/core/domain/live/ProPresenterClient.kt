@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.live
 
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
+import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.Playlist
@@ -35,6 +36,8 @@ interface ProPresenterClient {
     suspend fun clearGroups(): Result<List<ClearGroup>, DataError.Network>
 
     suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network>
+
+    suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network>
 
     suspend fun triggerNext(): EmptyResult<DataError.Network>
 

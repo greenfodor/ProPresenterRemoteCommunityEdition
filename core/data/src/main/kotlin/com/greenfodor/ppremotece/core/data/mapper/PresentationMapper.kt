@@ -36,7 +36,7 @@ private fun SlideDto.toDomain(): Slide =
         label = label
     )
 
-private fun ColorDto.toDomain(): GroupColor =
+internal fun ColorDto.toDomain(): GroupColor =
     GroupColor(red = red, green = green, blue = blue, alpha = alpha)
 
 private fun ArrangementDto.toDomain(): Arrangement =

@@ -17,8 +17,37 @@ enum class OutputLayer(
     }
 }
 
-/** A clear group configured in ProPresenter. */
+/**
+ * A clear group configured in ProPresenter, with the [tint] set for its icon; [isClearAll] for
+ * ProPresenter's default "Clear All" group.
+ */
 data class ClearGroup(
     val uuid: String,
-    val name: String
+    val name: String,
+    val tint: GroupColor? = null
+) {
+    val isClearAll: Boolean get() = name.trim().equals(CLEAR_ALL_NAME, ignoreCase = true)
+
+    private companion object {
+        const val CLEAR_ALL_NAME = "Clear All"
+    }
+}
+
+/** A clear group's icon: vector paths in a viewport, or the bytes of a PNG or JPEG image. */
+sealed interface ClearGroupIcon {
+    data class Vector(
+        val viewportWidth: Float,
+        val viewportHeight: Float,
+        val paths: List<IconPath>
+    ) : ClearGroupIcon
+
+    class Image(
+        val bytes: ByteArray
+    ) : ClearGroupIcon
+}
+
+/** One filled path of a vector icon in SVG path syntax; [evenOdd] selects the even-odd fill rule. */
+data class IconPath(
+    val pathData: String,
+    val evenOdd: Boolean
 )

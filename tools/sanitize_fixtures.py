@@ -33,6 +33,7 @@ CLEAR_GROUP_LAYERS = {
     "video_input",
 }
 CLEAR_GROUP_ICONS = {"All"}
+DEFAULT_CLEAR_GROUP_NAMES = {"Clear All"}
 STREAMS = [
     "streams/status-updates",
     "streams/su-long",
@@ -53,7 +54,7 @@ VERBATIM_ALLOWED = {
     "ProPresenter 21.4.2", "10.0.26200",
     "status/slide", "presentation/active", "presentation/slide_index", "playlist/active", "timer/system_time",
     "status/layers",
-} | CLEAR_GROUP_LAYERS | CLEAR_GROUP_ICONS
+} | CLEAR_GROUP_LAYERS | CLEAR_GROUP_ICONS | DEFAULT_CLEAR_GROUP_NAMES
 CHUNK_LINE = re.compile(r"^# \+(?P<time>[\d.]+)s chunk (?P<n>\d+) \((?P<size>\d+) B\) tail=.*$")
 TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
 PLACEHOLDER_WORDS = {
@@ -200,7 +201,8 @@ class Sanitizer:
             presentation["presentation_path"] = self.replaced(presentation["presentation_path"], f"C:\\PP\\{name}.pro")
 
     def clear_group(self, group):
-        group["id"]["name"] = self.replaced(group["id"]["name"], self.generate("Clear Group", group["id"]["uuid"]))
+        if group["id"]["name"] not in DEFAULT_CLEAR_GROUP_NAMES:
+            group["id"]["name"] = self.replaced(group["id"]["name"], self.generate("Clear Group", group["id"]["uuid"]))
         unknown = [layer for layer in group["layers"] if layer not in CLEAR_GROUP_LAYERS]
         if unknown or group["icon"] not in CLEAR_GROUP_ICONS:
             raise ValueError(f"no sanitising rule for clear group layers {unknown} or icon {group['icon']!r}")

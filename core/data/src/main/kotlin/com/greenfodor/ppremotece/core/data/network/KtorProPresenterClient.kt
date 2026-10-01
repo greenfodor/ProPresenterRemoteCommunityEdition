@@ -9,6 +9,7 @@ import com.greenfodor.ppremotece.core.data.dto.VersionDto
 import com.greenfodor.ppremotece.core.data.mapper.toDomain
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
+import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.Playlist
@@ -38,8 +39,8 @@ import java.io.IOException
 
 /**
  * [ProPresenterClient] for the ProPresenter HTTP API at [baseUrl], plus the `status/updates`
- * stream. Sends only GET reads, the item-cue, item, next and previous triggers, the layer and
- * clear-group clears, and the stream POST.
+ * stream. Sends only GET reads (including clear-group icons, read as PNG, JPEG or SVG), the item-cue,
+ * item, next and previous triggers, the layer and clear-group clears, and the stream POST.
  */
 @Suppress("TooManyFunctions")
 class KtorProPresenterClient(
@@ -80,10 +81,21 @@ class KtorProPresenterClient(
 
     override suspend fun clearGroups(): Result<List<ClearGroup>, DataError.Network> =
         safeCall<List<ClearGroupDto>> { httpClient.get("$baseUrl/v1/clear/groups") }
-            .map { groups -> groups.map { ClearGroup(uuid = it.id.uuid, name = it.id.name) } }
+            .map { groups -> groups.map { it.toDomain() } }
 
     override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/clear/group/${uuid.encodeURLPathPart()}/trigger") }
+
+    override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> =
+        when (
+            val read = safeCall<ByteArray> {
+                httpClient.get("$baseUrl/v1/clear/group/${uuid.encodeURLPathPart()}/icon")
+            }
+        ) {
+            is Result.Failure -> Result.Failure(read.error)
+            is Result.Success -> iconOf(read.data)?.let { Result.Success(it) }
+                ?: Result.Failure(DataError.Network.SERIALIZATION)
+        }
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/trigger/next") }
@@ -117,7 +129,18 @@ class KtorProPresenterClient(
             }
         }
 
+    private fun iconOf(bytes: ByteArray): ClearGroupIcon? =
+        if (IMAGE_SIGNATURES.any { signature -> bytes.take(signature.size) == signature }) {
+            ClearGroupIcon.Image(bytes)
+        } else {
+            parseSvgIcon(bytes.decodeToString())
+        }
+
     private companion object {
         const val READ_BUFFER_SIZE = 8 * 1024
+        val IMAGE_SIGNATURES = listOf(
+            listOf(0x89, 0x50, 0x4E, 0x47).map { it.toByte() },
+            listOf(0xFF, 0xD8, 0xFF).map { it.toByte() }
+        )
     }
 }

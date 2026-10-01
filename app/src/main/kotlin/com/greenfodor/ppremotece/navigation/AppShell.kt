@@ -2,13 +2,11 @@ package com.greenfodor.ppremotece.navigation
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -19,6 +17,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
@@ -30,7 +29,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -62,9 +60,8 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val ListPaneWidth = 360.dp
-private val FabMargin = 16.dp
-private val RemoteFabLift = 136.dp
-private val GridFabLift = 104.dp
+private val clearFab: @Composable (SnackbarHostState) -> Unit = { ClearFab(snackbarHostState = it) }
+private val noFab: @Composable (SnackbarHostState) -> Unit = {}
 
 private enum class ShellDestination(
     val tab: ShellTab,
@@ -124,70 +121,60 @@ fun AppShell(
                     }
                 )
         ) { padding ->
-            Box(modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-                NavDisplay(
-                    backStack = stacks().displayed,
-                    modifier = Modifier.fillMaxSize(),
-                    onBack = { update(stacks().back()) },
-                    entryDecorators = listOf(
-                        rememberSaveableStateHolderNavEntryDecorator(),
-                        rememberViewModelStoreNavEntryDecorator()
-                    ),
-                    sceneStrategies = listOf(listDetailStrategy),
-                    entryProvider = entryProvider {
-                        entry<PlaylistsRoute>(
-                            metadata =
-                                ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder() }) +
-                                    ListDetailSceneStrategy.preferredPaneSize(ListPaneWidth)
-                        ) {
-                            val openGrid = presentation.lastOrNull { it is SlideGridRoute } as? SlideGridRoute
-                            PlaylistTreeRoot(
-                                openItem = openGrid?.let {
-                                    PlaylistItemKey(playlistUuid = it.playlistUuid, index = it.itemIndex)
-                                },
-                                reconnecting = reconnecting,
-                                onOpenItem = { item ->
-                                    update(
-                                        stacks().openDetail(
-                                            SlideGridRoute(playlistUuid = item.playlistUuid, itemIndex = item.index)
-                                        )
+            NavDisplay(
+                backStack = stacks().displayed,
+                modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
+                onBack = { update(stacks().back()) },
+                entryDecorators = listOf(
+                    rememberSaveableStateHolderNavEntryDecorator(),
+                    rememberViewModelStoreNavEntryDecorator()
+                ),
+                sceneStrategies = listOf(listDetailStrategy),
+                entryProvider = entryProvider {
+                    entry<PlaylistsRoute>(
+                        metadata =
+                            ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder() }) +
+                                ListDetailSceneStrategy.preferredPaneSize(ListPaneWidth)
+                    ) {
+                        val openGrid = presentation.lastOrNull { it is SlideGridRoute } as? SlideGridRoute
+                        PlaylistTreeRoot(
+                            openItem = openGrid?.let {
+                                PlaylistItemKey(playlistUuid = it.playlistUuid, index = it.itemIndex)
+                            },
+                            reconnecting = reconnecting,
+                            onOpenItem = { item ->
+                                update(
+                                    stacks().openDetail(
+                                        SlideGridRoute(playlistUuid = item.playlistUuid, itemIndex = item.index)
                                     )
-                                },
-                                onDisconnected = onDisconnected
-                            )
-                        }
-                        entry<SlideGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
-                            SlideGridRoot(
-                                item = PlaylistItemKey(playlistUuid = route.playlistUuid, index = route.itemIndex),
-                                widthClass = widthClass,
-                                headerScrollsWithGrid = compactHeight,
-                                reconnecting = reconnecting,
-                                onBack = { update(stacks().back()) }
-                            )
-                        }
-                        entry<RemoteRoute> {
-                            RemoteRoot(widthClass = widthClass, reconnecting = reconnecting)
-                        }
+                                )
+                            },
+                            onDisconnected = onDisconnected,
+                            floatingActionButton = if (openGrid == null) clearFab else noFab
+                        )
                     }
-                )
-                ClearFab(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .navigationBarsPadding()
-                        .padding(end = FabMargin, bottom = fabLift(tab, presentation))
-                )
-            }
+                    entry<SlideGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
+                        SlideGridRoot(
+                            item = PlaylistItemKey(playlistUuid = route.playlistUuid, index = route.itemIndex),
+                            widthClass = widthClass,
+                            headerScrollsWithGrid = compactHeight,
+                            reconnecting = reconnecting,
+                            onBack = { update(stacks().back()) },
+                            floatingActionButton = clearFab
+                        )
+                    }
+                    entry<RemoteRoute> {
+                        RemoteRoot(
+                            widthClass = widthClass,
+                            reconnecting = reconnecting,
+                            floatingActionButton = clearFab
+                        )
+                    }
+                }
+            )
         }
     }
 }
-
-/** How far above the bottom the Clear FAB sits: over the Remote's Next Up row, the grid's Prev/Next bar, or the tree. */
-private fun fabLift(tab: ShellTab, presentation: List<NavKey>) =
-    when {
-        tab == ShellTab.REMOTE -> RemoteFabLift
-        presentation.any { it is SlideGridRoute } -> GridFabLift
-        else -> FabMargin
-    }
 
 @Composable
 private fun ShellRail(current: ShellTab, onSelect: (ShellTab) -> Unit) {

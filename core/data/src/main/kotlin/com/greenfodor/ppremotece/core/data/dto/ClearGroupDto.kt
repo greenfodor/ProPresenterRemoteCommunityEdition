@@ -4,5 +4,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ClearGroupDto(
-    val id: IdDto
+    val id: IdDto,
+    val tint: ColorDto? = null
 )

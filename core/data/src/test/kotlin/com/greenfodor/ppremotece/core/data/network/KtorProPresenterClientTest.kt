@@ -4,8 +4,9 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.data.Fixtures
-import com.greenfodor.ppremotece.core.domain.live.clearAll
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
+import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
+import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
@@ -122,7 +123,7 @@ class KtorProPresenterClientTest {
     @Test
     fun `clear groups are mapped from their response`() = runBlocking {
         assertThat(client.clearGroups()).isEqualTo(
-            Result.Success(listOf(ClearGroup(uuid = CLEAR_GROUP_UUID, name = "Clear Group 01")))
+            Result.Success(listOf(ClearGroup(uuid = CLEAR_GROUP_UUID, name = "Clear All")))
         )
         assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/clear/groups")
     }
@@ -135,19 +136,12 @@ class KtorProPresenterClientTest {
     }
 
     @Test
-    fun `clear all sends every layer in order and counts the ones that fail`() = runBlocking {
-        fake.failingLayers += "media"
-
-        assertThat(client.clearAll()).isEqualTo(1)
-        assertThat(fake.requests.map { it.url.encodedPath.substringAfterLast('/') }).containsExactly(
-            "slide",
-            "media",
-            "video_input",
-            "props",
-            "messages",
-            "announcements",
-            "audio"
+    fun `a clear group icon is read from its icon route`() = runBlocking {
+        assertThat(client.clearGroupIcon(CLEAR_GROUP_UUID)).isEqualTo(
+            Result.Success(ClearGroupIcon.Vector(18f, 18f, listOf(IconPath("M1,1 L17,17", evenOdd = false))))
         )
+        assertThat(fake.requests.single().method).isEqualTo("GET")
+        assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/clear/group/$CLEAR_GROUP_UUID/icon")
     }
 
     @Test
@@ -165,11 +159,12 @@ class KtorProPresenterClientTest {
         client.clearLayer(OutputLayer.SLIDE)
         client.clearGroups()
         client.triggerClearGroup(CLEAR_GROUP_UUID)
+        client.clearGroupIcon(CLEAR_GROUP_UUID)
         client.triggerNext()
         client.triggerPrevious()
         client.statusUpdates(listOf("status/slide")).first()
 
-        assertThat(fake.requests.size).isEqualTo(13)
+        assertThat(fake.requests.size).isEqualTo(14)
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
     }
 
