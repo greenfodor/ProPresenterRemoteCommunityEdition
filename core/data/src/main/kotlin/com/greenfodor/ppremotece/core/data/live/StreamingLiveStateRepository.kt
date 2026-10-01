@@ -9,7 +9,6 @@ import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.result.Result
-import com.greenfodor.ppremotece.core.domain.result.onSuccess
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import com.greenfodor.ppremotece.core.domain.status.StatusFrameParser
 import kotlinx.coroutines.CancellationException
@@ -43,7 +42,7 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * [LiveState.Initial] each time it is subscribed again. Within each chunk, `playlist/active` sets
  * the live item first; then, if the chunk held a `status/slide` frame or changed the item, or an
  * earlier read failed, `slide_index` and `playlist/active` are read once, in parallel, and that
- * pair sets the live slide and item. Any chunk resets the watchdog. When no chunk arrives for
+ * pair, when both reads succeed, sets the live slide and item. Any chunk resets the watchdog. When no chunk arrives for
  * [watchdogTimeout], or the stream ends or fails, the stream is closed and reopened after
  * [reconnectDelay] with the same subscriptions, and the pair is read again. [onReconnected] is
  * called when the first chunk of a reopened stream arrives. Each `status/slide` frame sets the
@@ -98,12 +97,9 @@ class StreamingLiveStateRepository(
                                 val active = async { client.activePlaylistItem() }
                                 slide.await() to active.await()
                             }
-                            activeRead.onSuccess { active ->
-                                next = next.copy(item = active.item)
-                                itemPresentation = active.presentationUuid
-                            }
-                            slideRead.onSuccess { slide -> next = next.copy(slide = slide) }
                             if (slideRead is Result.Success && activeRead is Result.Success) {
+                                next = next.copy(item = activeRead.data.item, slide = slideRead.data)
+                                itemPresentation = activeRead.data.presentationUuid
                                 slideReadNeeded = false
                                 remember(next.item, itemPresentation, slideRead.data)
                             }

@@ -32,6 +32,9 @@ class FakeProPresenter(
     @Volatile
     var failSlideIndexReads = 0
 
+    @Volatile
+    var failPlaylistActiveReads = 0
+
     /** The body served for every clear group icon. */
     @Volatile
     var iconBody: String = ICON_SVG
@@ -124,6 +127,10 @@ class FakeProPresenter(
 
     private fun dispatchLive(path: String): MockResponse =
         when {
+            path == "/v1/playlist/active" && failPlaylistActiveReads > 0 -> {
+                failPlaylistActiveReads--
+                status(500)
+            }
             path == "/v1/playlist/active" -> json(liveBodies?.invoke()?.playlistActive ?: lastPlaylistActive.get())
             failSlideIndexReads > 0 -> {
                 failSlideIndexReads--
@@ -189,6 +196,7 @@ class FakeProPresenter(
         const val NO_PLAYLIST_ACTIVE = """{"presentation":{"playlist":null,"item":null},""" +
             """"announcements":{"playlist":null,"item":null}}"""
         private const val READ_WAIT_SECONDS = 5L
+        const val HEARTBEAT_FRAME = """{"url":"timer/system_time","data":1790000000}"""
         const val SLIDE_FRAME =
             """{"url":"status/slide","data":{"current":{"text":"Text 01","notes":"","uuid":"s-1"},""" +
                 """"next":{"text":"Text 02","notes":"","uuid":"s-2"}}}"""

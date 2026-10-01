@@ -139,13 +139,13 @@ class SlideGridViewModel(
                     requests.value.takeIf { mode != ViewMode.LIST },
                     reloads + requests.index
                 ) to content
-            }
+            }.let { (state, loaded) -> state.copy(viewMode = mode) to loaded }
         }
 
     val state: StateFlow<SlideGridState> =
-        combine(grid, liveStateRepository.liveState, gridStep, viewMode) { (state, loaded), live, step, mode ->
+        combine(grid, liveStateRepository.liveState, gridStep) { (state, loaded), live, step ->
             if (loaded == null) {
-                state.copy(gridStep = step, viewMode = mode)
+                state.copy(gridStep = step)
             } else {
                 val presentationUuid = loaded.presentation.uuid
                 val liveIndex = liveCueIndex(live, source, presentationUuid, loaded.cueList.cues)
@@ -153,8 +153,7 @@ class SlideGridViewModel(
                     liveCueIndex = liveIndex,
                     nextCueIndex = nextCueIndex(live, source, presentationUuid, loaded.cueList.cues),
                     stepsEnabled = alwaysSteps || liveIndex != null,
-                    gridStep = step,
-                    viewMode = mode
+                    gridStep = step
                 )
             }
         }.stateIn(
@@ -214,7 +213,6 @@ class SlideGridViewModel(
             aspect = slideAspect(content.presentation),
             countMismatch = content.cueList.countMismatch,
             thumbnailGeneration = thumbnailGeneration,
-            stepsEnabled = alwaysSteps,
             isLoading = false
         )
     }

@@ -262,6 +262,25 @@ class StreamingLiveStateRepositoryTest {
     }
 
     @Test
+    fun `a slide read is applied only together with a successful playlist active read`() = runBlocking {
+        fake.failPlaylistActiveReads = 1
+        fake.enqueueStream(
+            fake.frames(
+                listOf(FakeProPresenter.playlistActiveFrame(liveItem), FakeProPresenter.SLIDE_FRAME),
+                listOf(FakeProPresenter.HEARTBEAT_FRAME),
+                awaitSlideReads = true
+            )
+        )
+
+        repository.liveState.test(timeout = 5.seconds) {
+            assertThat(awaitUntil { it.slide != null }.slide).isEqualTo(liveSlide)
+            assertThat(fake.count("GET", PLAYLIST_ACTIVE)).isEqualTo(2)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(repository.lastLive.value).isEqualTo(lastLiveCue)
+    }
+
+    @Test
     fun `resubscribing after all collectors left starts from the initial state`() = runBlocking {
         fake.enqueueStream(fake.stream("su-long", StreamEnd.STALL))
         repository.liveState.test(timeout = 5.seconds) {

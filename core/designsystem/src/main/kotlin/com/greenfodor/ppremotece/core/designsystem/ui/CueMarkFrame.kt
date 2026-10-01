@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 private val RingSlot = 4.dp
@@ -30,12 +29,12 @@ internal val CueContentCorner = 4.dp
 
 private val RingShape = RoundedCornerShape(CueContentCorner + RingGap + RingSlot)
 
-/** The ring of [mark]: [liveWidth] `tertiary` for LIVE, 2 dp `secondary` for NEXT and CUED, none otherwise. */
+/** The ring of [mark]: 4 dp `tertiary` for LIVE, 2 dp `secondary` for NEXT and CUED, none otherwise. */
 @Composable
 @ReadOnlyComposable
-internal fun cueMarkRing(mark: CueMark, liveWidth: Dp = LiveRingWidth): BorderStroke? =
+private fun cueMarkRing(mark: CueMark): BorderStroke? =
     when (mark) {
-        CueMark.LIVE -> BorderStroke(liveWidth, MaterialTheme.colorScheme.tertiary)
+        CueMark.LIVE -> BorderStroke(LiveRingWidth, MaterialTheme.colorScheme.tertiary)
         CueMark.NEXT, CueMark.CUED -> BorderStroke(SecondaryRingWidth, MaterialTheme.colorScheme.secondary)
         CueMark.NONE -> null
     }
