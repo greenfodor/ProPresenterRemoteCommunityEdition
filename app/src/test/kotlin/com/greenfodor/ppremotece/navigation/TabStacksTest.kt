@@ -7,12 +7,19 @@ import com.greenfodor.ppremotece.feature.playlist.LibraryGridRoute
 import com.greenfodor.ppremotece.feature.playlist.PlaylistsRoute
 import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
 import com.greenfodor.ppremotece.feature.remote.RemoteRoute
+import com.greenfodor.ppremotece.feature.settings.MoreRoute
+import com.greenfodor.ppremotece.feature.settings.SettingsRoute
 import org.junit.jupiter.api.Test
 
 class TabStacksTest {
     private val grid1 = SlideGridRoute(playlistUuid = "p", itemIndex = 1)
     private val grid6 = SlideGridRoute(playlistUuid = "p", itemIndex = 6)
-    private val initial = TabStacks.initial(presentationRoot = PlaylistsRoute, remoteRoot = RemoteRoute)
+    private val initial = TabStacks.initial(
+        presentationRoot = PlaylistsRoute,
+        remoteRoot = RemoteRoute,
+        settingsRoot = SettingsRoute,
+        moreRoot = MoreRoute
+    )
 
     @Test
     fun `opens on the presentation root`() {
@@ -82,5 +89,59 @@ class TabStacksTest {
 
         assertThat(stacks.remote).containsExactly(RemoteRoute)
         assertThat(stacks.presentation).containsExactly(PlaylistsRoute, grid1)
+    }
+
+    @Test
+    fun `settings shows the presentation stack under the settings stack and back returns to presentation`() {
+        val stacks = initial.openDetail(grid1).select(ShellTab.SETTINGS)
+
+        assertThat(stacks.displayed).containsExactly(PlaylistsRoute, grid1, SettingsRoute)
+        assertThat(stacks.back().current).isEqualTo(ShellTab.PRESENTATION)
+        assertThat(stacks.back().displayed).containsExactly(PlaylistsRoute, grid1)
+    }
+
+    @Test
+    fun `a destination opened from more is pushed on the more stack and back pops it`() {
+        val stacks = initial.select(ShellTab.MORE).openFromMore(SettingsRoute)
+
+        assertThat(stacks.displayed).containsExactly(PlaylistsRoute, MoreRoute, SettingsRoute)
+        assertThat(stacks.back().displayed).containsExactly(PlaylistsRoute, MoreRoute)
+        assertThat(stacks.back().back().current).isEqualTo(ShellTab.PRESENTATION)
+    }
+
+    @Test
+    fun `re-selecting more trims it to its root`() {
+        val stacks = initial.select(ShellTab.MORE).openFromMore(SettingsRoute).select(ShellTab.MORE)
+
+        assertThat(stacks.more).containsExactly(MoreRoute)
+    }
+
+    @Test
+    fun `selected settings moves into more when it overflows and back out when it fits again`() {
+        val overflowed = initial.select(ShellTab.SETTINGS).withSettingsInMore(true)
+
+        assertThat(overflowed.current).isEqualTo(ShellTab.MORE)
+        assertThat(overflowed.displayed).containsExactly(PlaylistsRoute, MoreRoute, SettingsRoute)
+
+        val fits = overflowed.withSettingsInMore(false)
+        assertThat(fits.current).isEqualTo(ShellTab.SETTINGS)
+        assertThat(fits.displayed).containsExactly(PlaylistsRoute, SettingsRoute)
+        assertThat(fits.more).containsExactly(MoreRoute)
+    }
+
+    @Test
+    fun `more at its root returns to presentation when settings fits again`() {
+        val stacks = initial.select(ShellTab.MORE).withSettingsInMore(false)
+
+        assertThat(stacks.current).isEqualTo(ShellTab.PRESENTATION)
+    }
+
+    @Test
+    fun `settings in more is dropped from the more stack when it fits again while another tab is selected`() {
+        val stacks = initial.select(ShellTab.MORE).openFromMore(SettingsRoute).select(ShellTab.REMOTE)
+
+        assertThat(stacks.withSettingsInMore(true)).isEqualTo(stacks)
+        assertThat(stacks.withSettingsInMore(false).more).containsExactly(MoreRoute)
+        assertThat(stacks.withSettingsInMore(false).current).isEqualTo(ShellTab.REMOTE)
     }
 }

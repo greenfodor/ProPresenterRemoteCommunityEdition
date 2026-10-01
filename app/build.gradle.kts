@@ -20,6 +20,7 @@ dependencies {
     implementation(project(":feature:playlist"))
     implementation(project(":feature:remote"))
     implementation(project(":feature:clear"))
+    implementation(project(":feature:settings"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
