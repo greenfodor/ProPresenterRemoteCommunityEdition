@@ -25,6 +25,16 @@ class ThumbnailUrlTest {
     }
 
     @Test
+    fun `the presentation thumbnail url asks for 711 px for the grid and the mapped width for a box`() {
+        assertThat(presentationThumbnailUrl("http://192.0.2.14:60113", "p-1", cueIndex = 3, boxQuality = null))
+            .isEqualTo("http://192.0.2.14:60113/v1/presentation/p-1/thumbnail/3?quality=711")
+        assertThat(presentationThumbnailUrl("http://192.0.2.14:60113/", "p-1", cueIndex = 3, boxQuality = 800))
+            .isEqualTo("http://192.0.2.14:60113/v1/presentation/p-1/thumbnail/3?quality=1422")
+        assertThat(presentationThumbnailUrl("http://192.0.2.14:60113", "a b/c", cueIndex = 0, boxQuality = 1080))
+            .isEqualTo("http://192.0.2.14:60113/v1/presentation/a%20b%2Fc/thumbnail/0?quality=1920")
+    }
+
+    @Test
     fun `a trailing slash on the base url is not doubled`() {
         assertThat(thumbnailUrl("http://192.0.2.14:60113/", item, cueIndex = 0, boxQuality = null))
             .isEqualTo(

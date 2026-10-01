@@ -3,6 +3,8 @@ package com.greenfodor.ppremotece.feature.playlist
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
+import com.greenfodor.ppremotece.core.domain.model.Library
+import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.Playlist
@@ -17,6 +19,8 @@ import com.greenfodor.ppremotece.core.domain.result.Result
 /** Records triggers; reads are not served. */
 class FakeProPresenterClient : ProPresenterClient {
     val triggeredCues = mutableListOf<Pair<PlaylistItemKey, Int>>()
+    val triggeredPresentationCues = mutableListOf<Pair<String, Int>>()
+    var steps = 0
 
     override suspend fun version(): Result<ProPresenterVersion, DataError.Network> = notServed()
 
@@ -35,6 +39,18 @@ class FakeProPresenterClient : ProPresenterClient {
 
     override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> = notServed()
 
+    override suspend fun triggerPresentationCue(
+        presentationUuid: String,
+        cueIndex: Int
+    ): EmptyResult<DataError.Network> {
+        triggeredPresentationCues += presentationUuid to cueIndex
+        return Result.Success(Unit)
+    }
+
+    override suspend fun libraries(): Result<List<Library>, DataError.Network> = notServed()
+
+    override suspend fun library(uuid: String): Result<List<LibraryEntry>, DataError.Network> = notServed()
+
     override suspend fun clearLayer(layer: OutputLayer): EmptyResult<DataError.Network> = notServed()
 
     override suspend fun clearGroups(): Result<List<ClearGroup>, DataError.Network> = notServed()
@@ -43,9 +59,15 @@ class FakeProPresenterClient : ProPresenterClient {
 
     override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> = notServed()
 
-    override suspend fun triggerNext(): EmptyResult<DataError.Network> = Result.Success(Unit)
+    override suspend fun triggerNext(): EmptyResult<DataError.Network> {
+        steps++
+        return Result.Success(Unit)
+    }
 
-    override suspend fun triggerPrevious(): EmptyResult<DataError.Network> = Result.Success(Unit)
+    override suspend fun triggerPrevious(): EmptyResult<DataError.Network> {
+        steps++
+        return Result.Success(Unit)
+    }
 
     private fun notServed() = Result.Failure(DataError.Network.UNKNOWN)
 }

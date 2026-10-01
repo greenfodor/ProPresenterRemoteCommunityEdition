@@ -2,6 +2,8 @@ package com.greenfodor.ppremotece.core.data.content
 
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.Library
+import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
@@ -41,6 +43,7 @@ private typealias Read<T> = Result<T, DataError.Network>
  * Concurrent reads of one value share one request, and at most [MAX_PARALLEL_READS] run at once.
  * Each [staleSignals] emission re-reads every value that currently has a collector.
  */
+@Suppress("TooManyFunctions")
 class CachingContentRepository(
     private val client: ProPresenterClient,
     private val session: StateFlow<String?>,
@@ -48,7 +51,7 @@ class CachingContentRepository(
     private val scope: CoroutineScope,
     private val restore: suspend () -> Unit
 ) : ContentRepository {
-    private enum class Kind { PLAYLISTS, PLAYLIST, PRESENTATION }
+    private enum class Kind { PLAYLISTS, PLAYLIST, PRESENTATION, LIBRARIES, LIBRARY }
 
     private data class Key(
         val session: String?,
@@ -76,6 +79,17 @@ class CachingContentRepository(
 
     override fun presentation(uuid: String): Flow<Read<Presentation>> =
         observe(Kind.PRESENTATION, uuid) { client.presentation(uuid) }
+
+    override fun libraries(): Flow<Read<List<Library>>> = observe(Kind.LIBRARIES, "") { client.libraries() }
+
+    override fun library(uuid: String): Flow<Read<List<LibraryEntry>>> =
+        observe(Kind.LIBRARY, uuid) { client.library(uuid) }
+
+    override suspend fun refreshLibraries(): EmptyResult<DataError.Network> =
+        entry(Key(session.value, Kind.LIBRARIES, "")) { client.libraries() }.read().asEmptyResult()
+
+    override suspend fun refreshLibrary(uuid: String): EmptyResult<DataError.Network> =
+        entry(Key(session.value, Kind.LIBRARY, uuid)) { client.library(uuid) }.read().asEmptyResult()
 
     override suspend fun refreshPlaylists(): EmptyResult<DataError.Network> =
         entry(Key(session.value, Kind.PLAYLISTS, "")) { client.playlists() }.read().asEmptyResult()

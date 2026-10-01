@@ -8,56 +8,54 @@ import org.junit.jupiter.api.Test
 
 class BoxQualityTest {
     @Test
-    fun `a 1284 px box asks for 800 on the playlist route and 1400 on the presentation route`() {
-        assertThat(boxQuality(ThumbnailRoute.PLAYLIST, 1284)).isEqualTo(800)
-        assertThat(boxQuality(ThumbnailRoute.PRESENTATION, 1284)).isEqualTo(1400)
+    fun `a 1284 px box asks for q 800, sent as 800 on the playlist route and 1422 on the presentation route`() {
+        assertThat(boxQuality(1284)).isEqualTo(800)
+        assertThat(ThumbnailRoute.PLAYLIST.query(800)).isEqualTo(800)
+        assertThat(ThumbnailRoute.PRESENTATION.query(800)).isEqualTo(1422)
     }
 
     @Test
-    fun `a 1860 px box asks for 1080 on the playlist route and 1920 on the presentation route`() {
-        assertThat(boxQuality(ThumbnailRoute.PLAYLIST, 1860)).isEqualTo(1080)
-        assertThat(boxQuality(ThumbnailRoute.PRESENTATION, 1860)).isEqualTo(1920)
+    fun `a 1860 px box asks for q 1080, sent as 1080 and 1920`() {
+        assertThat(boxQuality(1860)).isEqualTo(1080)
+        assertThat(ThumbnailRoute.PLAYLIST.query(1080)).isEqualTo(1080)
+        assertThat(ThumbnailRoute.PRESENTATION.query(1080)).isEqualTo(1920)
     }
 
     @Test
-    fun `a 2500 px box is capped at 1080 and 1920`() {
-        assertThat(boxQuality(ThumbnailRoute.PLAYLIST, 2500)).isEqualTo(1080)
-        assertThat(boxQuality(ThumbnailRoute.PRESENTATION, 2500)).isEqualTo(1920)
+    fun `a 2500 px box is capped at q 1080`() {
+        assertThat(boxQuality(2500)).isEqualTo(1080)
     }
 
     @Test
-    fun `a 500 px box uses the grid request on both routes`() {
-        assertThat(boxQuality(ThumbnailRoute.PLAYLIST, 500)).isNull()
-        assertThat(boxQuality(ThumbnailRoute.PRESENTATION, 500)).isNull()
+    fun `a 500 px box uses the grid request`() {
+        assertThat(boxQuality(500)).isNull()
     }
 
     @Test
     fun `a box just above the grid width asks for the next multiple of 200`() {
-        assertThat(boxQuality(ThumbnailRoute.PLAYLIST, 712)).isEqualTo(600)
-        assertThat(boxQuality(ThumbnailRoute.PRESENTATION, 712)).isEqualTo(800)
+        assertThat(boxQuality(712)).isEqualTo(600)
     }
 
     @Test
-    fun `a box that rounds to no more than the grid value or an unmeasured box uses the grid request`() {
-        assertThat(boxQuality(ThumbnailRoute.PLAYLIST, 711)).isNull()
-        assertThat(boxQuality(ThumbnailRoute.PRESENTATION, 600)).isNull()
-        assertThat(boxQuality(ThumbnailRoute.PLAYLIST, 0)).isNull()
+    fun `a box at the grid width or an unmeasured box uses the grid request`() {
+        assertThat(boxQuality(711)).isNull()
+        assertThat(boxQuality(0)).isNull()
     }
 
     @Test
-    fun `box qualities list every value boxQuality gives on each route`() {
-        assertThat(boxQualities(ThumbnailRoute.PLAYLIST)).containsExactly(600, 800, 1000, 1080)
-        assertThat(boxQualities(ThumbnailRoute.PRESENTATION))
-            .containsExactly(800, 1000, 1200, 1400, 1600, 1800, 1920)
-        ThumbnailRoute.entries.forEach { route ->
-            val given = (1..4000).mapNotNull { boxQuality(route, it) }.distinct()
-            assertThat(boxQualities(route)).isEqualTo(given)
-        }
+    fun `the grid request is sent as 400 on the playlist route and 711 on the presentation route`() {
+        assertThat(ThumbnailRoute.PLAYLIST.query(null)).isEqualTo(400)
+        assertThat(ThumbnailRoute.PRESENTATION.query(null)).isEqualTo(711)
     }
 
     @Test
-    fun `the grid request asks for 400 on the playlist route and 711 on the presentation route`() {
-        assertThat(ThumbnailRoute.PLAYLIST.gridQuality).isEqualTo(400)
-        assertThat(ThumbnailRoute.PRESENTATION.gridQuality).isEqualTo(711)
+    fun `every box quality is sent within the allowed ranges`() {
+        assertThat(boxQualities().map { ThumbnailRoute.PLAYLIST.query(it) }).containsExactly(600, 800, 1000, 1080)
+        assertThat(boxQualities().map { ThumbnailRoute.PRESENTATION.query(it) }).containsExactly(1066, 1422, 1777, 1920)
+    }
+
+    @Test
+    fun `box qualities list every value boxQuality gives`() {
+        assertThat(boxQualities()).isEqualTo((1..4000).mapNotNull { boxQuality(it) }.distinct())
     }
 }

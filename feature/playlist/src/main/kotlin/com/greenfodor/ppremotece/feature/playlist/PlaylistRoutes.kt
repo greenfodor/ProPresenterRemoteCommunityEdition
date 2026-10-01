@@ -11,3 +11,9 @@ data class SlideGridRoute(
     val playlistUuid: String,
     val itemIndex: Int
 ) : NavKey
+
+/** The slide grid of a library presentation, in its current arrangement. */
+@Serializable
+data class LibraryGridRoute(
+    val presentationUuid: String
+) : NavKey

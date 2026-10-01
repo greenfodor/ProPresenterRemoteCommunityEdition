@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.core.domain.thumbnail
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isCloseTo
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotEqualTo
 import assertk.assertions.matches
@@ -73,9 +74,17 @@ class ThumbnailKeyTest {
     }
 
     @Test
-    fun `the box keys of a grid key cover every box quality of the route`() {
-        assertThat(ThumbnailKey.boxKeys("k", ThumbnailRoute.PLAYLIST))
-            .containsExactly("k:q600", "k:q800", "k:q1000", "k:q1080")
+    fun `the box keys of a grid key cover every box quality`() {
+        assertThat(ThumbnailKey.boxKeys("k")).containsExactly("k:q600", "k:q800", "k:q1000", "k:q1080")
+    }
+
+    @Test
+    fun `larger keys of a key are the box keys of the same slide above its quality, smallest first`() {
+        val gridKey = ThumbnailKey.of("Host 01", "p-1", chorusFirst)
+
+        assertThat(ThumbnailKey.largerKeys(gridKey)).containsExactly(*ThumbnailKey.boxKeys(gridKey).toTypedArray())
+        assertThat(ThumbnailKey.largerKeys("$gridKey:q800")).containsExactly("$gridKey:q1000", "$gridKey:q1080")
+        assertThat(ThumbnailKey.largerKeys("$gridKey:q1080")).isEmpty()
     }
 
     @Test

@@ -17,10 +17,20 @@ object ThumbnailKey {
         return boxQuality?.let { boxKey(gridKey, it) } ?: gridKey
     }
 
-    /** The keys of every box thumbnail on [route] of the cue whose grid key is [gridKey]. */
-    fun boxKeys(gridKey: String, route: ThumbnailRoute): List<String> = boxQualities(route).map { boxKey(gridKey, it) }
+    /** The keys of every box thumbnail of the cue whose grid key is [gridKey]. */
+    fun boxKeys(gridKey: String): List<String> = boxQualities().map { boxKey(gridKey, it) }
+
+    /** The box keys of the same slide as [key] with a quality above [key]'s, smallest first; all box keys for a grid key. */
+    fun largerKeys(key: String): List<String> {
+        val match = BoxKeyPattern.matchEntire(key)
+        val gridKey = match?.groupValues?.get(1) ?: key
+        val quality = match?.groupValues?.get(2)?.toInt() ?: 0
+        return boxQualities().filter { it > quality }.map { boxKey(gridKey, it) }
+    }
 
     private fun boxKey(gridKey: String, quality: Int) = "$gridKey:q$quality"
+
+    private val BoxKeyPattern = Regex("(.*):q(\\d+)")
 
     private fun sha1(value: String): String =
         MessageDigest.getInstance("SHA-1").digest(value.encodeToByteArray()).joinToString("") { byte ->

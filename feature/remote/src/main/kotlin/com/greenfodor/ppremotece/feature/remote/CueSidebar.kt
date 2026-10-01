@@ -11,22 +11,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.designsystem.ui.CueCell
-import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 
 val CueSidebarWidth = 280.dp
 
-/** One column of the [cues] of [item]; it scrolls so that the cue at [focus] is fully visible whenever [item] or [focus] changes. */
+/** One column of the [cues] of [source]; it scrolls so that the cue at [focus] is fully visible whenever [source] or [focus] changes. */
 @Composable
 internal fun CueSidebar(
     cues: List<SidebarCueUi>,
-    item: PlaylistItemKey?,
+    source: CueSource?,
     focus: Int?,
     aspect: Float,
     onCueClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-    LaunchedEffect(item, focus, cues.size) {
+    LaunchedEffect(source, focus, cues.size) {
         val index = focus ?: return@LaunchedEffect
         val layout = listState.layoutInfo
         val shown = layout.visibleItemsInfo.firstOrNull { it.index == index }

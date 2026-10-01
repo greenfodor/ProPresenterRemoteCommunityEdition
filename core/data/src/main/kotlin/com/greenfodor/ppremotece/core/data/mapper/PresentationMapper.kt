@@ -17,7 +17,8 @@ fun PresentationResponseDto.toDomain(): Presentation =
         uuid = presentation.id.uuid,
         name = presentation.id.name,
         groups = presentation.groups.map { it.toDomain() },
-        arrangements = presentation.arrangements.map { it.toDomain() }
+        arrangements = presentation.arrangements.map { it.toDomain() },
+        currentArrangementUuid = presentation.currentArrangement.orEmpty()
     )
 
 private fun GroupDto.toDomain(): Group =

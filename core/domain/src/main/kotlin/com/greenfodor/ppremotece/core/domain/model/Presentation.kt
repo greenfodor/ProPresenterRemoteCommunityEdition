@@ -1,10 +1,12 @@
 package com.greenfodor.ppremotece.core.domain.model
 
+/** A presentation; [currentArrangementUuid] is the arrangement it plays outside a playlist, empty when unknown. */
 data class Presentation(
     val uuid: String,
     val name: String,
     val groups: List<Group>,
-    val arrangements: List<Arrangement>
+    val arrangements: List<Arrangement>,
+    val currentArrangementUuid: String = ""
 )
 
 data class Group(

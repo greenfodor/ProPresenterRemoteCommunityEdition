@@ -10,8 +10,10 @@ import assertk.assertions.isTrue
 import assertk.assertions.prop
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementExpander
+import com.greenfodor.ppremotece.core.domain.arrangement.currentCueList
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.Group
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
@@ -23,14 +25,18 @@ import com.greenfodor.ppremotece.core.domain.model.SlideText
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.PLAYLIST
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.SONG_A
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.SONG_C
+import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.SONG_L
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.cleared
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.key
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.liveAt
+import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.liveOutside
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.playlist
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.presentations
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.remembered
+import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.rememberedPresentation
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.songA
 import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.songC
+import com.greenfodor.ppremotece.core.domain.remote.RemoteFixtures.songL
 import org.junit.jupiter.api.Test
 
 class RemoteDisplayTest {
@@ -40,7 +46,7 @@ class RemoteDisplayTest {
 
     private fun cue(item: Int, presentation: String, index: Int, mark: BoxMark, thumbnails: Boolean = true) =
         RemoteBox.Slide(
-            item = key(item),
+            source = CueSource.PlaylistItem(key(item)),
             presentationUuid = presentation,
             cue = ArrangementExpander.expand(presentations.getValue(presentation), refOf(item)).cues[index],
             mark = mark,
@@ -73,7 +79,7 @@ class RemoteDisplayTest {
 
         assertThat(display.sidebar).isEqualTo(
             RemoteSidebar(
-                item = key(5),
+                source = CueSource.PlaylistItem(key(5)),
                 presentationUuid = SONG_C,
                 cues = ArrangementExpander.expand(songC, refOf(5)).cues,
                 marks = mapOf(0 to BoxMark.LIVE, 2 to BoxMark.NEXT),
@@ -87,7 +93,7 @@ class RemoteDisplayTest {
     fun `the sidebar follows the cued item`() {
         val display = reduce(RemoteInputs(liveAt(0, SONG_A, 2), lastLive = null, cued = key(5)))
 
-        assertThat(display.sidebar?.item).isEqualTo(key(5))
+        assertThat(display.sidebar?.source).isEqualTo(CueSource.PlaylistItem(key(5)))
         assertThat(display.sidebar?.marks).isEqualTo(mapOf(0 to BoxMark.CUED, 2 to BoxMark.NEXT))
         assertThat(display.sidebar?.focus).isEqualTo(0)
     }
@@ -325,7 +331,106 @@ class RemoteDisplayTest {
         assertThat(RemoteDisplay.presentationsNeeded(live, playlist)).containsExactlyInAnyOrder(SONG_A)
         assertThat(RemoteDisplay.presentationsNeeded(cuedMedia, playlist)).containsExactlyInAnyOrder(SONG_C)
         assertThat(RemoteDisplay.playlistNeeded(outside)).isNull()
+        assertThat(RemoteDisplay.presentationsNeeded(outside, null)).containsExactlyInAnyOrder(SONG_A)
         assertThat(RemoteDisplay.presentationsNeeded(live, null).isEmpty()).isTrue()
         assertThat(reduce(outside).current).isInstanceOf(RemoteBox.Text::class)
+    }
+
+    private val songLSource = CueSource.Presentation(SONG_L)
+
+    private fun songLCue(index: Int, mark: BoxMark) =
+        RemoteBox.Slide(
+            source = songLSource,
+            presentationUuid = SONG_L,
+            cue = currentCueList(songL).cues[index],
+            mark = mark,
+            thumbnails = true
+        )
+
+    @Test
+    fun `a presentation live outside a playlist with its current arrangement's count is shown with its cues`() {
+        val display = reduce(RemoteInputs(liveOutside(SONG_L, 2, totalCues = 8), lastLive = null))
+
+        assertThat(display.status).isEqualTo(RemoteStatus.SHOWING)
+        assertThat(display.current).isEqualTo(songLCue(2, BoxMark.LIVE))
+        assertThat(display.next).isEqualTo(songLCue(3, BoxMark.NEXT))
+        assertThat(display.header).isEqualTo(
+            RemoteHeader("Song L", ArrangementChoice.Resolved(songL.arrangements[0]), cueNumber = 3, cueCount = 8)
+        )
+        assertThat(display.tapCurrent).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 2))
+        assertThat(display.tapNext).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 3))
+        assertThat(display.sidebar).isEqualTo(
+            RemoteSidebar(
+                source = songLSource,
+                presentationUuid = SONG_L,
+                cues = currentCueList(songL).cues,
+                marks = mapOf(2 to BoxMark.LIVE, 3 to BoxMark.NEXT),
+                focus = 2,
+                thumbnails = true
+            )
+        )
+    }
+
+    @Test
+    fun `a presentation match has no next up row and no item steps`() {
+        val display = reduce(RemoteInputs(liveOutside(SONG_L, 2, totalCues = 8), lastLive = remembered(0, SONG_A, 1)))
+
+        assertThat(display.showsNextUp).isFalse()
+        assertThat(display.nextUp).isNull()
+        assertThat(display.previousItem).isNull()
+        assertThat(display.nextItem).isNull()
+        assertThat(display.baseItem).isNull()
+    }
+
+    @Test
+    fun `a playlist item shows the next up row`() {
+        assertThat(reduce(RemoteInputs(liveAt(0, SONG_A, 2), lastLive = null)).showsNextUp).isTrue()
+    }
+
+    @Test
+    fun `a presentation match steps to enabled cues over the presentation route`() {
+        val first = reduce(RemoteInputs(liveOutside(SONG_L, 0, totalCues = 8), lastLive = null))
+        val middle = reduce(RemoteInputs(liveOutside(SONG_L, 2, totalCues = 8), lastLive = null))
+        val last = reduce(RemoteInputs(liveOutside(SONG_L, 7, totalCues = 8), lastLive = null))
+
+        assertThat(first.nextButton).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 2))
+        assertThat(first.previousButton).isNull()
+        assertThat(middle.previousButton).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 0))
+        assertThat(last.nextButton).isNull()
+        assertThat(last.previousButton).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 5))
+    }
+
+    @Test
+    fun `a presentation live with another cue count shows the text and steps with trigger next and previous`() {
+        val display = reduce(RemoteInputs(liveOutside(SONG_L, 2, totalCues = 9, text = text), lastLive = null))
+
+        assertThat(display.current).isEqualTo(RemoteBox.Text("Text 03"))
+        assertThat(display.nextButton).isEqualTo(RemoteCommand.TriggerNext)
+        assertThat(display.previousButton).isEqualTo(RemoteCommand.TriggerPrevious)
+        assertThat(display.sidebar).isNull()
+        assertThat(display.showsNextUp).isTrue()
+    }
+
+    @Test
+    fun `after a clear the remembered presentation cue is shown and sent as if it were live`() {
+        val live = reduce(RemoteInputs(liveOutside(SONG_L, 5, totalCues = 8), lastLive = null))
+        val afterClear = reduce(RemoteInputs(cleared, lastLive = rememberedPresentation(SONG_L, 5)))
+
+        assertThat(afterClear).isEqualTo(live)
+        assertThat(afterClear.tapCurrent).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 5))
+        assertThat(afterClear.nextButton).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 7))
+        assertThat(afterClear.previousButton).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 4))
+    }
+
+    @Test
+    fun `a presentation live outside a playlist needs only that presentation and shows the text until it is read`() {
+        val inputs = RemoteInputs(liveOutside(SONG_L, 2, totalCues = 8, text = text), lastLive = null)
+
+        assertThat(RemoteDisplay.playlistNeeded(inputs)).isNull()
+        assertThat(RemoteDisplay.presentationsNeeded(inputs, null)).containsExactlyInAnyOrder(SONG_L)
+        val unread = RemoteDisplay.reduce(inputs, null, emptyMap())
+        assertThat(unread.status).isEqualTo(RemoteStatus.SHOWING)
+        assertThat(unread.current).isEqualTo(RemoteBox.Text("Text 03"))
+        assertThat(unread.nextButton).isEqualTo(RemoteCommand.TriggerNext)
     }
 }

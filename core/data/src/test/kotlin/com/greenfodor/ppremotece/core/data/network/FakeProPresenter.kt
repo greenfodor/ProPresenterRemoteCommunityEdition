@@ -73,6 +73,8 @@ class FakeProPresenter(
         when {
             path == "/version" -> json(Fixtures.text("version.json"))
             path == "/v1/playlists" -> json(Fixtures.text(Fixtures.PLAYLIST_TREE))
+            path == "/v1/libraries" -> json(Fixtures.text(Fixtures.LIBRARIES))
+            path.startsWith("/v1/library/") -> fixture("library", path.removePrefix("/v1/library/"))
             path == "/v1/presentation/slide_index" && failSlideIndexReads > 0 -> {
                 failSlideIndexReads--
                 status(500)
@@ -90,6 +92,7 @@ class FakeProPresenter(
             path == "/v1/trigger/next" || path == "/v1/trigger/previous" -> status(204)
             CUE_TRIGGER.matches(path) -> triggerCue(path)
             ITEM_TRIGGER.matches(path) -> status(204)
+            PRESENTATION_TRIGGER.matches(path) -> status(204)
             else -> status(404)
         }
 
@@ -123,6 +126,7 @@ class FakeProPresenter(
             """{"uuid":"$SONG_A_UUID","name":"Song A","index":0},"total_cues":7,"remaining_cues":3}}"""
         private val CUE_TRIGGER = Regex("^/v1/playlist/[0-9a-f-]+/\\d+/(\\d+)/trigger$")
         private val ITEM_TRIGGER = Regex("^/v1/playlist/[0-9a-f-]+/\\d+/trigger$")
+        private val PRESENTATION_TRIGGER = Regex("^/v1/presentation/[0-9a-f-]+/\\d+/trigger$")
         private val CLEAR_LAYER =
             Regex("^/v1/clear/layer/(slide|media|video_input|props|messages|announcements|audio)$")
         private val CLEAR_GROUP_TRIGGER = Regex("^/v1/clear/group/[0-9a-f-]+/trigger$")
@@ -150,6 +154,9 @@ class FakeProPresenter(
         private val ALLOWED = listOf(
             "GET" to Regex("^/version$"),
             "GET" to Regex("^/v1/playlists$"),
+            "GET" to Regex("^/v1/libraries$"),
+            "GET" to Regex("^/v1/library/[0-9a-f-]+$"),
+            "GET" to Regex("^/v1/presentation/[0-9a-f-]+/\\d+/trigger$"),
             "GET" to Regex("^/v1/playlist/[0-9a-f-]+$"),
             "GET" to Regex("^/v1/presentation/[0-9a-f-]+$"),
             "GET" to Regex("^/v1/presentation/slide_index$"),

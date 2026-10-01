@@ -7,6 +7,8 @@ import com.greenfodor.ppremotece.core.data.Fixtures
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.IconPath
+import com.greenfodor.ppremotece.core.domain.model.Library
+import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
@@ -50,6 +52,40 @@ class KtorProPresenterClientTest {
 
         assertThat(playlist.data.items.size).isEqualTo(7)
         assertThat(presentation.data.arrangements.map { it.name }).containsExactly("Full", "Chorus Only", "Short", "")
+    }
+
+    @Test
+    fun `libraries are mapped from their response`() = runBlocking {
+        val libraries = (client.libraries() as Result.Success).data
+
+        assertThat(libraries.size).isEqualTo(10)
+        assertThat(libraries.first()).isEqualTo(Library(Fixtures.LIBRARY_ID, "Library 01", 0))
+        assertThat(libraries.map { it.index }).isEqualTo((0..9).toList())
+    }
+
+    @Test
+    fun `a library's presentations are mapped from its response`() = runBlocking {
+        val entries = (client.library(Fixtures.LIBRARY_ID) as Result.Success).data
+
+        assertThat(entries.size).isEqualTo(413)
+        assertThat(entries[207]).isEqualTo(LibraryEntry(FakeProPresenter.SONG_A_UUID, "Song A", 207))
+        assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/library/${Fixtures.LIBRARY_ID}")
+    }
+
+    @Test
+    fun `triggering a presentation cue gets the presentation cue trigger route`() = runBlocking {
+        assertThat(client.triggerPresentationCue(FakeProPresenter.SONG_A_UUID, cueIndex = 3))
+            .isEqualTo(Result.Success(Unit))
+        assertThat(fake.requests.single().method).isEqualTo("GET")
+        assertThat(fake.requests.single().url.encodedPath)
+            .isEqualTo("/v1/presentation/${FakeProPresenter.SONG_A_UUID}/3/trigger")
+    }
+
+    @Test
+    fun `a presentation's current arrangement is mapped`() = runBlocking {
+        val presentation = (client.presentation(FakeProPresenter.SONG_A_UUID) as Result.Success).data
+
+        assertThat(presentation.currentArrangementUuid).isEqualTo("9ccdc706-56db-49a6-9658-2eec33c7ebfc")
     }
 
     @Test
@@ -166,6 +202,9 @@ class KtorProPresenterClientTest {
 
         client.version()
         client.playlists()
+        client.libraries()
+        client.library(Fixtures.LIBRARY_ID)
+        client.triggerPresentationCue(FakeProPresenter.SONG_A_UUID, cueIndex = 1)
         client.playlist(FakeProPresenter.SERVICE_PLAYLIST_UUID)
         client.presentation(FakeProPresenter.SONG_A_UUID)
         client.slideIndex()
@@ -179,7 +218,7 @@ class KtorProPresenterClientTest {
         client.triggerPrevious()
         client.statusUpdates(listOf("status/slide")).first()
 
-        assertThat(fake.requests.size).isEqualTo(14)
+        assertThat(fake.requests.size).isEqualTo(17)
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
     }
 

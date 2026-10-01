@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.navigation
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
+import com.greenfodor.ppremotece.feature.playlist.LibraryGridRoute
 import com.greenfodor.ppremotece.feature.playlist.PlaylistsRoute
 import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
 import com.greenfodor.ppremotece.feature.remote.RemoteRoute
@@ -25,6 +26,15 @@ class TabStacksTest {
 
         assertThat(stacks.presentation).containsExactly(PlaylistsRoute, grid6)
         assertThat(stacks.current).isEqualTo(ShellTab.PRESENTATION)
+    }
+
+    @Test
+    fun `a library grid replaces an open slide grid and the other way round`() {
+        val library = LibraryGridRoute(presentationUuid = "pres")
+
+        assertThat(initial.openDetail(grid1).openDetail(library).presentation).containsExactly(PlaylistsRoute, library)
+        assertThat(initial.openDetail(library).openDetail(grid6).presentation).containsExactly(PlaylistsRoute, grid6)
+        assertThat(initial.openDetail(library).back().presentation).containsExactly(PlaylistsRoute)
     }
 
     @Test

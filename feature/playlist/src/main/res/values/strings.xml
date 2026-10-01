@@ -14,6 +14,11 @@
     <string name="grid_select_item">Select a playlist item</string>
     <string name="grid_count_mismatch">Arrangement partly unresolved; cue numbers may differ from ProPresenter</string>
     <string name="grid_item_has_no_slides">This playlist item has no slides.</string>
+    <string name="mode_playlists">Playlists</string>
+    <string name="mode_library">Library</string>
+    <string name="library_title">Library</string>
+    <string name="library_search">Search presentations</string>
+    <string name="library_no_results">No presentations found</string>
     <plurals name="grid_cue_count">
         <item quantity="one">%1$d cue</item>
         <item quantity="other">%1$d cues</item>

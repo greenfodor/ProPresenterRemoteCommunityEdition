@@ -6,6 +6,7 @@ import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.SyntheticThumbnails
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.Group
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
@@ -82,31 +83,31 @@ private fun Preview(state: RemoteState, sideBySide: Boolean = false, reconnectin
 @Preview(widthDp = 411, heightDp = 891)
 @Composable
 private fun LivePreview() {
-    Preview(state(RemoteInputs(live(0, 1), LiveCue(keys[0], SONG, 1))))
+    Preview(state(RemoteInputs(live(0, 1), LiveCue(CueSource.PlaylistItem(keys[0]), SONG, 1))))
 }
 
 @Preview(widthDp = 1173, heightDp = 527)
 @Composable
 private fun LiveSideBySidePreview() {
-    Preview(state(RemoteInputs(live(0, 1), LiveCue(keys[0], SONG, 1))), sideBySide = true)
+    Preview(state(RemoteInputs(live(0, 1), LiveCue(CueSource.PlaylistItem(keys[0]), SONG, 1))), sideBySide = true)
 }
 
 @Preview(widthDp = 411, heightDp = 891)
 @Composable
 private fun LastCueReconnectingPreview() {
-    Preview(state(RemoteInputs(live(2, 4), LiveCue(keys[2], SONG, 4))), reconnecting = true)
+    Preview(state(RemoteInputs(live(2, 4), LiveCue(CueSource.PlaylistItem(keys[2]), SONG, 4))), reconnecting = true)
 }
 
 @Preview(widthDp = 411, heightDp = 891)
 @Composable
 private fun CuedPreview() {
-    Preview(state(RemoteInputs(live(0, 1), LiveCue(keys[0], SONG, 1), cued = keys[2])))
+    Preview(state(RemoteInputs(live(0, 1), LiveCue(CueSource.PlaylistItem(keys[0]), SONG, 1), cued = keys[2])))
 }
 
 @Preview(widthDp = 411, heightDp = 891)
 @Composable
 private fun MediaLivePreview() {
-    Preview(state(RemoteInputs(connected, LiveCue(keys[0], SONG, 1), mediaLive = keys[1])))
+    Preview(state(RemoteInputs(connected, LiveCue(CueSource.PlaylistItem(keys[0]), SONG, 1), mediaLive = keys[1])))
 }
 
 @Preview(widthDp = 411, heightDp = 891)

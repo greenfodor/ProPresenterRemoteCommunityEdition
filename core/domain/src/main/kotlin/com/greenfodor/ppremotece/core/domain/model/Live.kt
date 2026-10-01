@@ -13,9 +13,9 @@ data class SlideText(
     val next: String
 )
 
-/** A cue that was live: the playlist item, the presentation it played and the cue index. */
+/** A cue that was live: its playlist item or presentation, the presentation it played and the cue index. */
 data class LiveCue(
-    val item: PlaylistItemKey,
+    val source: CueSource,
     val presentationUuid: String,
     val cueIndex: Int
 )

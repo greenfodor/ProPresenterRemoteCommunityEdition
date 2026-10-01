@@ -124,7 +124,7 @@ fun RemoteScreen(
     val sidebar = @Composable {
         CueSidebar(
             cues = state.sidebar,
-            item = state.sidebarItem,
+            source = state.sidebarSource,
             focus = state.sidebarFocus,
             aspect = state.display.aspect,
             onCueClick = { onAction(RemoteAction.OnSidebarCueClick(it)) }
@@ -224,7 +224,7 @@ private fun RemoteScaffold(
         },
         bottomBar = {
             Column {
-                NextUpRow(display = display, onAction = onAction)
+                if (display.showsNextUp) NextUpRow(display = display, onAction = onAction)
                 StepButtons(display = display, onAction = onAction)
             }
         }

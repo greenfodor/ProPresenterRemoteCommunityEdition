@@ -7,6 +7,7 @@ import assertk.assertions.isNull
 import com.greenfodor.ppremotece.core.data.network.FakeProPresenter
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.domain.model.Cue
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
@@ -15,6 +16,7 @@ import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -79,7 +81,9 @@ class ProPresenterSessionTest {
         val collector = launch { session.liveState.collect {} }
         val lastLive = withTimeout(5.seconds) { session.lastLive.filterNotNull().first() }
         collector.cancel()
-        assertThat(lastLive).isEqualTo(LiveCue(item, FakeProPresenter.SONG_A_UUID, cueIndex = 3))
+        assertThat(
+            lastLive
+        ).isEqualTo(LiveCue(CueSource.PlaylistItem(item), FakeProPresenter.SONG_A_UUID, cueIndex = 3))
     }
 
     private fun host() = ProPresenterHost(name = "Host 01", address = server.hostName, port = server.port)
@@ -109,19 +113,27 @@ class ProPresenterSessionTest {
 
         val requests = withTimeout(2.seconds) { session.thumbnailRequests.filterNotNull().first() }
         val cue = Cue(3, "g-1", "Chorus", null, 0, "Chorus · 1", enabled = true, size = SlideSize(1920, 858))
-        val request = requests.request(PlaylistItemKey("pl-1", 1), "p-1", cue, ThumbnailQuality.Grid)
+        val item = CueSource.PlaylistItem(PlaylistItemKey("pl-1", 1))
+        val request = requests.request(item, "p-1", cue, ThumbnailQuality.Grid)
         assertThat(
             request.url
         ).isEqualTo("http://${server.hostName}:${server.port}/v1/playlist/pl-1/1/thumbnail/3?quality=400")
         assertThat(request.cacheKey).isEqualTo(ThumbnailKey.of("Host 01", "p-1", cue))
         assertThat(request.placeholderKey).isNull()
 
-        val box = requests.request(PlaylistItemKey("pl-1", 1), "p-1", cue, ThumbnailQuality.Box(1284))
+        val box = requests.request(item, "p-1", cue, ThumbnailQuality.Box(1284))
         assertThat(
             box.url
         ).isEqualTo("http://${server.hostName}:${server.port}/v1/playlist/pl-1/1/thumbnail/3?quality=800")
         assertThat(box.cacheKey).isEqualTo(ThumbnailKey.of("Host 01", "p-1", cue, boxQuality = 800))
         assertThat(box.placeholderKey).isEqualTo(ThumbnailKey.of("Host 01", "p-1", cue))
+
+        val base = "http://${server.hostName}:${server.port}/v1/presentation/p-1/thumbnail/3"
+        val presentation = CueSource.Presentation("p-1")
+        val presentationGrid = requests.request(presentation, "p-1", cue, ThumbnailQuality.Grid)
+        val presentationBox = requests.request(presentation, "p-1", cue, ThumbnailQuality.Box(1284))
+        assertThat(presentationGrid).isEqualTo(ThumbnailRequest("$base?quality=711", request.cacheKey))
+        assertThat(presentationBox).isEqualTo(ThumbnailRequest("$base?quality=1422", box.cacheKey, request.cacheKey))
     }
 
     @Test

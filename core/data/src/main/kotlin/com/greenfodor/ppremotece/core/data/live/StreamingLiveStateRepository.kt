@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.core.data.live
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
@@ -42,8 +43,8 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * arrives for [watchdogTimeout], or the stream ends or fails, the stream is closed and reopened
  * after [reconnectDelay] with the same subscriptions, and the slide index is read again.
  * [onReconnected] is called when the first chunk of a reopened stream arrives. Each `status/slide`
- * frame sets the slide text; each slide read of the live item's presentation sets [lastLive], which outlives
- * clears, reconnects and resubscriptions.
+ * frame sets the slide text; each slide read of the live item's presentation, or of a presentation
+ * live without a playlist item, sets [lastLive], which outlives clears, reconnects and resubscriptions.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
@@ -105,11 +106,18 @@ class StreamingLiveStateRepository(
             }
         }.stateIn(scope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), LiveState.Initial)
 
-    /** Sets [lastLive] when [slide] is a slide of the presentation that the live [item] plays. */
+    /**
+     * Sets [lastLive] when [slide] is a slide of the presentation that the live [item] plays, or a
+     * slide live without a playlist item.
+     */
     private fun remember(item: PlaylistItemKey?, itemPresentation: String?, slide: LiveSlide?) {
-        if (item != null && slide != null && slide.presentationUuid == itemPresentation) {
-            _lastLive.value = LiveCue(item, slide.presentationUuid, slide.index)
+        slide ?: return
+        val source = when {
+            item == null -> CueSource.Presentation(slide.presentationUuid)
+            slide.presentationUuid == itemPresentation -> CueSource.PlaylistItem(item)
+            else -> return
         }
+        _lastLive.value = LiveCue(source, slide.presentationUuid, slide.index)
     }
 
     @OptIn(FlowPreview::class)
