@@ -57,7 +57,7 @@ class SlideGridViewModelTest {
     }
     private val thumbnailSource = object : ThumbnailSource {
         override val thumbnailRequests = MutableStateFlow<ThumbnailRequests?>(
-            ThumbnailRequests { item, presentationUuid, cue ->
+            ThumbnailRequests { item, presentationUuid, cue, _ ->
                 ThumbnailRequest(
                     url = "http://host/${item.playlistUuid}/${item.index}/thumbnail/${cue.index}",
                     cacheKey = "$presentationUuid:${cue.groupUuid}:${cue.slideIndexInGroup}"
@@ -217,7 +217,7 @@ class SlideGridViewModelTest {
         viewModel.state.test {
             assertThat(awaitItem().thumbnailGeneration).isEqualTo(0)
 
-            thumbnailSource.thumbnailRequests.value = ThumbnailRequests { item, presentationUuid, cue ->
+            thumbnailSource.thumbnailRequests.value = ThumbnailRequests { item, presentationUuid, cue, _ ->
                 ThumbnailRequest("http://other/${item.index}/${cue.index}", "$presentationUuid:${cue.index}")
             }
 

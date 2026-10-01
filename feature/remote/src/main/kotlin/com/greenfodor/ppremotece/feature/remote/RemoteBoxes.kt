@@ -16,11 +16,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,16 +45,24 @@ private val CardCorner = 12.dp
 private val RingWidthOther = 2.dp
 private val RingWidthLive = 4.dp
 
-/** One box, as large as fits in its space at the slide's [aspect]; [onClick] null makes it not clickable. */
+/**
+ * One box, as large as fits in its space at the slide's [aspect]; [onClick] null makes it not
+ * clickable. [onImageWidth] receives the width of a slide box's image in px whenever it changes.
+ */
 @Composable
 internal fun LiveBox(
     box: RemoteBox,
     thumbnail: ThumbnailRequest?,
     aspect: Float,
     onClick: (() -> Unit)?,
+    onImageWidth: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(contentAlignment = Alignment.TopCenter, modifier = modifier) {
+        val imageWidth = fittedWidth(maxWidth - CellFrame, maxHeight - CellChrome, aspect)
+        val imagePx = with(LocalDensity.current) { imageWidth.roundToPx() }
+        val currentOnImageWidth by rememberUpdatedState(onImageWidth)
+        LaunchedEffect(imagePx) { currentOnImageWidth(imagePx) }
         when (box) {
             is RemoteBox.Slide -> CueCell(
                 number = box.cue.index + 1,
@@ -60,9 +71,7 @@ internal fun LiveBox(
                 fallbackText = box.cue.slideText.ifBlank { box.cue.groupName },
                 aspect = aspect,
                 onClick = onClick,
-                modifier = Modifier.width(
-                    fittedWidth(maxWidth - CellFrame, maxHeight - CellChrome, aspect) + CellFrame
-                ),
+                modifier = Modifier.width(imageWidth + CellFrame),
                 thumbnail = thumbnail,
                 label = box.cue.slideLabel,
                 enabled = box.cue.enabled,

@@ -23,6 +23,7 @@ import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.map
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import com.greenfodor.ppremotece.core.domain.thumbnail.slideAspect
@@ -171,7 +172,7 @@ class SlideGridViewModel(
                     text = cue.slideText,
                     label = cue.slideLabel,
                     enabled = cue.enabled,
-                    thumbnail = thumbnails?.request(item, presentationUuid, cue)
+                    thumbnail = thumbnails?.request(item, presentationUuid, cue, ThumbnailQuality.Grid)
                 )
             },
             aspect = slideAspect(content.presentation),
@@ -214,7 +215,9 @@ class SlideGridViewModel(
         val content = loaded?.takeUnless { it.cueList.countMismatch } ?: return
         val requests = thumbnailSource.thumbnailRequests.first() ?: return
         thumbnailCache.remove(
-            content.cueList.cues.map { requests.request(item, content.presentation.uuid, it).cacheKey }.distinct()
+            content.cueList.cues.map {
+                requests.request(item, content.presentation.uuid, it, ThumbnailQuality.Grid).cacheKey
+            }.distinct()
         )
         thumbnailGeneration.value++
     }

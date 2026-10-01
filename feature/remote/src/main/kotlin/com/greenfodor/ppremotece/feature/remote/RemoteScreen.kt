@@ -294,6 +294,7 @@ private fun Boxes(state: RemoteState, sideBySide: Boolean, onAction: (RemoteActi
             thumbnail = state.currentThumbnail,
             aspect = display.aspect,
             onClick = display.tapCurrent?.let { { onAction(RemoteAction.OnCurrentClick) } },
+            onImageWidth = { onAction(RemoteAction.OnCurrentBoxSized(it)) },
             modifier = modifier
         )
     }
@@ -303,6 +304,7 @@ private fun Boxes(state: RemoteState, sideBySide: Boolean, onAction: (RemoteActi
             thumbnail = state.nextThumbnail,
             aspect = display.aspect,
             onClick = display.tapNext?.let { { onAction(RemoteAction.OnNextBoxClick) } },
+            onImageWidth = { onAction(RemoteAction.OnNextBoxSized(it)) },
             modifier = modifier
         )
     }

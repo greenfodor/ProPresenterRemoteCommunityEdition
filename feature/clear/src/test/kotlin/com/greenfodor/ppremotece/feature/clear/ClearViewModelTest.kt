@@ -5,10 +5,7 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
-import assertk.assertions.isNull
-import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.IconPath
@@ -16,7 +13,6 @@ import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -70,48 +66,32 @@ class ClearViewModelTest {
     }
 
     @Test
-    fun `only the clear all group gives the big button and no group pills`() = runTest(dispatcher) {
-        client.groups = listOf(CLEAR_ALL)
-        val viewModel = viewModel()
+    fun `groups lists the clear all group when it is the only one`() = runTest(dispatcher) {
+        val viewModel = openedWith(CLEAR_ALL)
 
         viewModel.state.test {
-            awaitItem()
-            viewModel.onAction(ClearAction.OnSheetOpen)
-            val state = awaitItem()
-            assertThat(state.clearAll).isEqualTo(CLEAR_ALL)
-            assertThat(state.groups).isEmpty()
+            assertThat(awaitItem().groups).containsExactly(CLEAR_ALL)
         }
     }
 
     @Test
-    fun `with several groups clear all is one of the pills and there is no big button`() = runTest(dispatcher) {
-        client.groups = listOf(CLEAR_ALL, LYRICS)
-        val viewModel = viewModel()
+    fun `groups lists every group when there are several`() = runTest(dispatcher) {
+        val viewModel = openedWith(CLEAR_ALL, LYRICS)
 
         viewModel.state.test {
-            awaitItem()
-            viewModel.onAction(ClearAction.OnSheetOpen)
-            val state = awaitItem()
-            assertThat(state.clearAll).isNull()
-            assertThat(state.groups).containsExactly(CLEAR_ALL, LYRICS)
-            viewModel.onAction(ClearAction.OnClearAllClick)
-            expectNoEvents()
+            assertThat(awaitItem().groups).containsExactly(CLEAR_ALL, LYRICS)
         }
-        assertThat(client.triggeredGroups).isEmpty()
     }
 
     @Test
-    fun `without a clear all group there is no big button`() = runTest(dispatcher) {
-        client.groups = listOf(LYRICS)
-        val viewModel = viewModel()
+    fun `one tap on any pill triggers its group`() = runTest(dispatcher) {
+        val viewModel = openedWith(CLEAR_ALL, LYRICS)
 
-        viewModel.state.test {
-            awaitItem()
-            viewModel.onAction(ClearAction.OnSheetOpen)
-            val state = awaitItem()
-            assertThat(state.clearAll).isNull()
-            assertThat(state.groups).containsExactly(LYRICS)
-        }
+        viewModel.onAction(ClearAction.OnGroupClick(CLEAR_ALL.uuid))
+        viewModel.onAction(ClearAction.OnGroupClick(LYRICS.uuid))
+
+        assertThat(client.triggeredGroups).containsExactly(CLEAR_ALL.uuid, LYRICS.uuid)
+        assertThat(client.clearedLayers).isEmpty()
     }
 
     @Test
@@ -140,65 +120,12 @@ class ClearViewModelTest {
     }
 
     @Test
-    fun `clear all needs a second tap within three seconds and triggers the clear all group`() = runTest(dispatcher) {
-        val viewModel = openedWith(CLEAR_ALL)
-
-        viewModel.state.test {
-            awaitItem()
-            viewModel.onAction(ClearAction.OnClearAllClick)
-            assertThat(awaitItem().armed).isTrue()
-            assertThat(client.triggeredGroups).isEmpty()
-
-            advanceTimeBy(2_900)
-            viewModel.onAction(ClearAction.OnClearAllClick)
-            assertThat(awaitItem().armed).isFalse()
-            assertThat(client.triggeredGroups).containsExactly(CLEAR_ALL.uuid)
-            assertThat(client.clearedLayers).isEmpty()
-        }
-    }
-
-    @Test
-    fun `clear all disarms after three seconds`() = runTest(dispatcher) {
-        val viewModel = openedWith(CLEAR_ALL)
-
-        viewModel.state.test {
-            awaitItem()
-            viewModel.onAction(ClearAction.OnClearAllClick)
-            assertThat(awaitItem().armed).isTrue()
-            advanceTimeBy(3_001)
-            assertThat(awaitItem().armed).isFalse()
-
-            viewModel.onAction(ClearAction.OnClearAllClick)
-            assertThat(awaitItem().armed).isTrue()
-            assertThat(client.triggeredGroups).isEmpty()
-        }
-    }
-
-    @Test
-    fun `closing the sheet disarms clear all`() = runTest(dispatcher) {
-        val viewModel = openedWith(CLEAR_ALL)
-
-        viewModel.state.test {
-            awaitItem()
-            viewModel.onAction(ClearAction.OnClearAllClick)
-            assertThat(awaitItem().armed).isTrue()
-            viewModel.onAction(ClearAction.OnSheetDismiss)
-            assertThat(awaitItem().armed).isFalse()
-
-            viewModel.onAction(ClearAction.OnClearAllClick)
-            assertThat(awaitItem().armed).isTrue()
-            assertThat(client.triggeredGroups).isEmpty()
-        }
-    }
-
-    @Test
-    fun `a failed clear all is reported`() = runTest(dispatcher) {
+    fun `a failed group clear is reported`() = runTest(dispatcher) {
         client.failingGroups += CLEAR_ALL.uuid
         val viewModel = openedWith(CLEAR_ALL)
 
         viewModel.events.test {
-            viewModel.onAction(ClearAction.OnClearAllClick)
-            viewModel.onAction(ClearAction.OnClearAllClick)
+            viewModel.onAction(ClearAction.OnGroupClick(CLEAR_ALL.uuid))
             assertThat(awaitItem()).isInstanceOf(ClearEvent.ShowError::class)
         }
     }

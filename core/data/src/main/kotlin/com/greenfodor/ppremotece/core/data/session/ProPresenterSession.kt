@@ -15,9 +15,12 @@ import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRoute
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
+import com.greenfodor.ppremotece.core.domain.thumbnail.boxQuality
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -123,10 +126,13 @@ class ProPresenterSession(
     }
 
     private fun thumbnailRequests(baseUrl: String, instanceName: String) =
-        ThumbnailRequests { item, presentationUuid, cue ->
+        ThumbnailRequests { item, presentationUuid, cue, quality ->
+            val box = (quality as? ThumbnailQuality.Box)?.let { boxQuality(ThumbnailRoute.PLAYLIST, it.px) }
+            val gridKey = ThumbnailKey.of(instanceName, presentationUuid, cue)
             ThumbnailRequest(
-                url = thumbnailUrl(baseUrl, item, cue.index),
-                cacheKey = ThumbnailKey.of(instanceName, presentationUuid, cue)
+                url = thumbnailUrl(baseUrl, item, cue.index, box),
+                cacheKey = ThumbnailKey.of(instanceName, presentationUuid, cue, box),
+                placeholderKey = gridKey.takeIf { box != null }
             )
         }
 

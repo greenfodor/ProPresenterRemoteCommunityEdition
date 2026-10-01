@@ -64,6 +64,20 @@ class ThumbnailKeyTest {
     }
 
     @Test
+    fun `a box key is the grid key with the quality appended`() {
+        val gridKey = ThumbnailKey.of("Host 01", "p-1", chorusFirst)
+
+        assertThat(ThumbnailKey.of("Host 01", "p-1", chorusFirst, boxQuality = null)).isEqualTo(gridKey)
+        assertThat(ThumbnailKey.of("Host 01", "p-1", chorusFirst, boxQuality = 800)).isEqualTo("$gridKey:q800")
+    }
+
+    @Test
+    fun `box keys differ per quality`() {
+        assertThat(ThumbnailKey.of("Host 01", "p-1", chorusFirst, boxQuality = 800))
+            .isNotEqualTo(ThumbnailKey.of("Host 01", "p-1", chorusFirst, boxQuality = 1080))
+    }
+
+    @Test
     fun `aspect follows the slide size`() {
         assertThat(slideAspect(presentationOf(SlideSize(1920, 858)))).isCloseTo(1920f / 858f, TOLERANCE)
     }

@@ -44,8 +44,9 @@ private val PreviewImageColor = Color(0xFF2E5E8C)
 
 /**
  * A slide image in a black box of the slide's [aspect], fitted without cropping and without a
- * crossfade. [url] is loaded and cached under [cacheKey] (memory and disk); while it loads, when it
- * fails and when [url] is null, [fallbackText] is shown instead.
+ * crossfade. [url] is loaded and cached under [cacheKey] (memory and disk); while it loads, the
+ * memory-cache entry under [placeholderKey] is shown when there is one. While it loads without such
+ * an entry, when it fails and when [url] is null, [fallbackText] is shown instead.
  */
 @Composable
 fun SlideThumbnail(
@@ -53,22 +54,25 @@ fun SlideThumbnail(
     cacheKey: String?,
     aspect: Float,
     fallbackText: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    placeholderKey: String? = null
 ) {
     val context = LocalPlatformContext.current
-    val request = remember(context, url, cacheKey) {
+    val request = remember(context, url, cacheKey, placeholderKey) {
         ImageRequest
             .Builder(context)
             .data(url)
             .memoryCacheKey(cacheKey)
             .diskCacheKey(cacheKey)
+            .placeholderMemoryCacheKey(placeholderKey)
             .crossfade(false)
             .build()
     }
     val painter = rememberAsyncImagePainter(request)
     val state by painter.state.collectAsStateWithLifecycle()
     Box(modifier = modifier.aspectRatio(aspect).background(Color.Black)) {
-        if (state !is AsyncImagePainter.State.Success) {
+        val showsPlaceholder = state is AsyncImagePainter.State.Loading && state.painter != null
+        if (state !is AsyncImagePainter.State.Success && !showsPlaceholder) {
             Text(
                 text = fallbackText,
                 style = MaterialTheme.typography.bodySmall,
