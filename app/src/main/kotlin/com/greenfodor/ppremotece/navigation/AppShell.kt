@@ -100,9 +100,20 @@ fun AppShell(
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val windowSizeClass = adaptiveInfo.windowSizeClass
     val directive = calculatePaneScaffoldDirective(adaptiveInfo)
-        .copy(maxHorizontalPartitions = paneCount(windowSizeClass.minWidthDp))
+        .copy(maxHorizontalPartitions = paneCount(windowSizeClass.minWidthDp), horizontalPartitionSpacerSize = 0.dp)
     val widthClass = widthClassOf(windowSizeClass.minWidthDp)
     val compactHeight = !windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
+    val slideGrid = @Composable { source: CueSource ->
+        SlideGridRoot(
+            source = source,
+            widthClass = widthClass,
+            headerScrollsWithGrid = compactHeight,
+            reconnecting = reconnecting,
+            onBack = { update(stacks().back()) },
+            closesPane = paneCount(windowSizeClass.minWidthDp) == 2,
+            floatingActionButton = clearFab
+        )
+    }
     val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)
     val layout = navigationLayout(windowSizeClass.minWidthDp)
     val onSelect = { selected: ShellTab -> update(stacks().select(selected)) }
@@ -158,26 +169,10 @@ fun AppShell(
                         )
                     }
                     entry<LibraryGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
-                        SlideGridRoot(
-                            source = CueSource.Presentation(route.presentationUuid),
-                            widthClass = widthClass,
-                            headerScrollsWithGrid = compactHeight,
-                            reconnecting = reconnecting,
-                            onBack = { update(stacks().back()) },
-                            floatingActionButton = clearFab
-                        )
+                        slideGrid(CueSource.Presentation(route.presentationUuid))
                     }
                     entry<SlideGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
-                        SlideGridRoot(
-                            source = CueSource.PlaylistItem(
-                                PlaylistItemKey(playlistUuid = route.playlistUuid, index = route.itemIndex)
-                            ),
-                            widthClass = widthClass,
-                            headerScrollsWithGrid = compactHeight,
-                            reconnecting = reconnecting,
-                            onBack = { update(stacks().back()) },
-                            floatingActionButton = clearFab
-                        )
+                        slideGrid(CueSource.PlaylistItem(PlaylistItemKey(route.playlistUuid, route.itemIndex)))
                     }
                     entry<RemoteRoute> {
                         RemoteRoot(

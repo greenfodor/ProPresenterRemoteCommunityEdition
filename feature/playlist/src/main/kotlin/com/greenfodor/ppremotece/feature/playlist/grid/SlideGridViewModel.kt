@@ -10,6 +10,7 @@ import com.greenfodor.ppremotece.core.domain.arrangement.currentCueList
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
+import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
@@ -62,8 +63,8 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * no next and previous buttons. Disabled cues are not triggered. Each cue carries its thumbnail
  * request, except when the arrangement did not fully resolve; a successful "Reload slides" also
  * evicts the thumbnails and loads them again, as does each new host connection. The slide size
- * step is read for the window's width class; a step being dragged is shown at once and saved when
- * the drag ends.
+ * step and the view mode are read for the window's width class; a step being dragged is shown at
+ * once and saved when the drag ends, and a chosen view mode is saved for the width class.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SlideGridViewModel(
@@ -101,6 +102,8 @@ class SlideGridViewModel(
             ->
             dragged ?: saved
         }
+    private val viewMode: Flow<ViewMode?> =
+        widthClass.flatMapLatest { it?.let(gridPreferences::viewMode) ?: flowOf(null) }
     private var loaded: Content.Loaded? = null
 
     private val content: Flow<Content> =
@@ -133,15 +136,16 @@ class SlideGridViewModel(
         }
 
     val state: StateFlow<SlideGridState> =
-        combine(grid, liveStateRepository.liveState, gridStep) { (state, loaded), live, step ->
+        combine(grid, liveStateRepository.liveState, gridStep, viewMode) { (state, loaded), live, step, mode ->
             if (loaded == null) {
-                state.copy(gridStep = step)
+                state.copy(gridStep = step, viewMode = mode)
             } else {
                 val presentationUuid = loaded.presentation.uuid
                 state.copy(
                     liveCueIndex = liveCueIndex(live, source, presentationUuid, loaded.cueList.cues),
                     nextCueIndex = nextCueIndex(live, source, presentationUuid, loaded.cueList.cues),
-                    gridStep = step
+                    gridStep = step,
+                    viewMode = mode
                 )
             }
         }.stateIn(
@@ -166,6 +170,9 @@ class SlideGridViewModel(
             }
             is SlideGridAction.OnGridStepChange -> draggedStep.value = action.step
             SlideGridAction.OnGridStepChangeFinished -> saveDraggedStep()
+            is SlideGridAction.OnViewModeChange -> widthClass.value?.let { current ->
+                viewModelScope.launch { gridPreferences.setViewMode(current, action.mode) }
+            }
         }
     }
 
