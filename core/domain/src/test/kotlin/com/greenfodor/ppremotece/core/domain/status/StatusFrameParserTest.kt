@@ -5,6 +5,7 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
 import org.junit.jupiter.api.Test
@@ -134,6 +135,21 @@ class StatusFrameParserTest {
         val frame = """{"url":"playlist/active","data":{"presentation":{"playlist":null,"item":null}}}"""
 
         assertThat(parser.decode(frame)).isEqualTo(StatusEvent.PlaylistActive(null))
+    }
+
+    @Test
+    fun `status layers decodes the layers with content`() {
+        val frame = """{"url":"status/layers","data":{"video_input":false,"media":true,"slide":true,""" +
+            """"announcements":false,"props":false,"messages":false,"audio":false}}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(StatusEvent.Layers(setOf(OutputLayer.SLIDE, OutputLayer.MEDIA)))
+    }
+
+    @Test
+    fun `status layers without an object decodes to unknown`() {
+        assertThat(
+            parser.decode("""{"url":"status/layers","data":null}""")
+        ).isEqualTo(StatusEvent.Unknown("status/layers"))
     }
 
     @Test

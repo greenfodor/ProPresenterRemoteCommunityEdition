@@ -1,0 +1,16 @@
+<resources>
+    <string name="clear_open">Clear</string>
+    <string name="clear_title">Clear</string>
+    <string name="clear_layers">Layers</string>
+    <string name="clear_groups">Clear groups</string>
+    <string name="clear_all">Clear All</string>
+    <string name="clear_all_armed">Tap again to clear all</string>
+    <string name="clear_layer_slide">Slide</string>
+    <string name="clear_layer_media">Media</string>
+    <string name="clear_layer_video_input">Live video</string>
+    <string name="clear_layer_props">Props</string>
+    <string name="clear_layer_messages">Messages</string>
+    <string name="clear_layer_announcements">Announcements</string>
+    <string name="clear_layer_audio">Audio</string>
+    <string name="clear_layer_active">Has content</string>
+</resources>

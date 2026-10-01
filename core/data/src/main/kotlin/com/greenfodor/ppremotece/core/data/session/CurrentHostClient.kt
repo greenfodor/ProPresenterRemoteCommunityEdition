@@ -1,7 +1,10 @@
 package com.greenfodor.ppremotece.core.data.session
 
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.ClearGroup
+import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
@@ -15,6 +18,7 @@ import com.greenfodor.ppremotece.core.domain.result.Result
  * [ProPresenterClient] that forwards to [current]; calls fail with [DataError.Network.NO_CONNECTION]
  * while it is null.
  */
+@Suppress("TooManyFunctions")
 internal class CurrentHostClient(
     private val current: suspend () -> ProPresenterClient?
 ) : ProPresenterClient {
@@ -37,6 +41,18 @@ internal class CurrentHostClient(
 
     override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> =
         current()?.triggerItem(item) ?: notConnected()
+
+    override suspend fun clearLayer(layer: OutputLayer): EmptyResult<DataError.Network> =
+        current()?.clearLayer(layer) ?: notConnected()
+
+    override suspend fun clearGroups(): Result<List<ClearGroup>, DataError.Network> =
+        current()?.clearGroups() ?: notConnected()
+
+    override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> =
+        current()?.triggerClearGroup(uuid) ?: notConnected()
+
+    override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> =
+        current()?.clearGroupIcon(uuid) ?: notConnected()
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> = current()?.triggerNext() ?: notConnected()
 

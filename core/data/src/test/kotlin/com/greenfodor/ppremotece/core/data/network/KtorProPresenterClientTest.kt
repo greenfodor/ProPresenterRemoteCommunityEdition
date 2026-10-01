@@ -4,7 +4,11 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.data.Fixtures
+import com.greenfodor.ppremotece.core.domain.model.ClearGroup
+import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
+import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
@@ -102,6 +106,60 @@ class KtorProPresenterClientTest {
     }
 
     @Test
+    fun `clearing a layer gets its clear route`() = runBlocking {
+        OutputLayer.entries.forEach { assertThat(client.clearLayer(it)).isEqualTo(Result.Success(Unit)) }
+
+        assertThat(fake.requests.map { it.method + " " + it.url.encodedPath }).containsExactly(
+            "GET /v1/clear/layer/slide",
+            "GET /v1/clear/layer/media",
+            "GET /v1/clear/layer/video_input",
+            "GET /v1/clear/layer/props",
+            "GET /v1/clear/layer/messages",
+            "GET /v1/clear/layer/announcements",
+            "GET /v1/clear/layer/audio"
+        )
+    }
+
+    @Test
+    fun `clear groups are mapped from their response`() = runBlocking {
+        assertThat(client.clearGroups()).isEqualTo(
+            Result.Success(listOf(ClearGroup(uuid = CLEAR_GROUP_UUID, name = "Clear All")))
+        )
+        assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/clear/groups")
+    }
+
+    @Test
+    fun `triggering a clear group gets its trigger route`() = runBlocking {
+        assertThat(client.triggerClearGroup(CLEAR_GROUP_UUID)).isEqualTo(Result.Success(Unit))
+        assertThat(fake.requests.single().method).isEqualTo("GET")
+        assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/clear/group/$CLEAR_GROUP_UUID/trigger")
+    }
+
+    @Test
+    fun `a clear group icon is read from its icon route`() = runBlocking {
+        assertThat(client.clearGroupIcon(CLEAR_GROUP_UUID)).isEqualTo(
+            Result.Success(ClearGroupIcon.Vector(18f, 18f, listOf(IconPath("M1,1 L17,17", evenOdd = false))))
+        )
+        assertThat(fake.requests.single().method).isEqualTo("GET")
+        assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/clear/group/$CLEAR_GROUP_UUID/icon")
+    }
+
+    @Test
+    fun `a clear group icon is read once per connection`() = runBlocking {
+        client.clearGroupIcon(CLEAR_GROUP_UUID)
+        client.clearGroupIcon(CLEAR_GROUP_UUID)
+
+        assertThat(fake.count("GET", "/v1/clear/group/$CLEAR_GROUP_UUID/icon")).isEqualTo(1)
+    }
+
+    @Test
+    fun `an icon larger than the limit is not read`() = runBlocking {
+        fake.iconBody = """<svg viewBox="0 0 18 18"><path d="M1,1"/>""" + " ".repeat(300 * 1024) + "</svg>"
+
+        assertThat(client.clearGroupIcon(CLEAR_GROUP_UUID)).isEqualTo(Result.Failure(DataError.Network.SERIALIZATION))
+    }
+
+    @Test
     fun `every call uses only allowed methods and paths`() = runBlocking {
         fake.enqueueStream(fake.stream("status-updates", StreamEnd.EOF, timeScale = 0.0))
         val item = PlaylistItemKey(playlistUuid = FakeProPresenter.SERVICE_PLAYLIST_UUID, index = 4)
@@ -113,11 +171,19 @@ class KtorProPresenterClientTest {
         client.slideIndex()
         client.triggerCue(item, cueIndex = 2)
         client.triggerItem(item)
+        client.clearLayer(OutputLayer.SLIDE)
+        client.clearGroups()
+        client.triggerClearGroup(CLEAR_GROUP_UUID)
+        client.clearGroupIcon(CLEAR_GROUP_UUID)
         client.triggerNext()
         client.triggerPrevious()
         client.statusUpdates(listOf("status/slide")).first()
 
-        assertThat(fake.requests.size).isEqualTo(10)
+        assertThat(fake.requests.size).isEqualTo(14)
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
+    }
+
+    private companion object {
+        const val CLEAR_GROUP_UUID = "5da095db-20ef-4246-b3d5-3b741312386b"
     }
 }

@@ -17,6 +17,7 @@ import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
+import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
 import kotlinx.coroutines.CoroutineScope
@@ -214,6 +215,16 @@ class StreamingLiveStateRepositoryTest {
     }
 
     @Test
+    fun `layers with content reach the live state`() = runBlocking {
+        fake.enqueueStream(fake.stream("stage5-status-updates", StreamEnd.STALL))
+
+        repository.liveState.test(timeout = 5.seconds) {
+            assertThat(awaitUntil { it.layers.isNotEmpty() }.layers).isEqualTo(setOf(OutputLayer.SLIDE))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `the last live cue is kept through a clear`() = runBlocking {
         fake.slideIndexBodies += listOf(FakeProPresenter.SLIDE_INDEX, FakeProPresenter.NO_SLIDE_INDEX)
         fake.enqueueStream(
@@ -291,6 +302,6 @@ class StreamingLiveStateRepositoryTest {
         val WATCHDOG = 300.milliseconds
         val RELAXED_WATCHDOG = 1.seconds
         const val SLIDE_INDEX = "/v1/presentation/slide_index"
-        const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active"]"""
+        const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active","status/layers"]"""
     }
 }

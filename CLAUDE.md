@@ -38,6 +38,7 @@ MVI presentation (State / Action / Event, `XxxRoot` / `XxxScreen`, `UiText`).
 | `:feature:connect`   | `ppremotece.android.feature`         | Discovery / manual host, connect screen, `ConnectRoute`                          |
 | `:feature:playlist`  | `ppremotece.android.feature`         | Playlist tree + slide grid                                                       |
 | `:feature:remote`    | `ppremotece.android.feature`         | Remote tab: live and next boxes, item steps, Prev/Next                           |
+| `:feature:clear`     | `ppremotece.android.feature`         | Clear FAB and sheet: layer clears, clear groups, Clear All                       |
 
 **Dependency rules:** `domain` depends on nothing; `data` → `domain`; `designsystem` → `domain`;
 features → `domain` + `designsystem`, never `data` and never each other; `:app` → everything and
@@ -53,7 +54,7 @@ Versions come only from `gradle/libs.versions.toml`.
 ## ProPresenter network rule (P-10)
 
 The app talks to ProPresenter's HTTP `/v1` API and sends only:
-- `GET` reads, the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
+- `GET` reads (including `GET /v1/clear/group/{id}/icon`, the clear group's icon), the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
   trigger `GET /v1/playlist/{pl}/{item}/trigger`, `GET /v1/trigger/next`,
   `GET /v1/trigger/previous` and the clear calls;
 - one `POST /v1/status/updates` stream.

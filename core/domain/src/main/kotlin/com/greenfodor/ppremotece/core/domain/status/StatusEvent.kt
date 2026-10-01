@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.status
 
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
 
@@ -22,6 +23,11 @@ sealed interface StatusEvent {
     data class PlaylistActive(
         val item: PlaylistItemKey?,
         val presentationUuid: String? = null
+    ) : StatusEvent
+
+    /** The output layers that have content. */
+    data class Layers(
+        val active: Set<OutputLayer>
     ) : StatusEvent
 
     data class Heartbeat(

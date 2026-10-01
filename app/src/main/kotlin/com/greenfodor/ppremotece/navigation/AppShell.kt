@@ -17,6 +17,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
@@ -47,6 +48,7 @@ import com.greenfodor.ppremotece.core.domain.layout.navigationLayout
 import com.greenfodor.ppremotece.core.domain.layout.paneCount
 import com.greenfodor.ppremotece.core.domain.layout.widthClassOf
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.feature.clear.ClearFab
 import com.greenfodor.ppremotece.feature.playlist.PlaylistsRoute
 import com.greenfodor.ppremotece.feature.playlist.SelectItemPlaceholder
 import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
@@ -58,6 +60,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val ListPaneWidth = 360.dp
+private val clearFab: @Composable (SnackbarHostState) -> Unit = { ClearFab(snackbarHostState = it) }
 
 private enum class ShellDestination(
     val tab: ShellTab,
@@ -128,8 +131,9 @@ fun AppShell(
                 sceneStrategies = listOf(listDetailStrategy),
                 entryProvider = entryProvider {
                     entry<PlaylistsRoute>(
-                        metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder() }) +
-                            ListDetailSceneStrategy.preferredPaneSize(ListPaneWidth)
+                        metadata =
+                            ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder() }) +
+                                ListDetailSceneStrategy.preferredPaneSize(ListPaneWidth)
                     ) {
                         val openGrid = presentation.lastOrNull { it is SlideGridRoute } as? SlideGridRoute
                         PlaylistTreeRoot(
@@ -144,7 +148,8 @@ fun AppShell(
                                     )
                                 )
                             },
-                            onDisconnected = onDisconnected
+                            onDisconnected = onDisconnected,
+                            floatingActionButton = clearFab.takeIf { openGrid == null }
                         )
                     }
                     entry<SlideGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
@@ -153,11 +158,16 @@ fun AppShell(
                             widthClass = widthClass,
                             headerScrollsWithGrid = compactHeight,
                             reconnecting = reconnecting,
-                            onBack = { update(stacks().back()) }
+                            onBack = { update(stacks().back()) },
+                            floatingActionButton = clearFab
                         )
                     }
                     entry<RemoteRoute> {
-                        RemoteRoot(widthClass = widthClass, reconnecting = reconnecting)
+                        RemoteRoot(
+                            widthClass = widthClass,
+                            reconnecting = reconnecting,
+                            floatingActionButton = clearFab
+                        )
                     }
                 }
             )

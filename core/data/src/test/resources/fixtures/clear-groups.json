@@ -1,0 +1,24 @@
+[
+  {
+    "id": {
+      "uuid": "5da095db-20ef-4246-b3d5-3b741312386b",
+      "name": "Clear All",
+      "index": 0
+    },
+    "icon": "All",
+    "tint": null,
+    "layers": [
+      "music",
+      "audio_effects",
+      "messages",
+      "props",
+      "announcements",
+      "presentation",
+      "presentation_media",
+      "video_input"
+    ],
+    "stop_timeline_announcements": true,
+    "stop_timeline_presentation": true,
+    "clear_next_presentation": false
+  }
+]

@@ -74,6 +74,7 @@ import org.koin.core.parameter.parametersOf
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val GridPadding = 8.dp
+private val GridBottomPadding = 88.dp
 private const val HEADER_KEY = "header"
 private val StepButtonHeight = 64.dp
 
@@ -94,6 +95,7 @@ fun SlideGridRoot(
     reconnecting: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    floatingActionButton: @Composable (SnackbarHostState) -> Unit = {},
     viewModel: SlideGridViewModel = koinViewModel(key = item.toString()) { parametersOf(item) }
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -115,6 +117,7 @@ fun SlideGridRoot(
         headerScrollsWithGrid = headerScrollsWithGrid,
         reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
+        floatingActionButton = floatingActionButton,
         modifier = modifier
     )
 }
@@ -128,12 +131,14 @@ fun SlideGridScreen(
     modifier: Modifier = Modifier,
     headerScrollsWithGrid: Boolean = false,
     reconnecting: Boolean = false,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    floatingActionButton: @Composable (SnackbarHostState) -> Unit = {}
 ) {
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = { floatingActionButton(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(text = state.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -196,7 +201,12 @@ private fun CueGrid(
         LazyVerticalGrid(
             columns = gridStep.toGridCells(),
             state = rememberLazyGridState(prefetchStrategy = NoPrefetch),
-            contentPadding = PaddingValues(GridPadding),
+            contentPadding = PaddingValues(
+                start = GridPadding,
+                top = GridPadding,
+                end = GridPadding,
+                bottom = GridBottomPadding
+            ),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize()

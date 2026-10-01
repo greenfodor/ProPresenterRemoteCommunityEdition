@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +45,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
@@ -60,6 +62,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val RowHeight = 56.dp
+private val FabClearance = 88.dp
 private val HeaderHeight = 48.dp
 private val DepthIndent = 16.dp
 private val ProgressSize = 20.dp
@@ -71,6 +74,7 @@ fun PlaylistTreeRoot(
     onOpenItem: (PlaylistItemKey) -> Unit,
     onDisconnected: () -> Unit,
     modifier: Modifier = Modifier,
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
     viewModel: PlaylistTreeViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -92,6 +96,7 @@ fun PlaylistTreeRoot(
         openItem = openItem,
         reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
+        floatingActionButton = floatingActionButton,
         modifier = modifier
     )
 }
@@ -104,12 +109,14 @@ fun PlaylistTreeScreen(
     modifier: Modifier = Modifier,
     openItem: PlaylistItemKey? = null,
     reconnecting: Boolean = false,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.playlists_title)) },
@@ -135,14 +142,24 @@ fun PlaylistTreeScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
-            TreeContent(state = state, openItem = openItem, onAction = onAction)
+            TreeContent(
+                state = state,
+                openItem = openItem,
+                onAction = onAction,
+                bottomPadding = if (floatingActionButton != null) FabClearance else 0.dp
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TreeContent(state: PlaylistTreeState, openItem: PlaylistItemKey?, onAction: (PlaylistTreeAction) -> Unit) {
+private fun TreeContent(
+    state: PlaylistTreeState,
+    openItem: PlaylistItemKey?,
+    onAction: (PlaylistTreeAction) -> Unit,
+    bottomPadding: Dp
+) {
     PullToRefreshBox(
         isRefreshing = state.isRefreshing,
         onRefresh = { onAction(PlaylistTreeAction.OnRefresh) },
@@ -151,7 +168,10 @@ private fun TreeContent(state: PlaylistTreeState, openItem: PlaylistItemKey?, on
         when {
             state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             state.error != null -> TreeError(state.error, onRetry = { onAction(PlaylistTreeAction.OnRetryClick) })
-            else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+            else -> LazyColumn(
+                contentPadding = PaddingValues(bottom = bottomPadding),
+                modifier = Modifier.fillMaxSize()
+            ) {
                 items(state.rows, key = { it.id }) { row ->
                     TreeRow(row = row, openItem = openItem, onAction = onAction)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

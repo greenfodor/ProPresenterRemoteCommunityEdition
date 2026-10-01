@@ -61,6 +61,7 @@ import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 private val NextUpHeight = 48.dp
 private val StepButtonHeight = 72.dp
 private val BoxGap = 12.dp
+private val FabClearance = 72.dp
 private const val CURRENT_SHARE = 0.6f
 private const val NEXT_SHARE = 0.4f
 
@@ -69,6 +70,7 @@ fun RemoteRoot(
     widthClass: WidthClass,
     reconnecting: Boolean,
     modifier: Modifier = Modifier,
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
     viewModel: RemoteViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -87,6 +89,7 @@ fun RemoteRoot(
         sideBySide = widthClass == WidthClass.EXPANDED,
         reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
+        floatingActionButton = floatingActionButton,
         modifier = modifier
     )
 }
@@ -113,7 +116,8 @@ fun RemoteScreen(
     sideBySide: Boolean,
     modifier: Modifier = Modifier,
     reconnecting: Boolean = false,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -139,7 +143,15 @@ fun RemoteScreen(
             drawerContent = { PermanentDrawerSheet(modifier = Modifier.width(CueSidebarWidth)) { sidebar() } },
             modifier = modifier
         ) {
-            RemoteScaffold(state, onAction, reconnecting, snackbarHostState, sideBySide = true, onOpenCues = null)
+            RemoteScaffold(
+                state,
+                onAction,
+                reconnecting,
+                snackbarHostState,
+                floatingActionButton,
+                sideBySide = true,
+                onOpenCues = null
+            )
         }
     } else {
         BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
@@ -162,6 +174,7 @@ fun RemoteScreen(
                 onAction,
                 reconnecting,
                 snackbarHostState,
+                floatingActionButton,
                 sideBySide = false,
                 onOpenCues = { scope.launch { drawerState.open() } }
             )
@@ -176,12 +189,14 @@ private fun RemoteScaffold(
     onAction: (RemoteAction) -> Unit,
     reconnecting: Boolean,
     snackbarHostState: SnackbarHostState,
+    floatingActionButton: (@Composable (SnackbarHostState) -> Unit)?,
     sideBySide: Boolean,
     onOpenCues: (() -> Unit)?
 ) {
     val display = state.display
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -207,11 +222,22 @@ private fun RemoteScaffold(
                 )
             )
         },
-        bottomBar = { StepButtons(display = display, onAction = onAction) }
+        bottomBar = {
+            Column {
+                NextUpRow(display = display, onAction = onAction)
+                StepButtons(display = display, onAction = onAction)
+            }
+        }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
-            Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(BoxGap)) {
+            val fabClearance = if (floatingActionButton != null) FabClearance else 0.dp
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(start = BoxGap, top = BoxGap, end = BoxGap, bottom = BoxGap + fabClearance)
+            ) {
                 when (display.status) {
                     RemoteStatus.LOADING -> state.error?.let { error ->
                         Column(
@@ -234,7 +260,6 @@ private fun RemoteScaffold(
                     RemoteStatus.SHOWING -> Boxes(state = state, sideBySide = sideBySide, onAction = onAction)
                 }
             }
-            NextUpRow(display = display, onAction = onAction)
         }
     }
 }
