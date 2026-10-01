@@ -116,6 +116,7 @@ fun CueCell(
                     SlideThumbnail(
                         url = thumbnail?.url,
                         cacheKey = thumbnail?.cacheKey,
+                        placeholderKey = thumbnail?.placeholderKey,
                         aspect = aspect,
                         fallbackText = fallbackText,
                         modifier = Modifier.fillMaxWidth()

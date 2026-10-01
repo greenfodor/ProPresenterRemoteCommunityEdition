@@ -101,7 +101,9 @@ class ThumbnailConcurrencyTest {
         withTimeout(2.seconds) { while (host.streams.get() < 1) delay(10.milliseconds) }
 
         val thumbnails = List(12) { cue ->
-            scope.async { limited { httpClient.get(thumbnailUrl(base, item, cue)).readRawBytes() }.fetch() }
+            scope.async {
+                limited { httpClient.get(thumbnailUrl(base, item, cue, boxQuality = null)).readRawBytes() }.fetch()
+            }
         }
         withTimeout(2.seconds) { while (host.openThumbnails.get() < 4) delay(10.milliseconds) }
         val started = System.nanoTime()

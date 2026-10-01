@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.thumbnail
 
 import assertk.assertThat
+import assertk.assertions.containsExactly
 import assertk.assertions.isCloseTo
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotEqualTo
@@ -61,6 +62,26 @@ class ThumbnailKeyTest {
         val second = cue(index = 0, slideIndexInGroup = 0, text = "Verse ").copy(size = SlideSize(1920, 1080))
 
         assertThat(ThumbnailKey.of("Host 01", "p-1", first)).isNotEqualTo(ThumbnailKey.of("Host 01", "p-1", second))
+    }
+
+    @Test
+    fun `a box key is the grid key with the quality appended`() {
+        val gridKey = ThumbnailKey.of("Host 01", "p-1", chorusFirst)
+
+        assertThat(ThumbnailKey.of("Host 01", "p-1", chorusFirst, boxQuality = null)).isEqualTo(gridKey)
+        assertThat(ThumbnailKey.of("Host 01", "p-1", chorusFirst, boxQuality = 800)).isEqualTo("$gridKey:q800")
+    }
+
+    @Test
+    fun `the box keys of a grid key cover every box quality of the route`() {
+        assertThat(ThumbnailKey.boxKeys("k", ThumbnailRoute.PLAYLIST))
+            .containsExactly("k:q600", "k:q800", "k:q1000", "k:q1080")
+    }
+
+    @Test
+    fun `box keys differ per quality`() {
+        assertThat(ThumbnailKey.of("Host 01", "p-1", chorusFirst, boxQuality = 800))
+            .isNotEqualTo(ThumbnailKey.of("Host 01", "p-1", chorusFirst, boxQuality = 1080))
     }
 
     @Test

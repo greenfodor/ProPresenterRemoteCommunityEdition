@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -61,7 +59,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val LayerButtonHeight = 72.dp
-private val ClearAllHeight = 56.dp
 private val PreviewTint = GroupColor(red = 0.94f, green = 0.5f, blue = 0.5f, alpha = 1f)
 private val PreviewIcon = ClearGroupIcon.Vector(
     18f,
@@ -108,7 +105,6 @@ fun ClearFab(
             onDismiss = {
                 sheetSnackbars.currentSnackbarData?.dismiss()
                 open = false
-                viewModel.onAction(ClearAction.OnSheetDismiss)
             },
             snackbarHostState = sheetSnackbars
         )
@@ -134,7 +130,7 @@ private fun ClearSheet(
     }
 }
 
-/** The Clear sheet's content: the layers, the clear groups and Clear All. */
+/** The Clear sheet's content: the layers and the clear groups. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ClearContent(state: ClearState, onAction: (ClearAction) -> Unit, modifier: Modifier = Modifier) {
@@ -162,7 +158,7 @@ fun ClearContent(state: ClearState, onAction: (ClearAction) -> Unit, modifier: M
         if (state.groups.isNotEmpty()) {
             Text(stringResource(R.string.clear_groups), style = MaterialTheme.typography.titleSmall)
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -175,9 +171,6 @@ fun ClearContent(state: ClearState, onAction: (ClearAction) -> Unit, modifier: M
                     )
                 }
             }
-        }
-        if (state.clearAll != null) {
-            ClearAllButton(armed = state.armed, onClick = { onAction(ClearAction.OnClearAllClick) })
         }
     }
 }
@@ -225,31 +218,6 @@ private fun LayerButton(layer: OutputLayer, active: Boolean, onClick: () -> Unit
     }
 }
 
-@Composable
-private fun ClearAllButton(armed: Boolean, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        colors = if (armed) {
-            ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError
-            )
-        } else {
-            ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer
-            )
-        },
-        modifier = Modifier.fillMaxWidth().height(ClearAllHeight)
-    ) {
-        Icon(painterResource(DesignR.drawable.ic_clear_all), contentDescription = null)
-        Text(
-            text = stringResource(if (armed) R.string.clear_all_armed else R.string.clear_all),
-            modifier = Modifier.padding(start = 8.dp)
-        )
-    }
-}
-
 @DrawableRes
 private fun OutputLayer.icon(): Int =
     when (this) {
@@ -276,13 +244,13 @@ private fun OutputLayer.label(): Int =
 
 @Preview(widthDp = 411)
 @Composable
-private fun ClearContentOnlyClearAllPreview() {
+private fun ClearContentOneGroupPreview() {
     PPRemoteTheme {
         Surface {
             ClearContent(
                 state = ClearState(
                     activeLayers = setOf(OutputLayer.SLIDE, OutputLayer.MEDIA),
-                    clearAll = ClearGroup("g-all", "Clear All")
+                    groups = listOf(ClearGroup("g-all", "Clear All"))
                 ),
                 onAction = {}
             )
@@ -309,16 +277,6 @@ private fun ClearContentGroupsPreview() {
                 ),
                 onAction = {}
             )
-        }
-    }
-}
-
-@Preview(widthDp = 411)
-@Composable
-private fun ClearContentArmedPreview() {
-    PPRemoteTheme {
-        Surface {
-            ClearContent(state = ClearState(clearAll = ClearGroup("g-all", "Clear All"), armed = true), onAction = {})
         }
     }
 }

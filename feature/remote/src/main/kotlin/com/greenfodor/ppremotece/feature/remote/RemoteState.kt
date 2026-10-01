@@ -50,6 +50,14 @@ sealed interface RemoteAction {
     data class OnSidebarCueClick(
         val index: Int
     ) : RemoteAction
+
+    data class OnCurrentBoxSized(
+        val px: Int
+    ) : RemoteAction
+
+    data class OnNextBoxSized(
+        val px: Int
+    ) : RemoteAction
 }
 
 sealed interface RemoteEvent {

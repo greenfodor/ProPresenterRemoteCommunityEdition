@@ -2,9 +2,7 @@
     <string name="clear_open">Clear</string>
     <string name="clear_title">Clear</string>
     <string name="clear_layers">Layers</string>
-    <string name="clear_groups">Clear groups</string>
-    <string name="clear_all">Clear All</string>
-    <string name="clear_all_armed">Tap again to clear all</string>
+    <string name="clear_groups">Groups</string>
     <string name="clear_layer_slide">Slide</string>
     <string name="clear_layer_media">Media</string>
     <string name="clear_layer_video_input">Live video</string>

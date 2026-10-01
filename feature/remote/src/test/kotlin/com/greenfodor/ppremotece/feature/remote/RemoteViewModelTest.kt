@@ -29,6 +29,7 @@ import com.greenfodor.ppremotece.core.domain.remote.RemoteBox
 import com.greenfodor.ppremotece.core.domain.remote.RemoteCommand
 import com.greenfodor.ppremotece.core.domain.remote.RemoteStatus
 import com.greenfodor.ppremotece.core.domain.result.DataError
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
@@ -53,9 +54,11 @@ class RemoteViewModelTest {
             ThumbnailRequests {
                 item,
                 _,
-                cue
+                cue,
+                quality
                 ->
-                ThumbnailRequest("http://host/${item.index}/${cue.index}", "k${cue.index}")
+                val box = (quality as? ThumbnailQuality.Box)?.let { "@${it.px}" }.orEmpty()
+                ThumbnailRequest("http://host/${item.index}/${cue.index}$box", "k${cue.index}$box")
             }
         )
     }
@@ -258,6 +261,22 @@ class RemoteViewModelTest {
         assertThat(content.reads.count { it == PLAYLIST }).isEqualTo(1)
         assertThat(content.reads.count { it == SONG_A }).isEqualTo(1)
         assertThat(content.reads.count { it == SONG_C }).isEqualTo(1)
+    }
+
+    @Test
+    fun `the boxes ask for thumbnails at their measured widths and the sidebar at the grid size`() = runTest {
+        live.goLive(LiveCue(key(0), SONG_A, 2))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            awaitShowing()
+            viewModel.onAction(RemoteAction.OnCurrentBoxSized(1284))
+            viewModel.onAction(RemoteAction.OnNextBoxSized(900))
+            val sized = awaitUntil { it.nextThumbnail?.cacheKey == "k3@900" }
+            assertThat(sized.currentThumbnail).isEqualTo(ThumbnailRequest("http://host/0/2@1284", "k2@1284"))
+            assertThat(sized.sidebar[2].thumbnail).isEqualTo(ThumbnailRequest("http://host/0/2", "k2"))
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

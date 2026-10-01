@@ -14,6 +14,7 @@ import com.greenfodor.ppremotece.core.domain.model.SlideSize
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
+import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -108,11 +109,19 @@ class ProPresenterSessionTest {
 
         val requests = withTimeout(2.seconds) { session.thumbnailRequests.filterNotNull().first() }
         val cue = Cue(3, "g-1", "Chorus", null, 0, "Chorus · 1", enabled = true, size = SlideSize(1920, 858))
-        val request = requests.request(PlaylistItemKey("pl-1", 1), "p-1", cue)
+        val request = requests.request(PlaylistItemKey("pl-1", 1), "p-1", cue, ThumbnailQuality.Grid)
         assertThat(
             request.url
         ).isEqualTo("http://${server.hostName}:${server.port}/v1/playlist/pl-1/1/thumbnail/3?quality=400")
         assertThat(request.cacheKey).isEqualTo(ThumbnailKey.of("Host 01", "p-1", cue))
+        assertThat(request.placeholderKey).isNull()
+
+        val box = requests.request(PlaylistItemKey("pl-1", 1), "p-1", cue, ThumbnailQuality.Box(1284))
+        assertThat(
+            box.url
+        ).isEqualTo("http://${server.hostName}:${server.port}/v1/playlist/pl-1/1/thumbnail/3?quality=800")
+        assertThat(box.cacheKey).isEqualTo(ThumbnailKey.of("Host 01", "p-1", cue, boxQuality = 800))
+        assertThat(box.placeholderKey).isEqualTo(ThumbnailKey.of("Host 01", "p-1", cue))
     }
 
     @Test

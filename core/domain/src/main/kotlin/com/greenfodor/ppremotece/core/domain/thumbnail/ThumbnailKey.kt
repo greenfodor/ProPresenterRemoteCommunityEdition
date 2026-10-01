@@ -6,15 +6,21 @@ import java.security.MessageDigest
 /**
  * Cache key of a cue's thumbnail:
  * `thumb:v1:{hostInstanceName}:{presentationUuid}:{groupUuid}:{slideIndexInGroup}:{sha1(text + "\u0000" + width + "x" + height)}`,
- * with an empty size part when the slide has no size.
+ * with an empty size part when the slide has no size; a box thumbnail's key appends `:q{quality}`.
  * Cues that repeat one group slide share a key.
  */
 object ThumbnailKey {
-    fun of(hostInstanceName: String, presentationUuid: String, cue: Cue): String {
+    fun of(hostInstanceName: String, presentationUuid: String, cue: Cue, boxQuality: Int? = null): String {
         val size = cue.size?.let { "${it.width}x${it.height}" }.orEmpty()
-        val content = "${cue.slideText}\u0000$size"
-        return "thumb:v1:$hostInstanceName:$presentationUuid:${cue.groupUuid}:${cue.slideIndexInGroup}:${sha1(content)}"
+        val digest = sha1("${cue.slideText}\u0000$size")
+        val gridKey = "thumb:v1:$hostInstanceName:$presentationUuid:${cue.groupUuid}:${cue.slideIndexInGroup}:$digest"
+        return boxQuality?.let { boxKey(gridKey, it) } ?: gridKey
     }
+
+    /** The keys of every box thumbnail on [route] of the cue whose grid key is [gridKey]. */
+    fun boxKeys(gridKey: String, route: ThumbnailRoute): List<String> = boxQualities(route).map { boxKey(gridKey, it) }
+
+    private fun boxKey(gridKey: String, quality: Int) = "$gridKey:q$quality"
 
     private fun sha1(value: String): String =
         MessageDigest.getInstance("SHA-1").digest(value.encodeToByteArray()).joinToString("") { byte ->
