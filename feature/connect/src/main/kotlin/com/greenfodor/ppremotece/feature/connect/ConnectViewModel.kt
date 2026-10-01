@@ -9,22 +9,26 @@ import com.greenfodor.ppremotece.core.domain.live.HostDiscovery
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
+import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Connect screen: browses for hosts once the local network permission is granted and connects to
- * the saved host on start. The permission is requested on start and again on each connect attempt
+ * Connect screen: browses for hosts once the local network permission is granted and, when the
+ * route allows it and the auto-connect setting is on, connects to the saved host on start;
+ * otherwise the saved host's address and port are filled in. The permission is requested on start and again on each connect attempt
  * while it is missing; a failed auto-connect leaves its address and port filled in.
  */
 class ConnectViewModel(
     private val connectionRepository: ConnectionRepository,
-    private val hostDiscovery: HostDiscovery
+    private val hostDiscovery: HostDiscovery,
+    private val appPreferences: AppPreferences
 ) : ViewModel() {
     private val _state = MutableStateFlow(ConnectState())
     val state = _state.asStateFlow()
@@ -39,7 +43,7 @@ class ConnectViewModel(
 
     fun onAction(action: ConnectAction) {
         when (action) {
-            is ConnectAction.OnStart -> start(action.permissionGranted)
+            is ConnectAction.OnStart -> start(action.permissionGranted, action.autoConnect)
             is ConnectAction.OnPermissionResult -> onPermissionResult(action.granted)
             is ConnectAction.OnAddressChange -> _state.update { it.copy(address = action.address, error = null) }
             is ConnectAction.OnPortChange -> _state.update {
@@ -50,17 +54,19 @@ class ConnectViewModel(
         }
     }
 
-    private fun start(granted: Boolean) {
+    private fun start(granted: Boolean, autoConnect: Boolean) {
         if (started) return
         started = true
         permissionGranted = granted
         if (granted) startDiscovery()
         viewModelScope.launch {
             val savedHost = connectionRepository.savedHost()
-            when {
-                savedHost != null -> connect(savedHost)
-                !granted -> _events.send(ConnectEvent.RequestLocalNetworkPermission)
+            if (savedHost != null && autoConnect && appPreferences.autoConnect().first()) {
+                connect(savedHost)
+                return@launch
             }
+            savedHost?.let { host -> _state.update { it.copy(address = host.address, port = host.port.toString()) } }
+            if (!granted) _events.send(ConnectEvent.RequestLocalNetworkPermission)
         }
     }
 

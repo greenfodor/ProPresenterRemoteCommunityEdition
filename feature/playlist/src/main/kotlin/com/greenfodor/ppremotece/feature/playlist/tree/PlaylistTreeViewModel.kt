@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.greenfodor.ppremotece.core.designsystem.ui.toUiText
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementExpander
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
-import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistFolder
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
@@ -36,8 +35,7 @@ import kotlinx.coroutines.launch
  * they change; each item is labelled with its arrangement. Pull-to-refresh reads them all again.
  */
 class PlaylistTreeViewModel(
-    private val contentRepository: ContentRepository,
-    private val connectionRepository: ConnectionRepository
+    private val contentRepository: ContentRepository
 ) : ViewModel() {
     private val _state = MutableStateFlow(PlaylistTreeState())
     val state = _state.asStateFlow()
@@ -67,10 +65,6 @@ class PlaylistTreeViewModel(
             }
             is PlaylistTreeAction.OnItemClick -> viewModelScope.launch {
                 _events.send(PlaylistTreeEvent.OpenItem(action.key))
-            }
-            PlaylistTreeAction.OnDisconnectClick -> viewModelScope.launch {
-                connectionRepository.disconnect()
-                _events.send(PlaylistTreeEvent.Disconnected)
             }
             PlaylistTreeAction.OnRetryClick -> loadTree()
             PlaylistTreeAction.OnRefresh -> refresh()

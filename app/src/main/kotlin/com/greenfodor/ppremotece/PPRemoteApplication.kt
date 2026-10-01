@@ -9,6 +9,7 @@ import com.greenfodor.ppremotece.feature.clear.clearModule
 import com.greenfodor.ppremotece.feature.connect.connectModule
 import com.greenfodor.ppremotece.feature.playlist.playlistModule
 import com.greenfodor.ppremotece.feature.remote.remoteModule
+import com.greenfodor.ppremotece.feature.settings.settingsModule
 import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -20,7 +21,15 @@ class PPRemoteApplication :
         super.onCreate()
         startKoin {
             androidContext(this@PPRemoteApplication)
-            modules(coreDataModule, appModule, connectModule, playlistModule, remoteModule, clearModule)
+            modules(
+                coreDataModule,
+                appModule,
+                connectModule,
+                playlistModule,
+                remoteModule,
+                clearModule,
+                settingsModule
+            )
         }
     }
 

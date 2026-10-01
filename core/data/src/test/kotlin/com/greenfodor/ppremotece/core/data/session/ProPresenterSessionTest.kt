@@ -72,6 +72,39 @@ class ProPresenterSessionTest {
         assertThat(withTimeout(2.seconds) { session.lastLive.first { it == null } }).isNull()
     }
 
+    @Test
+    fun `disconnect keeps the saved host`() = runBlocking {
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+
+        session.disconnect()
+
+        assertThat(session.savedHost()).isEqualTo(host())
+    }
+
+    @Test
+    fun `the connected host and its version are shown until disconnect`() = runBlocking {
+        assertThat(session.connectedHost.value).isNull()
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+
+        val connected = session.connectedHost.value
+        assertThat(connected?.host).isEqualTo(host())
+        assertThat(connected?.version?.hostDescription).isEqualTo("ProPresenter 21.4.2")
+
+        session.disconnect()
+        assertThat(session.connectedHost.value).isNull()
+    }
+
+    @Test
+    fun `a request after disconnect does not reconnect to the saved host`() = runBlocking {
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        session.disconnect()
+
+        session.restore()
+
+        assertThat(session.sessionKey.value).isNull()
+        assertThat(session.connectedHost.value).isNull()
+    }
+
     private suspend fun connectUntilLastLive() = coroutineScope {
         val item = PlaylistItemKey(FakeProPresenter.SERVICE_PLAYLIST_UUID, 4)
         fake.enqueueStream(

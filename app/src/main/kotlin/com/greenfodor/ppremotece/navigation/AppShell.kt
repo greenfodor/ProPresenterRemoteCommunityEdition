@@ -31,6 +31,7 @@ import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -39,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -55,6 +57,7 @@ import androidx.window.core.layout.WindowSizeClass
 import com.greenfodor.ppremotece.R
 import com.greenfodor.ppremotece.core.domain.layout.NavigationLayout
 import com.greenfodor.ppremotece.core.domain.layout.RAIL_SLOT_DP
+import com.greenfodor.ppremotece.core.domain.layout.ShellTab
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.layout.navigationLayout
 import com.greenfodor.ppremotece.core.domain.layout.navigationSlots
@@ -62,6 +65,7 @@ import com.greenfodor.ppremotece.core.domain.layout.paneCount
 import com.greenfodor.ppremotece.core.domain.layout.widthClassOf
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.settings.keepScreenOn
 import com.greenfodor.ppremotece.feature.clear.ClearFab
 import com.greenfodor.ppremotece.feature.clear.ClearRailButton
 import com.greenfodor.ppremotece.feature.playlist.LibraryGridRoute
@@ -76,8 +80,8 @@ import com.greenfodor.ppremotece.feature.remote.RemoteRoute
 import com.greenfodor.ppremotece.feature.settings.MoreEntry
 import com.greenfodor.ppremotece.feature.settings.MoreRoute
 import com.greenfodor.ppremotece.feature.settings.MoreScreen
+import com.greenfodor.ppremotece.feature.settings.SettingsRoot
 import com.greenfodor.ppremotece.feature.settings.SettingsRoute
-import com.greenfodor.ppremotece.feature.settings.SettingsScreen
 import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
@@ -119,11 +123,13 @@ fun AppShell(
     viewModel: ShellViewModel = koinViewModel()
 ) {
     val reconnecting by viewModel.reconnecting.collectAsStateWithLifecycle()
+    val keepAwake by viewModel.keepAwake.collectAsStateWithLifecycle()
     val shellStacks = rememberShellStacks()
     val stacks = shellStacks::stacks
     val update = shellStacks::update
     val presentation = shellStacks.presentation
     val tab = shellStacks.current
+    KeepScreenOn(keepScreenOn(keepAwake, tab))
     var listMode by rememberSaveable { mutableStateOf(ListMode.PLAYLISTS) }
     val shellSnackbars = remember { SnackbarHostState() }
     var clearOpen by rememberSaveable { mutableStateOf(false) }
@@ -197,7 +203,6 @@ fun AppShell(
                         reconnecting = reconnecting,
                         fab = fab,
                         onOpenDetail = { key -> update(stacks().openDetail(key)) },
-                        onDisconnected = onDisconnected,
                         slideGrid = slideGrid
                     )
                     tabEntries(
@@ -206,7 +211,8 @@ fun AppShell(
                         fab = fab,
                         moreEntries = slots.more.map { MoreEntry(it.item.icon, it.item.label, it.route) },
                         onBack = { update(stacks().back()) },
-                        onOpenFromMore = { route -> update(stacks().openFromMore(route)) }
+                        onOpenFromMore = { route -> update(stacks().openFromMore(route)) },
+                        onDisconnected = onDisconnected
                     )
                 }
             )
@@ -264,7 +270,6 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
     reconnecting: Boolean,
     fab: (@Composable (SnackbarHostState) -> Unit)?,
     onOpenDetail: (NavKey) -> Unit,
-    onDisconnected: () -> Unit,
     slideGrid: @Composable (CueSource) -> Unit
 ) {
     entry<PlaylistsRoute>(
@@ -282,7 +287,6 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
                 onOpenDetail(SlideGridRoute(playlistUuid = item.playlistUuid, itemIndex = item.index))
             },
             onOpenPresentation = { uuid -> onOpenDetail(LibraryGridRoute(uuid)) },
-            onDisconnected = onDisconnected,
             floatingActionButton = fab.takeIf { detail == null }
         )
     }
@@ -295,19 +299,21 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
 }
 
 /** The Remote, Settings and More entries. */
+@Suppress("LongParameterList")
 private fun EntryProviderScope<NavKey>.tabEntries(
     widthClass: WidthClass,
     reconnecting: Boolean,
     fab: (@Composable (SnackbarHostState) -> Unit)?,
     moreEntries: List<MoreEntry>,
     onBack: () -> Unit,
-    onOpenFromMore: (NavKey) -> Unit
+    onOpenFromMore: (NavKey) -> Unit,
+    onDisconnected: () -> Unit
 ) {
     entry<RemoteRoute> {
         RemoteRoot(widthClass = widthClass, reconnecting = reconnecting, floatingActionButton = fab)
     }
     entry<SettingsRoute> {
-        SettingsScreen(onBack = onBack)
+        SettingsRoot(onBack = onBack, onDisconnected = onDisconnected)
     }
     entry<MoreRoute> {
         MoreScreen(entries = moreEntries, onOpen = onOpenFromMore)
@@ -402,4 +408,14 @@ private fun NavBackStack<NavKey>.replaceWith(keys: List<NavKey>) {
     val common = zip(keys).takeWhile { (current, next) -> current == next }.size
     while (size > common) removeAt(lastIndex)
     addAll(keys.drop(common))
+}
+
+/** Keeps the screen on while [on] and this is composed. */
+@Composable
+private fun KeepScreenOn(on: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, on) {
+        view.keepScreenOn = on
+        onDispose { view.keepScreenOn = false }
+    }
 }

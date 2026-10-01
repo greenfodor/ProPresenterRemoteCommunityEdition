@@ -20,7 +20,8 @@ enum class DiscoveryStatus {
 
 sealed interface ConnectAction {
     data class OnStart(
-        val permissionGranted: Boolean
+        val permissionGranted: Boolean,
+        val autoConnect: Boolean
     ) : ConnectAction
 
     data class OnPermissionResult(
