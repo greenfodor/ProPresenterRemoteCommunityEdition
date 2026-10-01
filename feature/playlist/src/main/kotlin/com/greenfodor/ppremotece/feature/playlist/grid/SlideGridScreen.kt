@@ -92,6 +92,7 @@ private object NoPrefetch : LazyGridPrefetchStrategy {
     override fun NestedPrefetchScope.onNestedPrefetch(firstVisibleItemIndex: Int) = Unit
 }
 
+/** The slide grid of [source]; with [closesPane] its navigation icon is a close icon, otherwise a back arrow. */
 @Composable
 fun SlideGridRoot(
     source: CueSource,
@@ -100,6 +101,7 @@ fun SlideGridRoot(
     reconnecting: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    closesPane: Boolean = false,
     floatingActionButton: @Composable (SnackbarHostState) -> Unit = {},
     viewModel: SlideGridViewModel = koinViewModel(key = source.toString()) { parametersOf(source) }
 ) {
@@ -119,6 +121,7 @@ fun SlideGridRoot(
         state = state,
         onAction = viewModel::onAction,
         onBack = onBack,
+        closesPane = closesPane,
         headerScrollsWithGrid = headerScrollsWithGrid,
         reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
@@ -134,6 +137,7 @@ fun SlideGridScreen(
     onAction: (SlideGridAction) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    closesPane: Boolean = false,
     headerScrollsWithGrid: Boolean = false,
     reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -149,7 +153,11 @@ fun SlideGridScreen(
                 title = { Text(text = state.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painterResource(DesignR.drawable.ic_arrow_back), stringResource(R.string.grid_back))
+                        if (closesPane) {
+                            Icon(painterResource(DesignR.drawable.ic_close), stringResource(R.string.grid_close))
+                        } else {
+                            Icon(painterResource(DesignR.drawable.ic_arrow_back), stringResource(R.string.grid_back))
+                        }
                     }
                 },
                 actions = {
