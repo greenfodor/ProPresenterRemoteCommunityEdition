@@ -31,4 +31,17 @@
         <item quantity="one">%1$s · %2$d cue</item>
         <item quantity="other">%1$s · %2$d cues</item>
     </plurals>
+    <string name="grid_resync">Re-sync</string>
+    <plurals name="grid_banner_named">
+        <item quantity="one">Live in %1$s · %2$d cue</item>
+        <item quantity="other">Live in %1$s · %2$d cues</item>
+    </plurals>
+    <plurals name="grid_banner_song_order">
+        <item quantity="one">Live in Song order · %1$d cue</item>
+        <item quantity="other">Live in Song order · %1$d cues</item>
+    </plurals>
+    <plurals name="grid_banner_other">
+        <item quantity="one">Live in a different arrangement · %1$d cue</item>
+        <item quantity="other">Live in a different arrangement · %1$d cues</item>
+    </plurals>
 </resources>

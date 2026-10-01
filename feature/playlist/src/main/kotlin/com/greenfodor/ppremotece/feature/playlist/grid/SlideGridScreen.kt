@@ -73,6 +73,9 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.R
 import com.greenfodor.ppremotece.feature.playlist.text
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -110,11 +113,13 @@ fun SlideGridRoot(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val scrollRequests = remember { MutableSharedFlow<Int>(extraBufferCapacity = 1) }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is SlideGridEvent.ShowError -> scope.launch {
                 snackbarHostState.showSnackbar(event.message.asString(context))
             }
+            is SlideGridEvent.ScrollToCue -> scrollRequests.tryEmit(event.cueIndex)
         }
     }
     LaunchedEffect(widthClass) { viewModel.onAction(SlideGridAction.OnWidthClassChange(widthClass)) }
@@ -128,6 +133,7 @@ fun SlideGridRoot(
         snackbarHostState = snackbarHostState,
         floatingActionButton = floatingActionButton,
         firstVisibleCue = viewModel.firstVisibleCue,
+        scrollRequests = scrollRequests,
         modifier = modifier
     )
 }
@@ -144,7 +150,8 @@ fun SlideGridScreen(
     reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     floatingActionButton: @Composable (SnackbarHostState) -> Unit = {},
-    firstVisibleCue: Int = 0
+    firstVisibleCue: Int = 0,
+    scrollRequests: Flow<Int> = emptyFlow()
 ) {
     Scaffold(
         modifier = modifier,
@@ -183,6 +190,7 @@ fun SlideGridScreen(
                 state = state,
                 headerScrollsWithGrid = headerScrollsWithGrid,
                 firstVisibleCue = firstVisibleCue,
+                scrollRequests = scrollRequests,
                 onAction = onAction
             )
         }
@@ -194,6 +202,7 @@ private fun GridContent(
     state: SlideGridState,
     headerScrollsWithGrid: Boolean,
     firstVisibleCue: Int,
+    scrollRequests: Flow<Int>,
     onAction: (SlideGridAction) -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -214,6 +223,7 @@ private fun GridContent(
                 state = state,
                 headerScrollsWithList = headerScrollsWithGrid,
                 firstVisibleCue = firstVisibleCue,
+                scrollRequests = scrollRequests,
                 onAction = onAction
             )
             else -> CueGrid(
@@ -221,6 +231,7 @@ private fun GridContent(
                 gridStep = state.gridStep ?: GridStep.Default,
                 headerScrollsWithGrid = headerScrollsWithGrid,
                 firstVisibleCue = firstVisibleCue,
+                scrollRequests = scrollRequests,
                 onAction = onAction
             )
         }
@@ -234,6 +245,7 @@ private fun CueGrid(
     gridStep: GridStep,
     headerScrollsWithGrid: Boolean,
     firstVisibleCue: Int,
+    scrollRequests: Flow<Int>,
     onAction: (SlideGridAction) -> Unit
 ) {
     val headerItems = if (headerScrollsWithGrid) 1 else 0
@@ -248,8 +260,9 @@ private fun CueGrid(
         headerItems = headerItems,
         onAction = onAction
     )
+    ScrollToCueRequests(scrollRequests, state.cues, headerItems) { gridState.animateScrollToItem(it) }
     Column(modifier = Modifier.fillMaxSize()) {
-        if (!headerScrollsWithGrid) GridHeader(state, horizontalPadding = GridPadding)
+        if (!headerScrollsWithGrid) GridHeader(state, horizontalPadding = GridPadding, onAction = onAction)
         LazyVerticalGrid(
             columns = gridStep.toGridCells(),
             state = gridState,
@@ -265,7 +278,7 @@ private fun CueGrid(
         ) {
             if (headerScrollsWithGrid) {
                 item(key = HEADER_KEY, span = { GridItemSpan(maxLineSpan) }) {
-                    GridHeader(state, horizontalPadding = 0.dp)
+                    GridHeader(state, horizontalPadding = 0.dp, onAction = onAction)
                 }
             }
             items(state.cues, key = { it.index }) { cue ->
@@ -292,6 +305,7 @@ private fun CueList(
     state: SlideGridState,
     headerScrollsWithList: Boolean,
     firstVisibleCue: Int,
+    scrollRequests: Flow<Int>,
     onAction: (SlideGridAction) -> Unit
 ) {
     val headerItems = if (headerScrollsWithList) 1 else 0
@@ -305,8 +319,9 @@ private fun CueList(
         headerItems = headerItems,
         onAction = onAction
     )
+    ScrollToCueRequests(scrollRequests, state.cues, headerItems) { listState.animateScrollToItem(it) }
     Column(modifier = Modifier.fillMaxSize()) {
-        if (!headerScrollsWithList) GridHeader(state, horizontalPadding = GridPadding)
+        if (!headerScrollsWithList) GridHeader(state, horizontalPadding = GridPadding, onAction = onAction)
         LazyColumn(
             state = listState,
             contentPadding = PaddingValues(
@@ -318,7 +333,11 @@ private fun CueList(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            if (headerScrollsWithList) item(key = HEADER_KEY) { GridHeader(state, horizontalPadding = 0.dp) }
+            if (headerScrollsWithList) {
+                item(key = HEADER_KEY) {
+                    GridHeader(state, horizontalPadding = 0.dp, onAction = onAction)
+                }
+            }
             items(state.cues, key = { it.index }) { cue ->
                 CueRow(
                     number = cue.index + 1,
@@ -343,7 +362,7 @@ private fun CueUi.mark(state: SlideGridState): CueMark =
     }
 
 @Composable
-private fun GridHeader(state: SlideGridState, horizontalPadding: Dp) {
+private fun GridHeader(state: SlideGridState, horizontalPadding: Dp, onAction: (SlideGridAction) -> Unit) {
     Column {
         val cueCount = state.cues.size
         ArrangementChip(
@@ -351,7 +370,21 @@ private fun GridHeader(state: SlideGridState, horizontalPadding: Dp) {
                 ?: pluralStringResource(R.plurals.grid_cue_count, cueCount, cueCount),
             modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 8.dp)
         )
+        if (state.groupSequence.pills.isNotEmpty()) {
+            GroupStrip(
+                sequence = state.groupSequence,
+                onPillClick = { onAction(SlideGridAction.OnGroupPillClick(it)) },
+                horizontalPadding = horizontalPadding
+            )
+        }
         if (state.countMismatch) CountMismatchLine()
+        state.banner?.let { banner ->
+            ArrangementBannerBar(
+                banner = banner,
+                onResync = { onAction(SlideGridAction.OnResyncClick) },
+                horizontalPadding = horizontalPadding
+            )
+        }
     }
 }
 
