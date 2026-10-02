@@ -208,7 +208,7 @@ class StreamingLiveStateRepository(
                 macrosRejected = true
                 macroCollections.value = Loadable.Unavailable
             }
-            "looks", "look/current" -> {
+            "looks" -> {
                 looksRejected = true
                 lookList.value = Loadable.Unavailable
             }

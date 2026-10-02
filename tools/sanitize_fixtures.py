@@ -282,8 +282,8 @@ class Sanitizer:
         look_id["name"] = self.replaced(look_id["name"], self.generate("Look", look_id["name"]))
         for screen in look["screens"]:
             for key in LOOK_SCREEN_STRINGS:
-                value = screen.get(key, "")
-                if value != "" and UUID.match(value) is None:
+                value = screen.get(key)
+                if value not in (None, "") and (not isinstance(value, str) or UUID.match(value) is None):
                     raise ValueError(f"no sanitising rule for look screen {key} {value!r}")
 
     def prop(self, prop):

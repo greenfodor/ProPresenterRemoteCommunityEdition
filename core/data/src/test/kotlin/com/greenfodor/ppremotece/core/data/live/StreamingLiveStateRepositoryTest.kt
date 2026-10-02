@@ -648,6 +648,19 @@ class StreamingLiveStateRepositoryTest {
             .lastOrNull()
             ?.look
 
+    @Test
+    fun `looks still load when only look current was rejected`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(CURRENT_LOOK_REJECTED_FRAME), end = StreamEnd.EOF))
+        fake.enqueueStream(fake.frames(listOf(ONE_LOOK_FRAME)))
+        val collector = launch { repository.liveState.collect {} }
+
+        val looks = withTimeout(5.seconds) { repository.looks.loaded { true } }
+        collector.cancel()
+
+        assertThat(looks.map { it.name }).containsExactly("Look 01")
+        assertThat(repository.currentLook.value).isNull()
+    }
+
     /** Replays [capture] through [chunk] and returns the loaded timers once they match [settled]. */
     private suspend fun timersAfterChunk(
         chunk: Int,
@@ -725,6 +738,9 @@ class StreamingLiveStateRepositoryTest {
         const val OWN_UUID_FRAME_CHUNK = 16
         const val TWO_FRAME_TRIGGER_CHUNK = 18
         const val MACROS_REJECTED_FRAME = """["URL: macro_collections. Error: 404 Not Found"]"""
+        const val CURRENT_LOOK_REJECTED_FRAME = """["URL: look/current. Error: 404 Not Found"]"""
+        const val ONE_LOOK_FRAME =
+            """{"url":"looks","data":[{"id":{"uuid":"l-0","name":"Look 01","index":0},"screens":[]}]}"""
         const val READINGS_REJECTED_FRAME = """["URL: timers/current. Error: 404 Not Found"]"""
         const val TWO_REJECTED_FRAME =
             """["URL: timers/current. Error: 404 Not Found","URL: macro_collections. Error: 404 Not Found"]"""

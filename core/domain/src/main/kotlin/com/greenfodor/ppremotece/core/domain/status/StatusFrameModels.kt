@@ -41,15 +41,16 @@ private fun JsonElement?.toCountDownTarget(): CountDownTarget? {
     return CountDownTarget(timeOfDaySeconds = seconds, period = child("period").stringOrNull().orEmpty())
 }
 
+/** A look with its uuid and index; null without either. */
 internal fun JsonElement?.toLook(): Look? {
     val id = child("id")
-    val uuid = id.child("uuid").stringOrNull() ?: return null
-    return Look(
-        uuid = uuid,
-        name = id.child("name").stringOrNull().orEmpty(),
-        index =
-            id.child("index").intOrNull() ?: 0
-    )
+    val uuid = id.child("uuid").stringOrNull()
+    val index = id.child("index").intOrNull()
+    return if (uuid != null && index != null) {
+        Look(uuid = uuid, name = id.child("name").stringOrNull().orEmpty(), index = index)
+    } else {
+        null
+    }
 }
 
 internal fun JsonElement?.toTimerReading(): TimerReading? {

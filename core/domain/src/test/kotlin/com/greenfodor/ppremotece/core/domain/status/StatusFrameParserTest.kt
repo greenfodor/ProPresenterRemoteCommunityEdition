@@ -243,6 +243,15 @@ class StatusFrameParserTest {
     }
 
     @Test
+    fun `a look without an index is left out`() {
+        val frame = """{"url":"looks","data":[{"id":{"uuid":"l-0","name":"Look 01"},"screens":[]}]}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(StatusEvent.Looks(emptyList()))
+        assertThat(parser.decode("""{"url":"look/current","data":{"id":{"uuid":"live","name":"Look 02"}}}"""))
+            .isEqualTo(StatusEvent.Unknown("look/current"))
+    }
+
+    @Test
     fun `looks without a list decode to unknown`() {
         assertThat(parser.decode("""{"url":"looks","data":{}}""")).isEqualTo(StatusEvent.Unknown("looks"))
     }
