@@ -26,7 +26,8 @@ private const val CHECK_MILLIS = 1_000L
 
 /**
  * Macros: one section per collection of the [MacrosRepository], with each macro's served icon,
- * read once per macro while this ViewModel lives (an unreadable icon is left out). A tap triggers
+ * read once per macro while this ViewModel lives (an unreadable icon is left out and read again
+ * with the next collections). A tap triggers
  * the macro; a successful trigger shows the check on its tile for [CHECK_MILLIS], and a failure
  * shows "Couldn't run {macro}". Taps on a macro are ignored while its request is in flight and
  * while its check shows.
@@ -68,7 +69,9 @@ class MacrosViewModel(
     private fun readIcons(collections: List<MacroCollection>) {
         collections.flatMap { it.macros }.filter { requestedIcons.add(it.uuid) }.forEach { macro ->
             viewModelScope.launch {
-                client.macroIcon(macro.uuid).onSuccess { icon -> icons.update { it + (macro.uuid to icon) } }
+                client.macroIcon(macro.uuid)
+                    .onSuccess { icon -> icons.update { it + (macro.uuid to icon) } }
+                    .onFailure { requestedIcons.remove(macro.uuid) }
             }
         }
     }

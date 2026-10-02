@@ -90,13 +90,28 @@ class MacrosViewModelTest {
         viewModel.state.test {
             val macros = expectMostRecentItem().sections.single().macros
             assertThat(macros.map { it.icon }).containsExactly(icon, null)
+            client.icons["m-1"] = Result.Success(icon)
+            client.icons["m-2"] = Result.Success(icon)
             repository.collections.value = listOf(first, second)
             repository.collections.value = listOf(first)
             cancelAndIgnoreRemainingEvents()
         }
         viewModel.state.test { cancelAndIgnoreRemainingEvents() }
 
-        assertThat(client.iconReads).containsExactly("m-0", "m-1", "m-2")
+        assertThat(client.iconReads).containsExactly("m-0", "m-1", "m-1", "m-2")
+    }
+
+    @Test
+    fun `an icon that could not be read is read again with the next collections`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().macro("m-0").icon).isNull()
+            client.icons["m-0"] = Result.Success(icon)
+            repository.collections.value = listOf(first.copy(name = "Collection 01 renamed"))
+            assertThat(expectMostRecentItem().macro("m-0").icon).isEqualTo(icon)
+        }
+        assertThat(client.iconReads.count { it == "m-0" }).isEqualTo(2)
     }
 
     @Test
