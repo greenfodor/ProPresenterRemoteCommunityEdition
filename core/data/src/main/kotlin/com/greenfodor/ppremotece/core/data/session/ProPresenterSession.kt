@@ -23,6 +23,8 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import com.greenfodor.ppremotece.core.domain.thumbnail.boxQuality
+import com.greenfodor.ppremotece.core.domain.timers.LiveTimer
+import com.greenfodor.ppremotece.core.domain.timers.TimersRepository
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +57,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * [sessionKey] names the current connection (`{n}@{address}:{port}`, new on each connect, null
  * while disconnected), and [streamReconnects] emits each time the live stream is reopened. Each
  * successful connect clears the [ThumbnailCache] in the background; the connection's
- * [thumbnailRequests] are null until that clear has finished.
+ * [thumbnailRequests] are null until that clear has finished. [timers] are the connection's timers, empty
+ * while disconnected.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
@@ -63,6 +66,7 @@ class ProPresenterSession(
     private val thumbnailCache: ThumbnailCache
 ) : ConnectionRepository,
     LiveStateRepository,
+    TimersRepository,
     ThumbnailSource {
     private class Connection(
         val client: KtorProPresenterClient,
@@ -97,6 +101,12 @@ class ProPresenterSession(
         connection
             .flatMapLatest { it?.live?.lastLive ?: flowOf(null) }
             .stateIn(sessionScope, SharingStarted.Eagerly, null)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val timers: StateFlow<List<LiveTimer>> =
+        connection
+            .flatMapLatest { it?.live?.timers ?: flowOf(emptyList()) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val thumbnailRequests: Flow<ThumbnailRequests?> =

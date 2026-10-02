@@ -15,6 +15,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
@@ -75,6 +76,9 @@ class FakeClearClient : ProPresenterClient {
         iconReads += uuid
         return icons[uuid]?.let { Result.Success(it) } ?: Result.Failure(DataError.Network.NOT_FOUND)
     }
+
+    override suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network> =
+        notServed()
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> = notServed()
 

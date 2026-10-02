@@ -31,6 +31,14 @@ CLEAR_GROUPS = "../stage5/v1_clear_groups.json"
 LIBRARIES = "../stage6/libraries.json"
 LIBRARY = "../stage6/library-0.json"
 LIBRARY_INDEX = 0
+TIMERS = "../stage8/_v1_timers.json"
+TIMERS_CURRENT = "../stage8/_v1_timers_current.json"
+TIMER_TYPES = {"countdown", "count_down_to_time", "elapsed"}
+TIMER_STATES = {"stopped", "running", "complete", "overrunning", "overran", "overrun"}
+TIMER_PERIODS = {"am", "pm", "is_24_hour"}
+TIMER_TIME = re.compile(r"^-?\d{2}:\d{2}:\d{2}(\.\d+)?$")
+MACRO_IMAGE_TYPES = {"Default"}
+MACRO_ACTION_TYPES = {"stage_layout", "timer", "audience_look", "clear"}
 CLEAR_GROUPS_OUT = "clear-groups.json"
 CLEAR_GROUP_LAYERS = {
     "music", "audio_effects", "messages", "props", "announcements", "presentation", "presentation_media",
@@ -46,6 +54,7 @@ STREAMS = [
     "../stage5-device/streams/stage5-status-updates",
     "../stage6/streams/stage6-probe",
     "../stage7/streams/stage7-probe",
+    "../stage8/streams/stage8-timers",
 ]
 
 FRAME_SEPARATOR = b"\r\n\r\n"
@@ -59,14 +68,14 @@ VERBATIM_ALLOWED = {
     "presentation", "header", "media", "playlist", "group", "standard", "win", "v1", "all",
     "ProPresenter 21.4.2", "10.0.26200",
     "status/slide", "presentation/active", "presentation/slide_index", "playlist/active", "timer/system_time",
-    "status/layers",
+    "status/layers", "timers", "timers/current", "macro_collections",
 }
 CHUNK_LINE = re.compile(r"^# \+(?P<time>[\d.]+)s chunk (?P<n>\d+) \((?P<size>\d+) B\) tail=.*$")
 TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
 PLACEHOLDER_WORDS = {
     "presentation", "playlist", "folder", "arrangement", "group", "header", "media", "label",
     "text", "notes", "item", "host", "song", "full", "chorus", "only", "short", "bridge",
-    "service", "test", "total", "+", "·",
+    "service", "test", "total", "start", "+", "·",
 }
 TEST_RESOURCES = Path(__file__).resolve().parent.parent / "core" / "data" / "src" / "test" / "resources"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bin"}
@@ -227,6 +236,37 @@ class Sanitizer:
         if unknown or group["icon"] not in CLEAR_GROUP_ICONS:
             raise ValueError(f"no sanitising rule for clear group layers {unknown} or icon {group['icon']!r}")
 
+    def timer_id(self, timer_id):
+        timer_id["name"] = self.replaced(timer_id["name"], self.generate("Timer", timer_id["uuid"]))
+
+    def timer(self, timer):
+        self.timer_id(timer["id"])
+        types = [key for key in timer if key not in ("id", "allows_overrun")]
+        if len(types) != 1 or types[0] not in TIMER_TYPES:
+            raise ValueError(f"no sanitising rule for timer type {types}")
+        period = timer[types[0]].get("period")
+        if period is not None and period not in TIMER_PERIODS:
+            raise ValueError(f"no sanitising rule for timer period {period!r}")
+
+    def timer_reading(self, reading):
+        self.timer_id(reading["id"])
+        if reading["state"] not in TIMER_STATES or not TIMER_TIME.match(reading["time"]):
+            raise ValueError(f"no sanitising rule for timer state {reading['state']!r} or time {reading['time']!r}")
+
+    def macro_collections(self, data):
+        for collection in data["collections"]:
+            collection_id = collection["id"]
+            collection_id["name"] = self.replaced(
+                collection_id["name"], self.generate("Collection", collection_id["uuid"])
+            )
+            for macro in collection["macros"]:
+                macro["id"]["name"] = self.replaced(macro["id"]["name"], self.generate("Macro", macro["id"]["uuid"]))
+                actions = {action["type"] for action in macro["actions"]}
+                if macro["image_type"] not in MACRO_IMAGE_TYPES or not actions <= MACRO_ACTION_TYPES:
+                    raise ValueError(
+                        f"no sanitising rule for macro image {macro['image_type']!r} or actions {actions}"
+                    )
+
     def frame(self, frame):
         url = frame["url"]
         data = frame["data"]
@@ -259,6 +299,14 @@ class Sanitizer:
         elif url == "status/layers":
             if not all(isinstance(value, bool) for value in data.values()):
                 raise ValueError("status/layers frame with a non-boolean value")
+        elif url == "timers":
+            for timer in data:
+                self.timer(timer)
+        elif url == "timers/current":
+            for reading in data:
+                self.timer_reading(reading)
+        elif url == "macro_collections":
+            self.macro_collections(data)
         elif url != "timer/system_time":
             raise ValueError(f"no sanitising rule for stream url {url}")
         return frame
@@ -330,6 +378,8 @@ def sanitize_stream(sanitizer, source, out_dir):
             )
         elif total:
             out_meta.append(f"# total={len(out_raw)} B in {total['rest']}")
+        elif line.startswith("{"):
+            continue
         else:
             out_meta.append(scrub(line))
     if frame_index != len(frames):
@@ -371,6 +421,8 @@ def is_allowed_verbatim(sanitizer, value, path):
         or GROUP_WHITELIST.match(value) is not None
         or value in sanitizer.kept_names
         or value in VERBATIM_ALLOWED
+        or value in TIMER_STATES | TIMER_PERIODS | MACRO_IMAGE_TYPES | MACRO_ACTION_TYPES
+        or TIMER_TIME.match(value) is not None
     )
 
 
@@ -465,6 +517,16 @@ def main():
     for entry in library_listing["items"]:
         sanitizer.library_entry(entry)
     write_json(out_dir / f"library-{library_uuid[:8]}.json", library_listing)
+
+    timers = load(TIMERS)
+    for timer in timers:
+        sanitizer.timer(timer)
+    write_json(out_dir / "timers.json", timers)
+
+    readings = load(TIMERS_CURRENT)
+    for reading in readings:
+        sanitizer.timer_reading(reading)
+    write_json(out_dir / "timers-current.json", readings)
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)

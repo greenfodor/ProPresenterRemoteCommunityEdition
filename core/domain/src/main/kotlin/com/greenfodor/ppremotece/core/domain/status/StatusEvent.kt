@@ -4,6 +4,8 @@ import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
+import com.greenfodor.ppremotece.core.domain.model.Timer
+import com.greenfodor.ppremotece.core.domain.model.TimerReading
 
 /** A decoded `status/updates` frame. */
 sealed interface StatusEvent {
@@ -28,6 +30,16 @@ sealed interface StatusEvent {
     /** The output layers that have content. */
     data class Layers(
         val active: Set<OutputLayer>
+    ) : StatusEvent
+
+    /** The configured timers, from a `timers` frame. */
+    data class Timers(
+        val timers: List<Timer>
+    ) : StatusEvent
+
+    /** Every timer's current reading, from a `timers/current` frame. */
+    data class TimerReadings(
+        val readings: List<TimerReading>
     ) : StatusEvent
 
     data class Heartbeat(

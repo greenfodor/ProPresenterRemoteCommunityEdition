@@ -4,6 +4,7 @@ package com.greenfodor.ppremotece.core.domain.layout
 enum class ShellTab {
     PRESENTATION,
     REMOTE,
+    TIMERS,
     SETTINGS,
     MORE
 }

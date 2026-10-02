@@ -8,6 +8,10 @@ import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
+import com.greenfodor.ppremotece.core.domain.model.Timer
+import com.greenfodor.ppremotece.core.domain.model.TimerReading
+import com.greenfodor.ppremotece.core.domain.model.TimerState
+import com.greenfodor.ppremotece.core.domain.model.TimerType
 import org.junit.jupiter.api.Test
 
 class StatusFrameParserTest {
@@ -175,6 +179,77 @@ class StatusFrameParserTest {
             StatusEvent.SlideChanged(SlideText(current = "", next = "")),
             StatusEvent.Heartbeat(5)
         )
+    }
+
+    @Test
+    fun `timers decodes each timer with its type`() {
+        val frame = """{"url":"timers","data":[""" +
+            """{"id":{"name":"Timer 01","index":0,"uuid":"t-0"},"allows_overrun":true,""" +
+            """"count_down_to_time":{"time_of_day":30600,"period":"pm"}},""" +
+            """{"id":{"name":"Timer 02","index":1,"uuid":"t-1"},"allows_overrun":false,""" +
+            """"countdown":{"duration":300}},""" +
+            """{"id":{"name":"Timer 03","index":2,"uuid":"t-2"},"allows_overrun":false,"elapsed":{"start_time":0}}""" +
+            """]}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(
+            StatusEvent.Timers(
+                listOf(
+                    Timer("t-0", "Timer 01", 0, TimerType.COUNTDOWN_TO_TIME, allowsOverrun = true),
+                    Timer("t-1", "Timer 02", 1, TimerType.COUNTDOWN, allowsOverrun = false),
+                    Timer("t-2", "Timer 03", 2, TimerType.ELAPSED, allowsOverrun = false)
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `a timer of an unknown type is left out`() {
+        val frame = """{"url":"timers","data":[{"id":{"name":"Timer 01","index":0,"uuid":"t-0"},"lap":{}}]}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(StatusEvent.Timers(emptyList()))
+    }
+
+    @Test
+    fun `current timers decode each reading with the time as sent`() {
+        val frame = """{"url":"timers/current","data":[""" +
+            """{"id":{"uuid":"t-0","name":"Timer 01","index":0},"time":"17:05:22","state":"running"},""" +
+            """{"id":{"uuid":"t-1","name":"Timer 02","index":1},"time":"-00:00:02","state":"overrunning"}""" +
+            """]}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(
+            StatusEvent.TimerReadings(
+                listOf(
+                    TimerReading("t-0", "17:05:22", TimerState.RUNNING),
+                    TimerReading("t-1", "-00:00:02", TimerState.OVERRUNNING)
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `each timer state is read, overrun as overran and anything else as unknown`() {
+        val states = listOf("stopped", "running", "complete", "overrunning", "overran", "overrun", "paused")
+        val frame = """{"url":"timers/current","data":[""" +
+            states.joinToString(",") { """{"id":{"uuid":"t-$it"},"time":"00:00:01.00","state":"$it"}""" } + "]}"
+
+        val readings = (parser.decode(frame) as StatusEvent.TimerReadings).readings
+
+        assertThat(readings.map { it.state }).containsExactly(
+            TimerState.STOPPED,
+            TimerState.RUNNING,
+            TimerState.COMPLETE,
+            TimerState.OVERRUNNING,
+            TimerState.OVERRAN,
+            TimerState.OVERRAN,
+            TimerState.UNKNOWN
+        )
+    }
+
+    @Test
+    fun `timers without a list decode to unknown`() {
+        assertThat(parser.decode("""{"url":"timers","data":{}}""")).isEqualTo(StatusEvent.Unknown("timers"))
+        assertThat(parser.decode("""{"url":"timers/current","data":null}"""))
+            .isEqualTo(StatusEvent.Unknown("timers/current"))
     }
 
     private fun bytes(text: String) = text.encodeToByteArray()

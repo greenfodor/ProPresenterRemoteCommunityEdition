@@ -12,6 +12,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
@@ -70,6 +71,9 @@ internal class CurrentHostClient(
 
     override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> =
         current()?.clearGroupIcon(uuid) ?: notConnected()
+
+    override suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network> =
+        current()?.timerOperation(uuid, operation) ?: notConnected()
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> = current()?.triggerNext() ?: notConnected()
 

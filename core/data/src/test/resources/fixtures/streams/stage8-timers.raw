@@ -1,0 +1,40 @@
+{"url":"status/slide","data":{"current":{"text":"","notes":"","uuid":"e2503372-dcaa-4a9b-8c04-e187e997a17c"},"next":{"text":"Text 05","notes":"Verse 1 · 1 notes","uuid":"138e93bb-cf7a-4f10-85ae-9bcd581d573b"}}}
+
+{"url":"timer/system_time","data":1790900675}
+
+{"url":"playlist/active","data":{"presentation":{"playlist":{"uuid":"6f760dbf-04b9-46f2-9bb3-33eeea6a6d90","name":"Arrangement Test","index":7},"item":{"uuid":"68ab1ee1-427f-4bb2-b9b8-2f77451011a4","name":"Song A","index":0},"playlist_item":{"id":{"uuid":"68ab1ee1-427f-4bb2-b9b8-2f77451011a4","name":"Song A","index":0},"type":"presentation","is_hidden":false,"is_pco":false,"presentation_info":{"presentation_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","arrangement_name":"Full","arrangement_uuid":"4adc3b58-27f1-42a5-8ff0-80dfd1afa8a5"},"target_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","destination":"presentation"}},"announcements":{"playlist":null,"item":null,"playlist_item":null}}}
+
+{"url":"timers/current","data":[{"id":{"uuid":"2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf","name":"Timer 01","index":0},"time":"17:14:53","state":"stopped"},{"id":{"uuid":"c5fcf5b0-ee31-4143-9d54-6514d922b2bb","name":"Timer 02","index":1},"time":"11:50:00","state":"stopped"},{"id":{"uuid":"9bf671d2-475a-4716-af17-2ab73589734d","name":"Timer 03","index":2},"time":"00:00:00","state":"stopped"}]}
+
+{"url":"status/layers","data":{"video_input":false,"media":true,"slide":true,"announcements":false,"props":false,"messages":false,"audio":false}}
+
+{"url":"timers","data":[{"id":{"name":"Timer 01","index":0,"uuid":"2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"},"allows_overrun":true,"count_down_to_time":{"time_of_day":30600,"period":"pm"}},{"id":{"name":"Timer 02","index":1,"uuid":"c5fcf5b0-ee31-4143-9d54-6514d922b2bb"},"allows_overrun":true,"count_down_to_time":{"time_of_day":42600,"period":"is_24_hour"}},{"id":{"name":"Timer 03","index":2,"uuid":"9bf671d2-475a-4716-af17-2ab73589734d"},"allows_overrun":false,"elapsed":{"start_time":0}}]}
+
+{"url":"macro_collections","data":{"collections":[{"id":{"uuid":"7fb00f81-8507-4e5e-871d-b2459fe9aa9a","name":"Collection 01","index":0},"macros":[{"id":{"uuid":"701c977b-f340-428d-b397-a52d4f29437b","name":"Macro 01","index":0},"color":{"red":0.09019608050584793,"green":0.49803921580314636,"blue":1.0,"alpha":1.0},"image_type":"Default","actions":[{"type":"stage_layout"},{"type":"timer"},{"type":"audience_look"}]},{"id":{"uuid":"5a415969-77b5-485a-a056-43d177e51998","name":"Macro 02","index":1},"color":{"red":1.0,"green":0.0,"blue":0.0,"alpha":1.0},"image_type":"Default","actions":[{"type":"stage_layout"},{"type":"timer"},{"type":"audience_look"},{"type":"clear"}]},{"id":{"uuid":"c6faa767-5d80-46b9-b72a-ca626fda1c4e","name":"Macro 03","index":2},"color":{"red":0.06666667014360428,"green":0.3137255012989044,"blue":0.23137255012989044,"alpha":1.0},"image_type":"Default","actions":[{"type":"stage_layout"}]},{"id":{"uuid":"29aa3f87-55f0-434f-bb36-610e12bbceb1","name":"Macro 04","index":3},"color":{"red":0.5058823823928833,"green":0.0784313753247261,"blue":0.0784313753247261,"alpha":1.0},"image_type":"Default","actions":[{"type":"stage_layout"},{"type":"timer"}]},{"id":{"uuid":"1e61c207-2dd1-4242-881e-931c341ad85b","name":"Macro 05","index":4},"color":{"red":0.23529411852359772,"green":0.7019608020782471,"blue":0.4431372582912445,"alpha":1.0},"image_type":"Default","actions":[{"type":"stage_layout"},{"type":"timer"},{"type":"audience_look"}]}]}]}}
+
+{"url":"timer/system_time","data":1790900676}
+
+{"url":"timers/current","data":[{"id":{"uuid":"2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf","name":"Timer 01","index":0},"time":"17:05:22","state":"running"},{"id":{"uuid":"c5fcf5b0-ee31-4143-9d54-6514d922b2bb","name":"Timer 02","index":1},"time":"11:50:00","state":"stopped"},{"id":{"uuid":"9bf671d2-475a-4716-af17-2ab73589734d","name":"Timer 03","index":2},"time":"00:00:00","state":"stopped"}]}
+
+{"url":"timer/system_time","data":1790900677}
+
+{"url":"timers/current","data":[{"id":{"uuid":"2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf","name":"Timer 01","index":0},"time":"17:05:21","state":"running"},{"id":{"uuid":"c5fcf5b0-ee31-4143-9d54-6514d922b2bb","name":"Timer 02","index":1},"time":"11:50:00","state":"stopped"},{"id":{"uuid":"9bf671d2-475a-4716-af17-2ab73589734d","name":"Timer 03","index":2},"time":"00:00:00","state":"stopped"}]}
+
+{"url":"timer/system_time","data":1790900678}
+
+{"url":"timers/current","data":[{"id":{"uuid":"2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf","name":"Timer 01","index":0},"time":"17:05:20","state":"running"},{"id":{"uuid":"c5fcf5b0-ee31-4143-9d54-6514d922b2bb","name":"Timer 02","index":1},"time":"11:50:00","state":"stopped"},{"id":{"uuid":"9bf671d2-475a-4716-af17-2ab73589734d","name":"Timer 03","index":2},"time":"00:00:00","state":"stopped"}]}
+
+{"url":"timer/system_time","data":1790900679}
+
+{"url":"timers/current","data":[{"id":{"uuid":"2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf","name":"Timer 01","index":0},"time":"17:05:19","state":"running"},{"id":{"uuid":"c5fcf5b0-ee31-4143-9d54-6514d922b2bb","name":"Timer 02","index":1},"time":"11:50:00","state":"stopped"},{"id":{"uuid":"9bf671d2-475a-4716-af17-2ab73589734d","name":"Timer 03","index":2},"time":"00:00:00","state":"stopped"}]}
+
+{"url":"timer/system_time","data":1790900680}
+
+{"url":"timers/current","data":[{"id":{"uuid":"2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf","name":"Timer 01","index":0},"time":"17:05:18","state":"stopped"},{"id":{"uuid":"c5fcf5b0-ee31-4143-9d54-6514d922b2bb","name":"Timer 02","index":1},"time":"11:50:00","state":"stopped"},{"id":{"uuid":"9bf671d2-475a-4716-af17-2ab73589734d","name":"Timer 03","index":2},"time":"00:00:00","state":"stopped"}]}
+
+{"url":"timer/system_time","data":1790900681}
+
+{"url":"timer/system_time","data":1790900682}
+
+{"url":"timer/system_time","data":1790900683}
+

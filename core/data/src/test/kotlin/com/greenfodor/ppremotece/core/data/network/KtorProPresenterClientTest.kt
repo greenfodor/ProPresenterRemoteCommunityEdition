@@ -13,6 +13,7 @@ import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
@@ -231,15 +232,30 @@ class KtorProPresenterClientTest {
         client.clearGroups()
         client.triggerClearGroup(CLEAR_GROUP_UUID)
         client.clearGroupIcon(CLEAR_GROUP_UUID)
+        TimerOperation.entries.forEach { client.timerOperation(TIMER_UUID, it) }
         client.triggerNext()
         client.triggerPrevious()
         client.statusUpdates(listOf("status/slide")).first()
 
-        assertThat(fake.requests.size).isEqualTo(18)
+        assertThat(fake.requests.size).isEqualTo(21)
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
     }
 
+    @Test
+    fun `timer operations get the timer's start, stop and reset routes`() = runBlocking {
+        TimerOperation.entries.forEach {
+            assertThat(client.timerOperation(TIMER_UUID, it)).isEqualTo(Result.Success(Unit))
+        }
+
+        assertThat(fake.requests.map { "${it.method} ${it.url.encodedPath}" }).containsExactly(
+            "GET /v1/timer/$TIMER_UUID/start",
+            "GET /v1/timer/$TIMER_UUID/stop",
+            "GET /v1/timer/$TIMER_UUID/reset"
+        )
+    }
+
     private companion object {
+        const val TIMER_UUID = "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
         const val CLEAR_GROUP_UUID = "5da095db-20ef-4246-b3d5-3b741312386b"
     }
 }
