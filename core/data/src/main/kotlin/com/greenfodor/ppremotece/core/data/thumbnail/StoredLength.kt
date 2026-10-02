@@ -8,11 +8,15 @@ private const val CONTENT_LENGTH = "content-length"
 
 /**
  * Whether the body of [snapshot] is as long as the `content-length` header in the metadata Coil's
- * network fetcher stored with it; true when no length is stored or the metadata can't be read.
+ * network fetcher stored with it; true when no length is stored or the files can't be read.
  */
 fun DiskCache.holdsWholeBody(snapshot: DiskCache.Snapshot): Boolean {
     val expected = storedContentLength(snapshot) ?: return true
-    return fileSystem.metadata(snapshot.data).size == expected
+    return try {
+        fileSystem.metadata(snapshot.data).size == expected
+    } catch (_: IOException) {
+        true
+    }
 }
 
 private fun DiskCache.storedContentLength(snapshot: DiskCache.Snapshot): Long? =

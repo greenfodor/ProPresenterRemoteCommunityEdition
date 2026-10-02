@@ -32,6 +32,10 @@ import mockwebserver3.SocketEffect
 import mockwebserver3.junit5.StartStop
 import okio.Buffer
 import okio.BufferedSink
+import okio.FileMetadata
+import okio.FileSystem
+import okio.ForwardingFileSystem
+import okio.IOException
 import okio.Path.Companion.toOkioPath
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -46,7 +50,8 @@ class ValidatingCacheFetcherTest {
     @TempDir
     lateinit var dir: Path
 
-    private val cache by lazy { DiskCache.Builder().directory(dir.toOkioPath()).build() }
+    private val failingReads = FailingMetadataFileSystem()
+    private val cache by lazy { DiskCache.Builder().fileSystem(failingReads).directory(dir.toOkioPath()).build() }
     private val memory = MemoryCache.Builder().maxSizeBytes(MEMORY_BYTES).build()
     private val image = ByteArray(FULL) { (it % 251).toByte() }
 
@@ -130,7 +135,19 @@ class ValidatingCacheFetcherTest {
     }
 
     @Test
-    fun `a fetch that stores nothing is returned as it is`() = runBlocking {
+    fun `a disk error while checking the stored entry leaves the fetch to the delegate`() = runBlocking<Unit> {
+        cache.store(KEY, image)
+        failingReads.failing = true
+
+        val result = validating(
+            Fetcher { SourceFetchResult(ImageSource(Buffer(), cache.fileSystem), null, DataSource.NETWORK) }
+        ).fetch()
+
+        assertThat(result).isNotNull()
+    }
+
+    @Test
+    fun `a fetch that stores nothing is returned as it is`() = runBlocking<Unit> {
         val result = validating(
             Fetcher {
                 SourceFetchResult(ImageSource(Buffer(), cache.fileSystem), null, DataSource.NETWORK)
@@ -194,6 +211,16 @@ class ValidatingCacheFetcherTest {
                 chain.proceed(chain.request().newBuilder().removeHeader("Cache-Control").build())
             }
         }
+
+    /** The system file system, whose metadata reads throw while [failing] is set. */
+    private class FailingMetadataFileSystem : ForwardingFileSystem(FileSystem.SYSTEM) {
+        var failing = false
+
+        override fun metadataOrNull(path: okio.Path): FileMetadata? {
+            if (failing) throw IOException("metadata read failed")
+            return super.metadataOrNull(path)
+        }
+    }
 
     private companion object {
         const val KEY = "thumb:v1:host:p:g:0:digest"

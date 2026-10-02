@@ -5,6 +5,7 @@ import com.greenfodor.ppremotece.core.domain.model.Cue
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.boxQuality
+import com.greenfodor.ppremotece.core.domain.thumbnail.boxThumbnailQuality
 
 /** The measured image widths of the Remote's current and next boxes in px; 0 until measured. */
 data class BoxWidths(
@@ -23,13 +24,12 @@ data class ThumbnailTarget(
 /**
  * The thumbnails to load ahead for [display] while its next box shows a slide with thumbnails: the
  * first enabled cue after the next one at the next box's quality, and the next cue at the current
- * box's quality when that is another quality than the next box's. A box of width 0 asks for the
- * grid quality.
+ * box's quality when that is another quality than the next box's ([boxThumbnailQuality]).
  */
 fun remotePrefetch(display: RemoteDisplay, widths: BoxWidths): List<ThumbnailTarget> {
     val next = (display.next as? RemoteBox.Slide)?.takeIf { it.thumbnails } ?: return emptyList()
-    val nextQuality = qualityOf(widths.next)
-    val currentQuality = qualityOf(widths.current)
+    val nextQuality = boxThumbnailQuality(widths.next)
+    val currentQuality = boxThumbnailQuality(widths.current)
     val afterNext = display.sidebar
         ?.takeIf { it.source == next.source }
         ?.cues
@@ -40,7 +40,5 @@ fun remotePrefetch(display: RemoteDisplay, widths: BoxWidths): List<ThumbnailTar
             ?.let { ThumbnailTarget(it.source, it.presentationUuid, it.cue, currentQuality) }
     )
 }
-
-private fun qualityOf(px: Int): ThumbnailQuality = if (px > 0) ThumbnailQuality.Box(px) else ThumbnailQuality.Grid
 
 private fun ThumbnailQuality.requested(): Int? = (this as? ThumbnailQuality.Box)?.let { boxQuality(it.px) }

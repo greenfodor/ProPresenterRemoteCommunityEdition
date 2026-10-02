@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.core.data.thumbnail
 
 import coil3.ImageLoader
 import coil3.Uri
+import coil3.decode.DataSource
 import coil3.disk.DiskCache
 import coil3.fetch.FetchResult
 import coil3.fetch.Fetcher
@@ -29,10 +30,11 @@ class ValidatingCacheFetcherFactory(
 }
 
 /**
- * Runs [delegate] for the entry stored under [key]. An entry whose body is not as long as its
+ * Runs [delegate] for the entry stored under [key]. An entry whose body length does not match its
  * stored `content-length` ([holdsWholeBody]) is removed from [diskCache] and [memoryCache] before
- * [delegate] runs; when [delegate] stores such an entry, it is removed and [delegate] runs once
- * more, and a second one ends the fetch with an [IOException].
+ * [delegate] runs; when a fetch that is not served from disk stores such an entry, it is removed
+ * and [delegate] runs once more, and a second one ends the fetch with an [IOException]. An entry
+ * that can't be read or removed because of a disk error is left to [delegate].
  */
 class ValidatingCacheFetcher(
     private val delegate: Fetcher,
@@ -44,17 +46,26 @@ class ValidatingCacheFetcher(
         if (!storedEntryWhole()) remove()
         repeat(ATTEMPTS) {
             val result = delegate.fetch()
-            if (storedEntryWhole()) return result
+            if ((result as? SourceFetchResult)?.dataSource == DataSource.DISK || storedEntryWhole()) return result
             (result as? SourceFetchResult)?.source?.close()
             remove()
         }
-        throw IOException("The body stored under $key is shorter than its content-length")
+        throw IOException("The body stored under $key does not match its content-length")
     }
 
-    private fun storedEntryWhole(): Boolean = diskCache.openSnapshot(key)?.use { diskCache.holdsWholeBody(it) } ?: true
+    private fun storedEntryWhole(): Boolean =
+        try {
+            diskCache.openSnapshot(key)?.use { diskCache.holdsWholeBody(it) } ?: true
+        } catch (_: IOException) {
+            true
+        }
 
     private fun remove() {
-        diskCache.remove(key)
         memoryCache?.remove(MemoryCache.Key(key))
+        try {
+            diskCache.remove(key)
+        } catch (_: IOException) {
+            // An entry that could not be deleted stays in the disk cache.
+        }
     }
 }

@@ -28,6 +28,7 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
+import com.greenfodor.ppremotece.core.domain.thumbnail.boxThumbnailQuality
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -235,9 +236,7 @@ class RemoteViewModel(
         }
 
     private fun RemoteBox.thumbnail(requests: ThumbnailRequests?, px: Int): ThumbnailRequest? {
-        val quality = if (px > 0) ThumbnailQuality.Box(px) else ThumbnailQuality.Grid
-        return (this as? RemoteBox.Slide)
-            ?.takeIf { it.thumbnails }
-            ?.let { requests?.request(it.source, it.presentationUuid, it.cue, quality) }
+        val slide = (this as? RemoteBox.Slide)?.takeIf { it.thumbnails } ?: return null
+        return requests?.request(slide.source, slide.presentationUuid, slide.cue, boxThumbnailQuality(px))
     }
 }
