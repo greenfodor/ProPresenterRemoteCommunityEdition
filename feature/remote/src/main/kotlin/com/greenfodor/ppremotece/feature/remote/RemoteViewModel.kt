@@ -12,12 +12,15 @@ import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.remote.BoxMark
+import com.greenfodor.ppremotece.core.domain.remote.BoxWidths
 import com.greenfodor.ppremotece.core.domain.remote.RemoteBox
 import com.greenfodor.ppremotece.core.domain.remote.RemoteCommand
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
 import com.greenfodor.ppremotece.core.domain.remote.RemoteInputs
 import com.greenfodor.ppremotece.core.domain.remote.RemoteSidebar
 import com.greenfodor.ppremotece.core.domain.remote.RemoteStatus
+import com.greenfodor.ppremotece.core.domain.remote.ThumbnailTarget
+import com.greenfodor.ppremotece.core.domain.remote.remotePrefetch
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onFailure
@@ -25,6 +28,7 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
+import com.greenfodor.ppremotece.core.domain.thumbnail.boxThumbnailQuality
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -55,7 +59,8 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * the display loading is shown as an error, and retry reads the content again. A tap on an
  * enabled cue of the sidebar sends its item-cue trigger, or its presentation-cue trigger for a
  * presentation played outside a playlist. The current and next boxes ask for
- * thumbnails at their measured widths; the sidebar asks for grid thumbnails.
+ * thumbnails at their measured widths, and the thumbnails [remotePrefetch] names are loaded
+ * ahead; the sidebar asks for grid thumbnails.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RemoteViewModel(
@@ -74,12 +79,6 @@ class RemoteViewModel(
     private data class PlaylistRead(
         val uuid: String?,
         val result: Result<Playlist, DataError.Network>?
-    )
-
-    /** The measured image widths of the current and next boxes in px; 0 until measured. */
-    private data class BoxWidths(
-        val current: Int = 0,
-        val next: Int = 0
     )
 
     private val cued = MutableStateFlow<Chosen?>(null)
@@ -149,6 +148,9 @@ class RemoteViewModel(
                 display = display,
                 currentThumbnail = display.current.thumbnail(requests, widths.current),
                 nextThumbnail = display.next.thumbnail(requests, widths.next),
+                prefetch = requests?.let { builder ->
+                    remotePrefetch(display, widths).map { builder.request(it) }
+                }.orEmpty(),
                 error = failure?.toUiText(),
                 sidebar = display.sidebar?.rows(requests).orEmpty(),
                 sidebarFocus = display.sidebar?.focus,
@@ -219,6 +221,9 @@ class RemoteViewModel(
     private fun PlaylistRead.playlistFor(inputs: RemoteInputs): Playlist? =
         takeIf { it.uuid == RemoteDisplay.playlistNeeded(inputs) }?.let { (it.result as? Result.Success)?.data }
 
+    private fun ThumbnailRequests.request(target: ThumbnailTarget): ThumbnailRequest =
+        request(target.source, target.presentationUuid, target.cue, target.quality)
+
     private fun RemoteSidebar.rows(requests: ThumbnailRequests?): List<SidebarCueUi> =
         cues.map { cue ->
             SidebarCueUi(
@@ -231,9 +236,7 @@ class RemoteViewModel(
         }
 
     private fun RemoteBox.thumbnail(requests: ThumbnailRequests?, px: Int): ThumbnailRequest? {
-        val quality = if (px > 0) ThumbnailQuality.Box(px) else ThumbnailQuality.Grid
-        return (this as? RemoteBox.Slide)
-            ?.takeIf { it.thumbnails }
-            ?.let { requests?.request(it.source, it.presentationUuid, it.cue, quality) }
+        val slide = (this as? RemoteBox.Slide)?.takeIf { it.thumbnails } ?: return null
+        return requests?.request(slide.source, slide.presentationUuid, slide.cue, boxThumbnailQuality(px))
     }
 }

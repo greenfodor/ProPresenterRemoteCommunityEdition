@@ -46,5 +46,8 @@ fun boxQuality(px: Int): Int? {
     return quality.takeIf { it > GRID_QUALITY }
 }
 
+/** The quality a box [px] wide asks for: [ThumbnailQuality.Box], or [ThumbnailQuality.Grid] while it is unmeasured (0). */
+fun boxThumbnailQuality(px: Int): ThumbnailQuality = if (px > 0) ThumbnailQuality.Box(px) else ThumbnailQuality.Grid
+
 /** Every value [boxQuality] gives, in ascending order. */
 fun boxQualities(): List<Int> = (GRID_QUALITY + QUALITY_STEP until MAX_QUALITY step QUALITY_STEP).toList() + MAX_QUALITY

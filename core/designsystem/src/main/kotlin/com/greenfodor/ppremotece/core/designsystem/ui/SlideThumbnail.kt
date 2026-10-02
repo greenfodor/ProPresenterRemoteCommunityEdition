@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ColorImage
 import coil3.ImageLoader
+import coil3.PlatformContext
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImagePainter
 import coil3.compose.AsyncImagePreviewHandler
@@ -59,14 +60,7 @@ fun SlideThumbnail(
 ) {
     val context = LocalPlatformContext.current
     val request = remember(context, url, cacheKey, placeholderKey) {
-        ImageRequest
-            .Builder(context)
-            .data(url)
-            .memoryCacheKey(cacheKey)
-            .diskCacheKey(cacheKey)
-            .placeholderMemoryCacheKey(placeholderKey)
-            .crossfade(false)
-            .build()
+        thumbnailImageRequest(context, url, cacheKey, placeholderKey)
     }
     val painter = rememberAsyncImagePainter(request)
     val state by painter.state.collectAsStateWithLifecycle()
@@ -90,6 +84,22 @@ fun SlideThumbnail(
         )
     }
 }
+
+/** The request [SlideThumbnail] loads: [url] cached under [cacheKey] in memory and on disk, without a crossfade. */
+internal fun thumbnailImageRequest(
+    context: PlatformContext,
+    url: String?,
+    cacheKey: String?,
+    placeholderKey: String? = null
+): ImageRequest =
+    ImageRequest
+        .Builder(context)
+        .data(url)
+        .memoryCacheKey(cacheKey)
+        .diskCacheKey(cacheKey)
+        .placeholderMemoryCacheKey(placeholderKey)
+        .crossfade(false)
+        .build()
 
 /** Serves every [SlideThumbnail] inside [content] a solid synthetic image, for previews. */
 @OptIn(ExperimentalCoilApi::class)

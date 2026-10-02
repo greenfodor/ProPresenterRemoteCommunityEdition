@@ -310,6 +310,26 @@ class RemoteViewModelTest {
     }
 
     @Test
+    fun `the prefetch list follows the live cue and the box widths`() = runTest {
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 1))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitShowing().prefetch).containsExactly(ThumbnailRequest("http://host/0/3", "k3"))
+            viewModel.onAction(RemoteAction.OnCurrentBoxSized(1284))
+            viewModel.onAction(RemoteAction.OnNextBoxSized(900))
+            assertThat(awaitUntil { it.nextThumbnail?.cacheKey == "k2@900" }.prefetch).containsExactly(
+                ThumbnailRequest("http://host/0/3@900", "k3@900"),
+                ThumbnailRequest("http://host/0/2@1284", "k2@1284")
+            )
+            live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 3))
+            assertThat(awaitUntil { it.currentThumbnail?.cacheKey == "k3@1284" }.prefetch)
+                .containsExactly(ThumbnailRequest("http://host/0/4@1284", "k4@1284"))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `the sidebar lists the shown item's cues and follows a cued item`() = runTest {
         live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         val viewModel = viewModel()

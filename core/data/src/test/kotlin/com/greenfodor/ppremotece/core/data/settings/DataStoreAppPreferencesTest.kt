@@ -85,7 +85,7 @@ class DataStoreAppPreferencesTest {
     }
 
     @Test
-    fun `a saved value is reported as saved`() = runBlocking {
+    fun `a saved value is reported as saved`() = runBlocking<Unit> {
         assertThat(preferences.setAutoConnect(false)).isInstanceOf<Result.Success<Unit>>()
     }
 

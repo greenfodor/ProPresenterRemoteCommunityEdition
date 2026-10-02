@@ -8,6 +8,12 @@ import org.junit.jupiter.api.Test
 
 class BoxQualityTest {
     @Test
+    fun `a measured box asks for a box quality and an unmeasured one for the grid quality`() {
+        assertThat(boxThumbnailQuality(900)).isEqualTo(ThumbnailQuality.Box(900))
+        assertThat(boxThumbnailQuality(0)).isEqualTo(ThumbnailQuality.Grid)
+    }
+
+    @Test
     fun `a 1284 px box asks for q 800, sent as 800 on the playlist route and 1422 on the presentation route`() {
         assertThat(boxQuality(1284)).isEqualTo(800)
         assertThat(ThumbnailRoute.PLAYLIST.query(800)).isEqualTo(800)
