@@ -14,6 +14,7 @@ import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.data.network.StreamEnd
 import com.greenfodor.ppremotece.core.data.network.StreamReplay
 import com.greenfodor.ppremotece.core.domain.live.Loadable
+import com.greenfodor.ppremotece.core.domain.looks.liveLook
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CountDownTarget
 import com.greenfodor.ppremotece.core.domain.model.CueSource
@@ -21,12 +22,15 @@ import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
+import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
 import com.greenfodor.ppremotece.core.domain.model.TimerState
 import com.greenfodor.ppremotece.core.domain.model.TimerType
+import com.greenfodor.ppremotece.core.domain.status.StatusEvent
+import com.greenfodor.ppremotece.core.domain.status.StatusFrameParser
 import com.greenfodor.ppremotece.core.domain.timers.LiveTimer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -591,9 +595,70 @@ class StreamingLiveStateRepositoryTest {
         }
 
         assertThat(server.recordedStreamBodies()[1]).isEqualTo(
-            """["status/slide","timer/system_time","playlist/active","status/layers","timers"]"""
+            """["status/slide","timer/system_time","playlist/active","status/layers","timers","looks","look/current"]"""
         )
         assertThat(repository.collections.value).isEqualTo(Loadable.Unavailable)
+    }
+
+    @Test
+    fun `the stage 9 capture lists five looks with look 2 live`() = runBlocking {
+        val (looks, current) = looksAfterChunk(LOOKS_READ_CHUNK) { it.size == 5 }
+
+        assertThat(looks.map { it.name }).containsExactly("Look 01", "Look 02", "Look 03", "Look 04", "Look 05")
+        assertThat(liveLook(looks, current)).isEqualTo(looks[1])
+    }
+
+    @Test
+    fun `a one-frame look trigger in the stage 9 capture ends on look 1`() = runBlocking {
+        val (looks, current) = looksAfterChunk(ONE_FRAME_TRIGGER_CHUNK) { true }
+
+        assertThat(liveLook(looks, current)).isEqualTo(looks[0])
+    }
+
+    @Test
+    fun `a two-frame look trigger in the stage 9 capture shows look 2 after each frame`() = runBlocking {
+        val (ownUuidLooks, ownUuidCurrent) = looksAfterChunk(OWN_UUID_FRAME_CHUNK) { true }
+        val (looks, current) = looksAfterChunk(TWO_FRAME_TRIGGER_CHUNK) { true }
+
+        assertThat(liveLook(ownUuidLooks, ownUuidCurrent)).isEqualTo(ownUuidLooks[1])
+        assertThat(liveLook(looks, current)).isEqualTo(looks[1])
+    }
+
+    /**
+     * Replays the stage 9 looks capture through [chunk] on a new repository and returns the loaded
+     * looks matching [settled] with the current look the capture holds at that chunk.
+     */
+    private suspend fun looksAfterChunk(chunk: Int, settled: (List<Look>) -> Boolean): Pair<List<Look>, Look?> =
+        coroutineScope {
+            val fresh = repositoryWithWatchdog(RELAXED_WATCHDOG)
+            fake.enqueueStream(fake.stream(STAGE_9_LOOKS, StreamEnd.STALL, timeScale = 0.0, chunkLimit = chunk))
+            val expected = expectedCurrentLook(chunk)
+            val collector = launch { fresh.liveState.collect {} }
+            val looks = withTimeout(5.seconds) { fresh.looks.loaded(settled) }
+            val current = withTimeout(5.seconds) { fresh.currentLook.first { it == expected } }
+            collector.cancel()
+            looks to current
+        }
+
+    /** The last `look/current` frame of the stage 9 looks capture within its first [chunk] chunks. */
+    private fun expectedCurrentLook(chunk: Int): Look? =
+        StreamReplay.chunks(STAGE_9_LOOKS, timeScale = 0.0).take(chunk)
+            .flatMap { StatusFrameParser().events(it.bytes) }
+            .filterIsInstance<StatusEvent.CurrentLook>()
+            .lastOrNull()
+            ?.look
+
+    @Test
+    fun `looks still load when only look current was rejected`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(CURRENT_LOOK_REJECTED_FRAME), end = StreamEnd.EOF))
+        fake.enqueueStream(fake.frames(listOf(ONE_LOOK_FRAME)))
+        val collector = launch { repository.liveState.collect {} }
+
+        val looks = withTimeout(5.seconds) { repository.looks.loaded { true } }
+        collector.cancel()
+
+        assertThat(looks.map { it.name }).containsExactly("Look 01")
+        assertThat(repository.currentLook.value).isNull()
     }
 
     /** Replays [capture] through [chunk] and returns the loaded timers once they match [settled]. */
@@ -652,7 +717,7 @@ class StreamingLiveStateRepositoryTest {
         const val PRESENTATION_ROUTE_SLIDE_INDEX_CHUNK = 16
         const val SAME_ITEM_SLIDE_INDEX_CHUNK = 28
         const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active","status/layers",""" +
-            """"timers","timers/current","macro_collections"]"""
+            """"timers","timers/current","macro_collections","looks","look/current"]"""
         const val STAGE_8_TIMERS = "stage8-timers"
         const val TIMER_0 = "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
         const val TIMERS_READ_CHUNK = 7
@@ -665,8 +730,17 @@ class StreamingLiveStateRepositoryTest {
         const val OVERRUNNING_CHUNK = 10
         const val OVERRAN_CHUNK = 16
         const val SUBSCRIPTIONS_WITHOUT_MACROS_BODY =
-            """["status/slide","timer/system_time","playlist/active","status/layers","timers","timers/current"]"""
+            """["status/slide","timer/system_time","playlist/active","status/layers","timers","timers/current",""" +
+                """"looks","look/current"]"""
+        const val STAGE_9_LOOKS = "stage9-looks-props"
+        const val LOOKS_READ_CHUNK = 11
+        const val ONE_FRAME_TRIGGER_CHUNK = 14
+        const val OWN_UUID_FRAME_CHUNK = 16
+        const val TWO_FRAME_TRIGGER_CHUNK = 18
         const val MACROS_REJECTED_FRAME = """["URL: macro_collections. Error: 404 Not Found"]"""
+        const val CURRENT_LOOK_REJECTED_FRAME = """["URL: look/current. Error: 404 Not Found"]"""
+        const val ONE_LOOK_FRAME =
+            """{"url":"looks","data":[{"id":{"uuid":"l-0","name":"Look 01","index":0},"screens":[]}]}"""
         const val READINGS_REJECTED_FRAME = """["URL: timers/current. Error: 404 Not Found"]"""
         const val TWO_REJECTED_FRAME =
             """["URL: timers/current. Error: 404 Not Found","URL: macro_collections. Error: 404 Not Found"]"""

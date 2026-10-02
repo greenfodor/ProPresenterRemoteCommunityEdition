@@ -69,14 +69,16 @@ class StatusFrameParser {
     }
 
     private fun listEventOf(url: String?, data: JsonElement?): StatusEvent? {
-        val timers = data as? JsonArray
+        val list = data as? JsonArray
         val collections = data.child("collections") as? JsonArray
         return when {
-            url == "timers" && timers != null -> StatusEvent.Timers(timers.mapNotNull { it.toTimer() })
-            url == "timers/current" && timers != null ->
-                StatusEvent.TimerReadings(timers.mapNotNull { it.toTimerReading() })
+            url == "timers" && list != null -> StatusEvent.Timers(list.mapNotNull { it.toTimer() })
+            url == "timers/current" && list != null ->
+                StatusEvent.TimerReadings(list.mapNotNull { it.toTimerReading() })
             url == "macro_collections" && collections != null ->
                 StatusEvent.MacroCollections(collections.mapNotNull { it.toMacroCollection() })
+            url == "looks" && list != null -> StatusEvent.Looks(list.mapNotNull { it.toLook() })
+            url == "look/current" -> data.toLook()?.let(StatusEvent::CurrentLook)
             else -> null
         }
     }

@@ -5,12 +5,14 @@ import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.map
+import com.greenfodor.ppremotece.core.domain.looks.LooksRepository
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
+import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.Timer
@@ -62,8 +64,9 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * slide text; each pair read naming a slide of the live item's presentation, or a slide live
  * without a playlist item, sets [lastLive], which outlives clears, reconnects and resubscriptions.
  * `timers` and `timers/current` frames set [timers], each timer joined with its latest reading, and
- * `macro_collections` frames set [collections]; both are [Loadable.NotLoaded] until their first frame
- * and keep their content across reconnects. An error frame naming a subscribed url ([rejectedUrl])
+ * `macro_collections` frames set [collections], `looks` frames [looks] and `look/current` frames
+ * [currentLook]; the lists are [Loadable.NotLoaded] until their first frame and keep their content
+ * across reconnects. An error frame naming a subscribed url ([rejectedUrl])
  * removes that url from the subscriptions for the reopened streams of this connection
  * ([withoutRejected]), keeps the content it feeds [Loadable.Unavailable] and is passed to [log] once.
  */
@@ -76,7 +79,8 @@ class StreamingLiveStateRepository(
     private val log: (String) -> Unit = { Log.w(TAG, it) }
 ) : LiveStateRepository,
     TimersRepository,
-    MacrosRepository {
+    MacrosRepository,
+    LooksRepository {
     private val _lastLive = MutableStateFlow<LiveCue?>(null)
     override val lastLive: StateFlow<LiveCue?> = _lastLive.asStateFlow()
 
@@ -89,6 +93,12 @@ class StreamingLiveStateRepository(
     private val macroCollections = MutableStateFlow<Loadable<List<MacroCollection>>>(Loadable.NotLoaded)
     override val collections: StateFlow<Loadable<List<MacroCollection>>> = macroCollections.asStateFlow()
 
+    private val lookList = MutableStateFlow<Loadable<List<Look>>>(Loadable.NotLoaded)
+    override val looks: StateFlow<Loadable<List<Look>>> = lookList.asStateFlow()
+
+    private val liveLook = MutableStateFlow<Look?>(null)
+    override val currentLook: StateFlow<Look?> = liveLook.asStateFlow()
+
     @Volatile
     private var subscriptions = SUBSCRIPTIONS
 
@@ -97,6 +107,9 @@ class StreamingLiveStateRepository(
 
     @Volatile
     private var macrosRejected = false
+
+    @Volatile
+    private var looksRejected = false
 
     override val liveState: StateFlow<LiveState> =
         channelFlow {
@@ -132,6 +145,11 @@ class StreamingLiveStateRepository(
                                 is StatusEvent.TimerReadings -> timerReadings.value = event.readings
                                 is StatusEvent.MacroCollections ->
                                     if (!macrosRejected) macroCollections.value = Loadable.Loaded(event.collections)
+                                is StatusEvent.Looks -> if (!looksRejected) {
+                                    lookList.value =
+                                        Loadable.Loaded(event.looks)
+                                }
+                                is StatusEvent.CurrentLook -> liveLook.value = event.look
                                 is StatusEvent.Rejected -> event.messages.forEach(::reject)
                                 else -> Unit
                             }
@@ -190,6 +208,10 @@ class StreamingLiveStateRepository(
                 macrosRejected = true
                 macroCollections.value = Loadable.Unavailable
             }
+            "looks" -> {
+                looksRejected = true
+                lookList.value = Loadable.Unavailable
+            }
         }
         log(message)
     }
@@ -207,7 +229,9 @@ class StreamingLiveStateRepository(
                 "status/layers",
                 "timers",
                 "timers/current",
-                "macro_collections"
+                "macro_collections",
+                "looks",
+                "look/current"
             )
     }
 }

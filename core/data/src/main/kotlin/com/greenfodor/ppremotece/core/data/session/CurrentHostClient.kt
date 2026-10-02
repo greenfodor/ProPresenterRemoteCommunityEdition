@@ -75,6 +75,9 @@ internal class CurrentHostClient(
     override suspend fun triggerMacro(uuid: String): EmptyResult<DataError.Network> =
         current()?.triggerMacro(uuid) ?: notConnected()
 
+    override suspend fun triggerLook(uuid: String): EmptyResult<DataError.Network> =
+        current()?.triggerLook(uuid) ?: notConnected()
+
     override suspend fun macroIcon(uuid: String, refresh: Boolean): Result<ServerIcon, DataError.Network> =
         current()?.macroIcon(uuid, refresh) ?: notConnected()
 

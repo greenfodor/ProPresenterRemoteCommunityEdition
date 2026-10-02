@@ -112,6 +112,23 @@ class ProPresenterSessionTest {
     }
 
     @Test
+    fun `the looks are not loaded and no look is live after a disconnect`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(LOOKS_FRAME, CURRENT_LOOK_FRAME)))
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        val collector = launch { session.liveState.collect {} }
+        val loaded = withTimeout(5.seconds) { session.looks.first { it is Loadable.Loaded } }
+        assertThat((loaded as Loadable.Loaded).value.single().name).isEqualTo("Look 01")
+        assertThat(withTimeout(5.seconds) { session.currentLook.first { it != null } }?.name).isEqualTo("Look 01")
+        collector.cancel()
+
+        session.disconnect()
+
+        assertThat(withTimeout(2.seconds) { session.looks.first { it == Loadable.NotLoaded } })
+            .isEqualTo(Loadable.NotLoaded)
+        assertThat(withTimeout(2.seconds) { session.currentLook.first { it == null } }).isNull()
+    }
+
+    @Test
     fun `disconnect keeps the saved host`() = runBlocking {
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
 
@@ -249,6 +266,10 @@ class ProPresenterSessionTest {
     }
 
     private companion object {
+        const val CURRENT_LOOK_FRAME =
+            """{"url":"look/current","data":{"id":{"uuid":"live","name":"Look 01","index":0},"screens":[]}}"""
+        const val LOOKS_FRAME =
+            """{"url":"looks","data":[{"id":{"uuid":"l-0","name":"Look 01","index":0},"screens":[]}]}"""
         const val MACROS_FRAME = """{"url":"macro_collections","data":{"collections":[""" +
             """{"id":{"uuid":"c-0","name":"Collection 01","index":0},"macros":[]}]}}"""
         const val TIMERS_FRAME = """{"url":"timers","data":[{"id":{"name":"Timer 01","index":0,"uuid":"t-0"},""" +

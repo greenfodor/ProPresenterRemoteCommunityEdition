@@ -1,0 +1,19 @@
+{
+  "id": {
+    "uuid": "c8cc48a9-3409-4157-a71a-cf17ffab09e7",
+    "name": "Look 02",
+    "index": 1
+  },
+  "screens": [
+    {
+      "video_input": true,
+      "media": true,
+      "slide": true,
+      "announcements": true,
+      "props": true,
+      "messages": true,
+      "presentation": "",
+      "mask": ""
+    }
+  ]
+}

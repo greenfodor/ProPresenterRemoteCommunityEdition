@@ -167,6 +167,7 @@ class FakeProPresenter(
             CUE_TRIGGER.matches(path) -> triggerCue(path)
             ITEM_TRIGGER.matches(path) -> status(204)
             PRESENTATION_TRIGGER.matches(path) -> status(204)
+            LOOK_TRIGGER.matches(path) -> status(204)
             else -> status(404)
         }
 
@@ -212,6 +213,7 @@ class FakeProPresenter(
         private val TIMER_OPERATION = Regex("^/v1/timer/[0-9a-f-]+/(start|stop|reset)$")
         private val MACRO_TRIGGER = Regex("^/v1/macro/[0-9a-f-]+/trigger$")
         private val MACRO_ICON = Regex("^/v1/macro/[0-9a-f-]+/icon$")
+        private val LOOK_TRIGGER = Regex("^/v1/look/[0-9a-f-]+/trigger$")
         const val ICON_SVG = """<svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">""" +
             """<path d="M1,1 L17,17" fill="#FFFFFF"/></svg>"""
         const val NO_SLIDE_INDEX = """{"presentation_index":null}"""
@@ -255,6 +257,7 @@ class FakeProPresenter(
             "GET" to Regex("^/v1/clear/group/[0-9a-f-]+/icon$"),
             "GET" to Regex("^/v1/timer/[0-9a-f-]+/(start|stop|reset)$"),
             "GET" to Regex("^/v1/macro/[0-9a-f-]+/(trigger|icon)$"),
+            "GET" to Regex("^/v1/look/[0-9a-f-]+/trigger$"),
             "POST" to Regex("^/v1/status/updates$")
         )
 

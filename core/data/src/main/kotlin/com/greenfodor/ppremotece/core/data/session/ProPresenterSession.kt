@@ -8,11 +8,13 @@ import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.looks.LooksRepository
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectedHost
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveState
+import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
@@ -61,7 +63,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * while disconnected), and [streamReconnects] emits each time the live stream is reopened. Each
  * successful connect clears the [ThumbnailCache] in the background; the connection's
  * [thumbnailRequests] are null until that clear has finished. [timers] and [collections] are the connection's
- * timers and macro collections, [Loadable.NotLoaded] while disconnected.
+ * timers and macro collections, and [looks] and [currentLook] its looks and live look,
+ * [Loadable.NotLoaded] and null while disconnected.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
@@ -71,6 +74,7 @@ class ProPresenterSession(
     LiveStateRepository,
     TimersRepository,
     MacrosRepository,
+    LooksRepository,
     ThumbnailSource {
     private class Connection(
         val client: KtorProPresenterClient,
@@ -117,6 +121,18 @@ class ProPresenterSession(
         connection
             .flatMapLatest { it?.live?.collections ?: flowOf(Loadable.NotLoaded) }
             .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val looks: StateFlow<Loadable<List<Look>>> =
+        connection
+            .flatMapLatest { it?.live?.looks ?: flowOf(Loadable.NotLoaded) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val currentLook: StateFlow<Look?> =
+        connection
+            .flatMapLatest { it?.live?.currentLook ?: flowOf(null) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val thumbnailRequests: Flow<ThumbnailRequests?> =

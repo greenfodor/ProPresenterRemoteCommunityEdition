@@ -59,6 +59,9 @@ interface ProPresenterClient {
     /** Macro [uuid]'s icon; a client may serve an icon it read before unless [refresh] is set. */
     suspend fun macroIcon(uuid: String, refresh: Boolean = false): Result<ServerIcon, DataError.Network>
 
+    /** Triggers look [uuid] as the live audience look. */
+    suspend fun triggerLook(uuid: String): EmptyResult<DataError.Network>
+
     /** Starts, stops or resets timer [uuid]. */
     suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network>
 

@@ -1,0 +1,5 @@
+<resources>
+    <string name="looks_title">Looks</string>
+    <string name="looks_empty">No looks in ProPresenter</string>
+    <string name="looks_error_switch">Couldn\'t switch to %1$s</string>
+</resources>

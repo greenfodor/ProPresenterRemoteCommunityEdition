@@ -6,6 +6,7 @@ enum class ShellTab {
     REMOTE,
     MACROS,
     TIMERS,
+    LOOKS,
     SETTINGS,
     MORE
 }
