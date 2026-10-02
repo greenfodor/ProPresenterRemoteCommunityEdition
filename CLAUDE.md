@@ -42,6 +42,7 @@ MVI presentation (State / Action / Event, `XxxRoot` / `XxxScreen`, `UiText`).
 | `:feature:settings`  | `ppremotece.android.feature`         | More list and Settings screen                                                    |
 | `:feature:timers`    | `ppremotece.android.feature`         | Timers tab: one card per timer with Start/Stop and Reset                         |
 | `:feature:macros`    | `ppremotece.android.feature`         | Macros tab: one section per collection, a tile per macro that triggers it        |
+| `:feature:looks`     | `ppremotece.android.feature`         | Looks tab: a radio card per look; a tap makes it the live look                   |
 
 **Dependency rules:** `domain` depends on nothing; `data` → `domain`; `designsystem` → `domain`;
 features → `domain` + `designsystem`, never `data` and never each other; `:app` → everything and
@@ -65,11 +66,12 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   `GET /v1/trigger/previous` (from the playlist grid, the Remote, and the library grid while its
   presentation is live outside a playlist), the clear calls and the timer operations
   `GET /v1/timer/{uuid}/start`, `GET /v1/timer/{uuid}/stop` and `GET /v1/timer/{uuid}/reset`, and the
-  macro trigger `GET /v1/macro/{uuid}/trigger`;
+  macro trigger `GET /v1/macro/{uuid}/trigger`, and the look trigger `GET /v1/look/{uuid}/trigger`;
 - the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode and
   when a presentation is live outside a playlist (or remembered from one after a clear);
 - one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
-  "playlist/active", "status/layers", "timers", "timers/current", "macro_collections"]` (one unknown URL
+  "playlist/active", "status/layers", "timers", "timers/current", "macro_collections", "looks",
+  "look/current"]` (one unknown URL
   ends the whole stream); after an error frame `URL: x. Error: …` the reopened stream sends the same list
   without `x` for the rest of that connection.
 

@@ -7,6 +7,7 @@ import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.domain.model.CountDownTarget
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.Macro
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
@@ -220,6 +221,30 @@ class StatusFrameParserTest {
         assertThat(parser.decode(frame)).isEqualTo(
             StatusEvent.Timers(listOf(Timer("t-0", "Timer 01", 0, TimerType.UNKNOWN, allowsOverrun = false)))
         )
+    }
+
+    @Test
+    fun `looks decode each look with its uuid, name and index`() {
+        val frame = """{"url":"looks","data":[""" +
+            """{"id":{"uuid":"l-0","name":"Look 01","index":0},"screens":[{"slide":true,"presentation":""}]},""" +
+            """{"id":{"uuid":"l-1","name":"Look 02","index":1},"screens":[]}""" +
+            """]}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(
+            StatusEvent.Looks(listOf(Look("l-0", "Look 01", 0), Look("l-1", "Look 02", 1)))
+        )
+    }
+
+    @Test
+    fun `the current look decodes to the live look's own uuid with its name and index`() {
+        val frame = """{"url":"look/current","data":{"id":{"uuid":"live","name":"Look 02","index":1},"screens":[]}}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(StatusEvent.CurrentLook(Look("live", "Look 02", 1)))
+    }
+
+    @Test
+    fun `looks without a list decode to unknown`() {
+        assertThat(parser.decode("""{"url":"looks","data":{}}""")).isEqualTo(StatusEvent.Unknown("looks"))
     }
 
     @Test

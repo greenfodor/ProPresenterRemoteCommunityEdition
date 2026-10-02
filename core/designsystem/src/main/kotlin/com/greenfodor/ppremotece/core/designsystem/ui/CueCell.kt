@@ -147,12 +147,7 @@ private fun BoxScope.CueBadges(mark: CueMark, enabled: Boolean) {
 @Composable
 fun CueMarkBadge(mark: CueMark, modifier: Modifier = Modifier) {
     when (mark) {
-        CueMark.LIVE -> Badge(
-            text = stringResource(R.string.cue_live),
-            container = MaterialTheme.colorScheme.tertiary,
-            content = MaterialTheme.colorScheme.onTertiary,
-            modifier = modifier
-        )
+        CueMark.LIVE -> LiveBadge(modifier)
         CueMark.NEXT -> Badge(
             text = stringResource(R.string.cue_next),
             container = MaterialTheme.colorScheme.secondary,
@@ -168,6 +163,17 @@ fun CueMarkBadge(mark: CueMark, modifier: Modifier = Modifier) {
         )
         CueMark.NONE -> Unit
     }
+}
+
+/** The `LIVE` badge: `onTertiary` text on `tertiary`. */
+@Composable
+fun LiveBadge(modifier: Modifier = Modifier) {
+    Badge(
+        text = stringResource(R.string.cue_live),
+        container = MaterialTheme.colorScheme.tertiary,
+        content = MaterialTheme.colorScheme.onTertiary,
+        modifier = modifier
+    )
 }
 
 @Composable

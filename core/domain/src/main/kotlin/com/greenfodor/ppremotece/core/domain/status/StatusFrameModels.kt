@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.core.domain.status
 
 import com.greenfodor.ppremotece.core.domain.model.CountDownTarget
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
+import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.Macro
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.Timer
@@ -38,6 +39,17 @@ internal fun JsonElement?.toTimer(): Timer? {
 private fun JsonElement?.toCountDownTarget(): CountDownTarget? {
     val seconds = child("time_of_day").intOrNull() ?: return null
     return CountDownTarget(timeOfDaySeconds = seconds, period = child("period").stringOrNull().orEmpty())
+}
+
+internal fun JsonElement?.toLook(): Look? {
+    val id = child("id")
+    val uuid = id.child("uuid").stringOrNull() ?: return null
+    return Look(
+        uuid = uuid,
+        name = id.child("name").stringOrNull().orEmpty(),
+        index =
+            id.child("index").intOrNull() ?: 0
+    )
 }
 
 internal fun JsonElement?.toTimerReading(): TimerReading? {

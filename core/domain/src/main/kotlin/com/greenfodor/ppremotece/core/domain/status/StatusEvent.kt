@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.status
 
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
@@ -51,6 +52,16 @@ sealed interface StatusEvent {
     /** An error frame's messages, as sent, each naming a url the server rejected: `URL: {url}. Error: …`. */
     data class Rejected(
         val messages: List<String>
+    ) : StatusEvent
+
+    /** The looks, from a `looks` frame. */
+    data class Looks(
+        val looks: List<Look>
+    ) : StatusEvent
+
+    /** The live look, from a `look/current` frame. */
+    data class CurrentLook(
+        val look: Look
     ) : StatusEvent
 
     data class Heartbeat(

@@ -76,6 +76,8 @@ import com.greenfodor.ppremotece.core.domain.settings.keepScreenOn
 import com.greenfodor.ppremotece.feature.clear.ClearFab
 import com.greenfodor.ppremotece.feature.clear.ClearRailButton
 import com.greenfodor.ppremotece.feature.clear.ClearRailItem
+import com.greenfodor.ppremotece.feature.looks.LooksRoot
+import com.greenfodor.ppremotece.feature.looks.LooksRoute
 import com.greenfodor.ppremotece.feature.macros.MacrosRoot
 import com.greenfodor.ppremotece.feature.macros.MacrosRoute
 import com.greenfodor.ppremotece.feature.playlist.LibraryGridRoute
@@ -118,13 +120,15 @@ private enum class ShellDestination(
     REMOTE(ShellItem(ShellTab.REMOTE, DesignR.drawable.ic_settings_remote, R.string.shell_remote), RemoteRoute),
     MACROS(ShellItem(ShellTab.MACROS, DesignR.drawable.ic_bolt, R.string.shell_macros), MacrosRoute),
     TIMERS(ShellItem(ShellTab.TIMERS, DesignR.drawable.ic_timer, R.string.shell_timers), TimersRoute),
+    LOOKS(ShellItem(ShellTab.LOOKS, DesignR.drawable.ic_theater_comedy, R.string.shell_looks), LooksRoute),
     SETTINGS(ShellItem(ShellTab.SETTINGS, DesignR.drawable.ic_settings, R.string.shell_settings), SettingsRoute)
 }
 
 private val MoreItem = ShellItem(ShellTab.MORE, DesignR.drawable.ic_more_horiz, R.string.shell_more)
 
 /** The tabs that show the Clear FAB with the bar layout. */
-private val ClearFabTabs = setOf(ShellTab.PRESENTATION, ShellTab.REMOTE, ShellTab.MACROS, ShellTab.TIMERS)
+private val ClearFabTabs =
+    setOf(ShellTab.PRESENTATION, ShellTab.REMOTE, ShellTab.MACROS, ShellTab.TIMERS, ShellTab.LOOKS)
 
 /** Each tab's root route. */
 private val TabRoots: Map<ShellTab, NavKey> =
@@ -312,7 +316,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
     }
 }
 
-/** The Remote, Macros, Timers, Settings and More entries. */
+/** The Remote, Macros, Timers, Looks, Settings and More entries. */
 @Suppress("LongParameterList")
 private fun EntryProviderScope<NavKey>.tabEntries(
     widthClass: WidthClass,
@@ -331,6 +335,9 @@ private fun EntryProviderScope<NavKey>.tabEntries(
     }
     entry<TimersRoute> {
         TimersRoot(widthClass = widthClass, reconnecting = reconnecting(), floatingActionButton = fab)
+    }
+    entry<LooksRoute> {
+        LooksRoot(reconnecting = reconnecting(), floatingActionButton = fab)
     }
     entry<SettingsRoute> {
         SettingsRoot(onBack = onBack, onDisconnected = onDisconnected)

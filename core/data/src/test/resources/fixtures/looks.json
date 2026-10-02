@@ -1,0 +1,97 @@
+[
+  {
+    "id": {
+      "uuid": "0a012a78-5737-47c4-9c98-0a44ef78b767",
+      "name": "Look 01",
+      "index": 0
+    },
+    "screens": [
+      {
+        "video_input": true,
+        "media": true,
+        "slide": true,
+        "announcements": true,
+        "props": true,
+        "messages": true,
+        "presentation": "",
+        "mask": ""
+      }
+    ]
+  },
+  {
+    "id": {
+      "uuid": "0c12bf85-8ad9-4842-bef4-c5614b9c43f4",
+      "name": "Look 02",
+      "index": 1
+    },
+    "screens": [
+      {
+        "video_input": true,
+        "media": true,
+        "slide": true,
+        "announcements": true,
+        "props": true,
+        "messages": true,
+        "presentation": "",
+        "mask": ""
+      }
+    ]
+  },
+  {
+    "id": {
+      "uuid": "f3c01753-b38b-4935-af99-f29bf25fa7de",
+      "name": "Look 03",
+      "index": 2
+    },
+    "screens": [
+      {
+        "video_input": true,
+        "media": true,
+        "slide": true,
+        "announcements": true,
+        "props": true,
+        "messages": true,
+        "presentation": "",
+        "mask": ""
+      }
+    ]
+  },
+  {
+    "id": {
+      "uuid": "c9676ae2-57a2-4cd7-a00c-b5a27d86b521",
+      "name": "Look 04",
+      "index": 3
+    },
+    "screens": [
+      {
+        "video_input": true,
+        "media": true,
+        "slide": true,
+        "announcements": true,
+        "props": true,
+        "messages": true,
+        "presentation": "",
+        "mask": ""
+      }
+    ]
+  },
+  {
+    "id": {
+      "uuid": "2f73c603-8413-4ef2-8930-02ef51fbbcd6",
+      "name": "Look 05",
+      "index": 4
+    },
+    "screens": [
+      {
+        "video_input": true,
+        "media": true,
+        "slide": true,
+        "announcements": true,
+        "props": true,
+        "messages": true,
+        "presentation": "",
+        "mask": ""
+      }
+    ]
+  }
+]

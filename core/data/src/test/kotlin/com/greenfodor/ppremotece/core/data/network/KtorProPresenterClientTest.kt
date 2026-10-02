@@ -235,11 +235,12 @@ class KtorProPresenterClientTest {
         TimerOperation.entries.forEach { client.timerOperation(TIMER_UUID, it) }
         client.triggerMacro(MACRO_UUID)
         client.macroIcon(MACRO_UUID)
+        client.triggerLook(LOOK_UUID)
         client.triggerNext()
         client.triggerPrevious()
         client.statusUpdates(listOf("status/slide")).first()
 
-        assertThat(fake.requests.size).isEqualTo(23)
+        assertThat(fake.requests.size).isEqualTo(24)
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
     }
 
@@ -254,6 +255,13 @@ class KtorProPresenterClientTest {
             "GET /v1/timer/$TIMER_UUID/stop",
             "GET /v1/timer/$TIMER_UUID/reset"
         )
+    }
+
+    @Test
+    fun `triggering a look gets its trigger route`() = runBlocking {
+        assertThat(client.triggerLook(LOOK_UUID)).isEqualTo(Result.Success(Unit))
+        assertThat(fake.requests.single().method).isEqualTo("GET")
+        assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/look/$LOOK_UUID/trigger")
     }
 
     @Test
@@ -293,6 +301,7 @@ class KtorProPresenterClientTest {
 
     private companion object {
         const val MACRO_UUID = "701c977b-f340-428d-b397-a52d4f29437b"
+        const val LOOK_UUID = "0c12bf85-6a1e-4f8e-9c2d-3b4a5d6e7f80"
         const val TIMER_UUID = "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
         const val CLEAR_GROUP_UUID = "5da095db-20ef-4246-b3d5-3b741312386b"
     }

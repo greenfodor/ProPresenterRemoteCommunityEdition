@@ -7,6 +7,7 @@ import coil3.SingletonImageLoader
 import com.greenfodor.ppremotece.core.data.di.coreDataModule
 import com.greenfodor.ppremotece.feature.clear.clearModule
 import com.greenfodor.ppremotece.feature.connect.connectModule
+import com.greenfodor.ppremotece.feature.looks.looksModule
 import com.greenfodor.ppremotece.feature.macros.macrosModule
 import com.greenfodor.ppremotece.feature.playlist.playlistModule
 import com.greenfodor.ppremotece.feature.remote.remoteModule
@@ -32,7 +33,8 @@ class PPRemoteApplication :
                 clearModule,
                 settingsModule,
                 timersModule,
-                macrosModule
+                macrosModule,
+                looksModule
             )
         }
     }

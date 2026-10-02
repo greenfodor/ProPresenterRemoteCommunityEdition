@@ -36,6 +36,9 @@ TIMERS_CURRENT = "../stage8/_v1_timers_current.json"
 MACRO_COLLECTIONS = "../stage8/_v1_macro_collections.json"
 TIMERS_STAGE9 = "../stage9/_v1_timers.json"
 MACRO_COLLECTIONS_STAGE9 = "../stage9/_v1_macro_collections-2.json"
+LOOKS = "../stage9/_v1_looks.json"
+LOOK_CURRENT = "../stage9/_v1_look_current.json"
+LOOK_SCREEN_STRINGS = ("presentation", "mask")
 TIMER_TYPES = {"countdown", "count_down_to_time", "elapsed"}
 TIMER_STATES = {"stopped", "running", "complete", "overrunning", "overran", "overrun"}
 TIMER_PERIODS = {"am", "pm", "is_24_hour"}
@@ -59,6 +62,7 @@ STREAMS = [
     "../stage7/streams/stage7-probe",
     "../stage8/streams/stage8-timers",
     "../stage9/streams/stage9-overrun",
+    "../stage9/streams/stage9-looks-props",
 ]
 
 FRAME_SEPARATOR = b"\r\n\r\n"
@@ -67,19 +71,21 @@ GROUP_WHITELIST = re.compile(r"^(Intro|Verse|Pre-?Chorus|Chorus|Bridge|Tag|Endin
 IPV4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 USER_DIRS = ("Users", "home")
 USER_PATH = re.compile(r"(?:[A-Za-z]:[\\/]+|/)(?:" + "|".join(USER_DIRS) + r")[\\/].*", re.IGNORECASE)
-UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+GENERATED_NAME = re.compile(r"^(Look|Prop|Transition|Collection|Macro|Timer) \d{2}$")
 VERBATIM_ALLOWED = {
     "presentation", "header", "media", "playlist", "group", "standard", "win", "v1", "all",
     "ProPresenter 21.4.2", "10.0.26200",
     "status/slide", "presentation/active", "presentation/slide_index", "playlist/active", "timer/system_time",
-    "status/layers", "timers", "timers/current", "macro_collections",
+    "status/layers", "timers", "timers/current", "macro_collections", "looks", "look/current", "props",
+    "prop_collections",
 }
 CHUNK_LINE = re.compile(r"^# \+(?P<time>[\d.]+)s chunk (?P<n>\d+) \((?P<size>\d+) B\) tail=.*$")
 TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
 PLACEHOLDER_WORDS = {
     "presentation", "playlist", "folder", "arrangement", "group", "header", "media", "label",
     "text", "notes", "item", "host", "song", "full", "chorus", "only", "short", "bridge",
-    "service", "test", "total", "start", "macro", "collection", "timer", "+", "·",
+    "service", "test", "total", "start", "macro", "collection", "timer", "look", "prop", "transition", "fade", "+", "·",
 }
 TEST_RESOURCES = Path(__file__).resolve().parent.parent / "core" / "data" / "src" / "test" / "resources"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bin"}
@@ -271,6 +277,30 @@ class Sanitizer:
                         f"no sanitising rule for macro image {macro['image_type']!r} or actions {actions}"
                     )
 
+    def look(self, look):
+        look_id = look["id"]
+        look_id["name"] = self.replaced(look_id["name"], self.generate("Look", look_id["name"]))
+        for screen in look["screens"]:
+            for key in LOOK_SCREEN_STRINGS:
+                value = screen.get(key, "")
+                if value != "" and UUID.match(value) is None:
+                    raise ValueError(f"no sanitising rule for look screen {key} {value!r}")
+
+    def prop(self, prop):
+        prop["id"]["name"] = self.replaced(prop["id"]["name"], self.generate("Prop", prop["id"]["uuid"]))
+        transition = prop.get("transition")
+        if transition:
+            transition["name"] = self.replaced(transition["name"], self.generate("Transition", transition["uuid"]))
+
+    def prop_collections(self, data):
+        for collection in data["prop_collections"]["collections"]:
+            collection_id = collection["id"]
+            collection_id["name"] = self.replaced(
+                collection_id["name"], self.generate("Collection", collection_id["uuid"])
+            )
+            for prop in collection["props"]:
+                self.prop(prop)
+
     def frame(self, frame):
         url = frame["url"]
         data = frame["data"]
@@ -311,6 +341,16 @@ class Sanitizer:
                 self.timer_reading(reading)
         elif url == "macro_collections":
             self.macro_collections(data)
+        elif url == "looks":
+            for look in data:
+                self.look(look)
+        elif url == "look/current":
+            self.look(data)
+        elif url == "props":
+            for prop in data:
+                self.prop(prop)
+        elif url == "prop_collections":
+            self.prop_collections(data)
         elif url != "timer/system_time":
             raise ValueError(f"no sanitising rule for stream url {url}")
         return frame
@@ -422,6 +462,7 @@ def is_allowed_verbatim(sanitizer, value, path):
     ) or (
         value.strip() == ""
         or UUID.match(value) is not None
+        or GENERATED_NAME.match(value) is not None
         or GROUP_WHITELIST.match(value) is not None
         or value in sanitizer.kept_names
         or value in VERBATIM_ALLOWED
@@ -544,6 +585,15 @@ def main():
     macro_collections_stage9 = load(MACRO_COLLECTIONS_STAGE9)
     sanitizer.macro_collections(macro_collections_stage9)
     write_json(out_dir / "macro-collections-stage9.json", macro_collections_stage9)
+
+    looks = load(LOOKS)
+    for look in looks:
+        sanitizer.look(look)
+    write_json(out_dir / "looks.json", looks)
+
+    look_current = load(LOOK_CURRENT)
+    sanitizer.look(look_current)
+    write_json(out_dir / "look-current.json", look_current)
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)
