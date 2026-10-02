@@ -15,8 +15,8 @@ interface TimersRepository {
     val timers: StateFlow<List<LiveTimer>>
 }
 
-/** Each of [timers], in order, with its reading from [readings] by uuid. */
+/** Each of [timers], in order and once per uuid, with its reading from [readings] by uuid. */
 fun joinTimers(timers: List<Timer>, readings: List<TimerReading>): List<LiveTimer> {
     val byUuid = readings.associateBy { it.uuid }
-    return timers.map { LiveTimer(it, byUuid[it.uuid]) }
+    return timers.distinctBy { it.uuid }.map { LiveTimer(it, byUuid[it.uuid]) }
 }

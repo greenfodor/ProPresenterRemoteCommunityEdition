@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -44,10 +45,11 @@ class TimersViewModelTest {
         override val timers = MutableStateFlow(listOf(stopped, running))
     }
     private val client = FakeTimerClient()
+    private val dispatcher = UnconfinedTestDispatcher()
 
     @BeforeEach
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
+        Dispatchers.setMain(dispatcher)
     }
 
     @AfterEach
@@ -78,6 +80,44 @@ class TimersViewModelTest {
     }
 
     @Test
+    fun `a toggle tap waits for the timer's next reading after a successful start`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.onAction(TimersAction.OnToggleClick("t-0"))
+        viewModel.onAction(TimersAction.OnToggleClick("t-0"))
+        repository.timers.value = listOf(
+            stopped.copy(reading = TimerReading("t-0", "08:29:59", TimerState.RUNNING)),
+            running
+        )
+        viewModel.onAction(TimersAction.OnToggleClick("t-0"))
+
+        assertThat(client.operations).containsExactly("t-0" to TimerOperation.START, "t-0" to TimerOperation.STOP)
+    }
+
+    @Test
+    fun `a timer takes taps again when no reading follows a successful start within two seconds`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            viewModel.onAction(TimersAction.OnToggleClick("t-0"))
+            advanceTimeBy(2_001)
+            viewModel.onAction(TimersAction.OnToggleClick("t-0"))
+
+            assertThat(client.operations).containsExactly("t-0" to TimerOperation.START, "t-0" to TimerOperation.START)
+        }
+
+    @Test
+    fun `a failed operation frees the timer before its message is shown`() = runTest(dispatcher) {
+        client.result = Result.Failure(DataError.Network.TIMEOUT)
+        val viewModel = viewModel()
+
+        viewModel.onAction(TimersAction.OnResetClick("t-0"))
+        viewModel.onAction(TimersAction.OnResetClick("t-0"))
+
+        assertThat(client.operations).containsExactly("t-0" to TimerOperation.RESET, "t-0" to TimerOperation.RESET)
+    }
+
+    @Test
     fun `reset resets the timer`() = runTest {
         viewModel().onAction(TimersAction.OnResetClick("t-1"))
 
@@ -85,7 +125,7 @@ class TimersViewModelTest {
     }
 
     @Test
-    fun `taps on a timer are ignored while its request is in flight`() = runTest {
+    fun `taps on a timer are ignored while its request is in flight`() = runTest(dispatcher) {
         client.gate = CompletableDeferred()
         val viewModel = viewModel()
 
@@ -94,6 +134,8 @@ class TimersViewModelTest {
         viewModel.onAction(TimersAction.OnResetClick("t-0"))
         viewModel.onAction(TimersAction.OnResetClick("t-1"))
         client.gate.complete(Unit)
+        repository.timers.value =
+            listOf(stopped.copy(reading = TimerReading("t-0", "08:29:59", TimerState.RUNNING)), running)
         viewModel.onAction(TimersAction.OnResetClick("t-0"))
 
         assertThat(client.operations).containsExactly(

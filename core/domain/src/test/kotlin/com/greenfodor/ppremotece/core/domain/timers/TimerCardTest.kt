@@ -59,6 +59,14 @@ class TimerCardTest {
     }
 
     @Test
+    fun `a timer listed twice is joined once`() {
+        val first = timer()
+        val repeated = first.copy(name = "Timer 01 again")
+
+        assertThat(joinTimers(listOf(first, repeated), emptyList())).isEqualTo(listOf(LiveTimer(first, null)))
+    }
+
+    @Test
     fun `timers are joined with their readings by uuid in timer order`() {
         val first = timer()
         val second = Timer("t-1", "Timer 02", 1, TimerType.ELAPSED, allowsOverrun = false)
