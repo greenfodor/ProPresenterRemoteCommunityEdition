@@ -53,14 +53,17 @@ internal fun gridState(
 
 /**
  * This grid with [live]'s live and next cues, the arrangement banner with its Re-sync target
- * ([resyncTarget]) and the group strip. The live arrangement is expanded once.
+ * ([resyncTarget]; none while [liveItemLoading]) and the group strip. The live arrangement is
+ * expanded once.
  */
+@Suppress("LongParameterList")
 internal fun SlideGridState.withLive(
     source: CueSource,
     presentation: Presentation,
     cueList: CueList,
     live: LiveState,
-    liveItemRef: PresentationRef?
+    liveItemRef: PresentationRef?,
+    liveItemLoading: Boolean = false
 ): SlideGridState {
     val liveIndex = liveCueIndex(live, source, presentation.uuid, cueList.cues)
     val slide = live.slide?.takeIf { it.presentationUuid == presentation.uuid && source is CueSource.PlaylistItem }
@@ -70,7 +73,9 @@ internal fun SlideGridState.withLive(
         liveCueIndex = liveIndex,
         nextCueIndex = nextCueIndex(live, source, presentation.uuid, cueList.cues),
         banner = banner,
-        resync = banner?.let { resyncTarget(liveCues?.cues, checkNotNull(slide).index, cueList.cues) },
+        resync = banner
+            ?.takeUnless { liveItemLoading }
+            ?.let { resyncTarget(liveCues?.cues, checkNotNull(slide).index, cueList.cues) },
         groupSequence = groupSequence(cueList, liveIndex)
     )
 }

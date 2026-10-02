@@ -13,7 +13,9 @@ import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.data.network.StreamEnd
 import com.greenfodor.ppremotece.core.data.network.StreamReplay
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.CountDownTarget
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
@@ -32,7 +34,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -41,6 +46,7 @@ import mockwebserver3.junit5.StartStop
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
@@ -68,12 +74,15 @@ class StreamingLiveStateRepositoryTest {
         repository = repositoryWithWatchdog(RELAXED_WATCHDOG)
     }
 
+    private val logged = CopyOnWriteArrayList<String>()
+
     private fun repositoryWithWatchdog(watchdog: Duration) =
         StreamingLiveStateRepository(
             client = client,
             scope = scope,
             watchdogTimeout = watchdog,
-            reconnectDelay = { 10.milliseconds }
+            reconnectDelay = { 10.milliseconds },
+            log = { logged += it }
         )
 
     @AfterEach
@@ -459,7 +468,7 @@ class StreamingLiveStateRepositoryTest {
             fake.stream(STAGE_8_TIMERS, StreamEnd.STALL, timeScale = 0.0, chunkLimit = MACROS_READ_CHUNK)
         )
         val collector = launch { repository.liveState.collect {} }
-        val collections = withTimeout(5.seconds) { repository.collections.first { it.isNotEmpty() } }
+        val collections = withTimeout(5.seconds) { repository.collections.loaded { it.isNotEmpty() } }
         collector.cancel()
 
         val collection = collections.single()
@@ -470,15 +479,147 @@ class StreamingLiveStateRepositoryTest {
             .isEqualTo(GroupColor(red = 0.09019608f, green = 0.49803922f, blue = 1f, alpha = 1f))
     }
 
-    /** Replays the stage 8 capture through [chunk] and returns the timers once they match [settled]. */
-    private suspend fun timersAfterChunk(chunk: Int, settled: (List<LiveTimer>) -> Boolean): List<LiveTimer> =
+    @Test
+    fun `the stage 9 capture shows timer 2 overrunning with a negative time`() = runBlocking {
+        val timers = timersAfterChunk(OVERRUNNING_CHUNK, STAGE_9_OVERRUN) {
+            it.getOrNull(1)?.reading?.time ==
+                "-00:34:45"
+        }
+
+        assertThat(timers[1].reading).isEqualTo(TimerReading(TIMER_2, "-00:34:45", TimerState.OVERRUNNING))
+    }
+
+    @Test
+    fun `the stage 9 capture ends with timer 2 overran`() = runBlocking {
+        val timers = timersAfterChunk(OVERRAN_CHUNK, STAGE_9_OVERRUN) {
+            it.getOrNull(1)?.reading?.state ==
+                TimerState.OVERRAN
+        }
+
+        assertThat(timers[1].reading).isEqualTo(TimerReading(TIMER_2, "-00:34:47", TimerState.OVERRAN))
+    }
+
+    @Test
+    fun `the stage 9 capture reads each count-down-to-time target`() = runBlocking {
+        val timers = timersAfterChunk(STAGE_9_TIMERS_CHUNK, STAGE_9_OVERRUN) { it.size == 3 }
+
+        assertThat(timers.map { it.timer.target }).containsExactly(
+            CountDownTarget(timeOfDaySeconds = 30600, period = "pm"),
+            CountDownTarget(timeOfDaySeconds = 42600, period = "is_24_hour"),
+            null
+        )
+    }
+
+    @Test
+    fun `timers and macros are not loaded before their first frame`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(FakeProPresenter.HEARTBEAT_FRAME)))
+
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitUntil { it.connection == ConnectionStatus.CONNECTED }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(repository.timers.value).isEqualTo(Loadable.NotLoaded)
+        assertThat(repository.collections.value).isEqualTo(Loadable.NotLoaded)
+    }
+
+    @Test
+    fun `empty timers and macros frames load empty lists`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(EMPTY_TIMERS_FRAME, EMPTY_MACROS_FRAME)))
+        val collector = launch { repository.liveState.collect {} }
+
+        assertThat(withTimeout(5.seconds) { repository.timers.first { it is Loadable.Loaded } })
+            .isEqualTo(Loadable.Loaded(emptyList()))
+        assertThat(withTimeout(5.seconds) { repository.collections.first { it is Loadable.Loaded } })
+            .isEqualTo(Loadable.Loaded(emptyList()))
+        collector.cancel()
+    }
+
+    @Test
+    fun `timers and macros are kept across a reconnect`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(ONE_TIMER_FRAME, ONE_MACRO_FRAME), end = StreamEnd.EOF))
+        fake.enqueueStream(fake.frames(listOf(FakeProPresenter.HEARTBEAT_FRAME)))
+
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitUntil { it.connection == ConnectionStatus.RECONNECTING }
+            awaitUntil { it.connection == ConnectionStatus.CONNECTED }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(repository.timers.loaded { true }.single().timer.name).isEqualTo("Timer 01")
+        assertThat(repository.collections.loaded { true }.single().name).isEqualTo("Collection 01")
+    }
+
+    @Test
+    fun `an error frame resubscribes without the rejected url and marks its tab unavailable`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(MACROS_REJECTED_FRAME), end = StreamEnd.EOF))
+        fake.enqueueStream(fake.frames(listOf(FakeProPresenter.HEARTBEAT_FRAME, ONE_TIMER_FRAME)))
+        val collector = launch { repository.liveState.collect {} }
+
+        assertThat(withTimeout(5.seconds) { repository.collections.first { it == Loadable.Unavailable } })
+            .isEqualTo(Loadable.Unavailable)
+        withTimeout(5.seconds) { repository.timers.first { it is Loadable.Loaded } }
+        collector.cancel()
+
+        val bodies = server.recordedStreamBodies()
+        assertThat(bodies.first()).isEqualTo(SUBSCRIPTIONS_BODY)
+        assertThat(bodies[1]).isEqualTo(SUBSCRIPTIONS_WITHOUT_MACROS_BODY)
+        assertThat(logged.toList()).containsExactly("URL: macro_collections. Error: 404 Not Found")
+    }
+
+    @Test
+    fun `timers stay unavailable when only timers current was rejected`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(READINGS_REJECTED_FRAME), end = StreamEnd.EOF))
+        fake.enqueueStream(fake.frames(listOf(ONE_TIMER_FRAME, ONE_MACRO_FRAME)))
+        val collector = launch { repository.liveState.collect {} }
+
+        withTimeout(5.seconds) { repository.collections.first { it is Loadable.Loaded } }
+        collector.cancel()
+
+        assertThat(repository.timers.value).isEqualTo(Loadable.Unavailable)
+    }
+
+    @Test
+    fun `every url an error frame names is left out`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(TWO_REJECTED_FRAME), end = StreamEnd.EOF))
+        fake.enqueueStream(fake.frames(listOf(FakeProPresenter.HEARTBEAT_FRAME)))
+
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitUntil { it.connection == ConnectionStatus.RECONNECTING }
+            awaitUntil { it.connection == ConnectionStatus.CONNECTED }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(server.recordedStreamBodies()[1]).isEqualTo(
+            """["status/slide","timer/system_time","playlist/active","status/layers","timers"]"""
+        )
+        assertThat(repository.collections.value).isEqualTo(Loadable.Unavailable)
+    }
+
+    /** Replays [capture] through [chunk] and returns the loaded timers once they match [settled]. */
+    private suspend fun timersAfterChunk(
+        chunk: Int,
+        capture: String = STAGE_8_TIMERS,
+        settled: (List<LiveTimer>) -> Boolean
+    ): List<LiveTimer> =
         coroutineScope {
-            fake.enqueueStream(fake.stream(STAGE_8_TIMERS, StreamEnd.STALL, timeScale = 0.0, chunkLimit = chunk))
+            fake.enqueueStream(fake.stream(capture, StreamEnd.STALL, timeScale = 0.0, chunkLimit = chunk))
             val collector = launch { repository.liveState.collect {} }
-            val timers = withTimeout(5.seconds) { repository.timers.first(settled) }
+            val timers = withTimeout(5.seconds) { repository.timers.loaded(settled) }
             collector.cancel()
             timers
         }
+
+    /** The first loaded value of this flow that matches [settled]. */
+    private suspend fun <T> Flow<Loadable<T>>.loaded(settled: (T) -> Boolean): T =
+        filterIsInstance<Loadable.Loaded<T>>().map { it.value }.first(settled)
+
+    /** The bodies of every `status/updates` request so far, in order. */
+    private fun MockWebServer.recordedStreamBodies(): List<String?> =
+        generateSequence { takeRequest(1, TimeUnit.SECONDS) }
+            .filter { it.url.encodedPath == "/v1/status/updates" }
+            .map { it.body?.utf8() }
+            .toList()
 
     @Test
     fun `reconnect delay doubles from half a second and is capped at ten seconds`() {
@@ -518,5 +659,22 @@ class StreamingLiveStateRepositoryTest {
         const val MACROS_READ_CHUNK = 7
         const val TIMER_RUNNING_CHUNK = 13
         const val TIMER_STOPPED_CHUNK = 20
+        const val STAGE_9_OVERRUN = "stage9-overrun"
+        const val TIMER_2 = "c5fcf5b0-ee31-4143-9d54-6514d922b2bb"
+        const val STAGE_9_TIMERS_CHUNK = 6
+        const val OVERRUNNING_CHUNK = 10
+        const val OVERRAN_CHUNK = 16
+        const val SUBSCRIPTIONS_WITHOUT_MACROS_BODY =
+            """["status/slide","timer/system_time","playlist/active","status/layers","timers","timers/current"]"""
+        const val MACROS_REJECTED_FRAME = """["URL: macro_collections. Error: 404 Not Found"]"""
+        const val READINGS_REJECTED_FRAME = """["URL: timers/current. Error: 404 Not Found"]"""
+        const val TWO_REJECTED_FRAME =
+            """["URL: timers/current. Error: 404 Not Found","URL: macro_collections. Error: 404 Not Found"]"""
+        const val EMPTY_TIMERS_FRAME = """{"url":"timers","data":[]}"""
+        const val EMPTY_MACROS_FRAME = """{"url":"macro_collections","data":{"collections":[]}}"""
+        const val ONE_TIMER_FRAME = """{"url":"timers","data":[{"id":{"name":"Timer 01","index":0,"uuid":"t-0"},""" +
+            """"allows_overrun":false,"elapsed":{"start_time":0}}]}"""
+        const val ONE_MACRO_FRAME = """{"url":"macro_collections","data":{"collections":[""" +
+            """{"id":{"uuid":"c-0","name":"Collection 01","index":0},"macros":[]}]}}"""
     }
 }

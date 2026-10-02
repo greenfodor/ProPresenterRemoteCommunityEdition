@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.core.domain.status
 
+import com.greenfodor.ppremotece.core.domain.model.CountDownTarget
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.Macro
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
@@ -22,19 +23,21 @@ private val TIMER_TYPES = mapOf(
 
 internal fun JsonElement?.toTimer(): Timer? {
     val id = child("id")
-    val uuid = id.child("uuid").stringOrNull()
-    val type = TIMER_TYPES.entries.firstOrNull { (key, _) -> child(key) != null }?.value
-    return if (uuid != null && type != null) {
-        Timer(
-            uuid = uuid,
-            name = id.child("name").stringOrNull().orEmpty(),
-            index = id.child("index").intOrNull() ?: 0,
-            type = type,
-            allowsOverrun = (child("allows_overrun") as? JsonPrimitive)?.booleanOrNull ?: false
-        )
-    } else {
-        null
-    }
+    val uuid = id.child("uuid").stringOrNull() ?: return null
+    val type = TIMER_TYPES.entries.firstOrNull { (key, _) -> child(key) != null }?.value ?: TimerType.UNKNOWN
+    return Timer(
+        uuid = uuid,
+        name = id.child("name").stringOrNull().orEmpty(),
+        index = id.child("index").intOrNull() ?: 0,
+        type = type,
+        allowsOverrun = (child("allows_overrun") as? JsonPrimitive)?.booleanOrNull ?: false,
+        target = child("count_down_to_time").toCountDownTarget()
+    )
+}
+
+private fun JsonElement?.toCountDownTarget(): CountDownTarget? {
+    val seconds = child("time_of_day").intOrNull() ?: return null
+    return CountDownTarget(timeOfDaySeconds = seconds, period = child("period").stringOrNull().orEmpty())
 }
 
 internal fun JsonElement?.toTimerReading(): TimerReading? {
@@ -65,7 +68,8 @@ private fun JsonElement?.toMacro(): Macro? {
             uuid = uuid,
             name = id.child("name").stringOrNull().orEmpty(),
             index = id.child("index").intOrNull() ?: 0,
-            color = child("color").toColor()
+            color = child("color").toColor(),
+            imageType = child("image_type").stringOrNull()
         )
     }
 }

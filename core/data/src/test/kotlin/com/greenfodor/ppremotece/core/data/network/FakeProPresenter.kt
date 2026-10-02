@@ -6,6 +6,7 @@ import com.greenfodor.ppremotece.core.data.Fixtures
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.status.StatusFrameParser
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import mockwebserver3.Dispatcher
@@ -388,7 +389,7 @@ data class LiveBodies(
 
 /** The `data` of [frame] when it is a `playlist/active` frame, as JSON text. */
 fun playlistActiveData(frame: String): String? {
-    val root = Json.parseToJsonElement(frame).jsonObject
+    val root = Json.parseToJsonElement(frame) as? JsonObject ?: return null
     return root["data"]?.toString()?.takeIf { (root["url"] as? JsonPrimitive)?.content == "playlist/active" }
 }
 

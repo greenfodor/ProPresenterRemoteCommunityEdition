@@ -34,11 +34,13 @@ LIBRARY_INDEX = 0
 TIMERS = "../stage8/_v1_timers.json"
 TIMERS_CURRENT = "../stage8/_v1_timers_current.json"
 MACRO_COLLECTIONS = "../stage8/_v1_macro_collections.json"
+TIMERS_STAGE9 = "../stage9/_v1_timers.json"
+MACRO_COLLECTIONS_STAGE9 = "../stage9/_v1_macro_collections-2.json"
 TIMER_TYPES = {"countdown", "count_down_to_time", "elapsed"}
 TIMER_STATES = {"stopped", "running", "complete", "overrunning", "overran", "overrun"}
 TIMER_PERIODS = {"am", "pm", "is_24_hour"}
 TIMER_TIME = re.compile(r"^-?\d{2}:\d{2}:\d{2}(\.\d+)?$")
-MACRO_IMAGE_TYPES = {"Default"}
+MACRO_IMAGE_TYPES = {"Default", "Timer", "Custom"}
 MACRO_ACTION_TYPES = {"stage_layout", "timer", "audience_look", "clear"}
 CLEAR_GROUPS_OUT = "clear-groups.json"
 CLEAR_GROUP_LAYERS = {
@@ -56,6 +58,7 @@ STREAMS = [
     "../stage6/streams/stage6-probe",
     "../stage7/streams/stage7-probe",
     "../stage8/streams/stage8-timers",
+    "../stage9/streams/stage9-overrun",
 ]
 
 FRAME_SEPARATOR = b"\r\n\r\n"
@@ -76,7 +79,7 @@ TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
 PLACEHOLDER_WORDS = {
     "presentation", "playlist", "folder", "arrangement", "group", "header", "media", "label",
     "text", "notes", "item", "host", "song", "full", "chorus", "only", "short", "bridge",
-    "service", "test", "total", "start", "+", "·",
+    "service", "test", "total", "start", "macro", "collection", "timer", "+", "·",
 }
 TEST_RESOURCES = Path(__file__).resolve().parent.parent / "core" / "data" / "src" / "test" / "resources"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bin"}
@@ -532,6 +535,15 @@ def main():
     macro_collections = load(MACRO_COLLECTIONS)
     sanitizer.macro_collections(macro_collections)
     write_json(out_dir / "macro-collections.json", macro_collections)
+
+    timers_stage9 = load(TIMERS_STAGE9)
+    for timer in timers_stage9:
+        sanitizer.timer(timer)
+    write_json(out_dir / "timers-stage9.json", timers_stage9)
+
+    macro_collections_stage9 = load(MACRO_COLLECTIONS_STAGE9)
+    sanitizer.macro_collections(macro_collections_stage9)
+    write_json(out_dir / "macro-collections-stage9.json", macro_collections_stage9)
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)

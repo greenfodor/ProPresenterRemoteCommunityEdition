@@ -3,16 +3,27 @@ package com.greenfodor.ppremotece.core.domain.model
 enum class TimerType {
     COUNTDOWN,
     COUNTDOWN_TO_TIME,
-    ELAPSED
+    ELAPSED,
+    UNKNOWN
 }
 
-/** A timer configured in ProPresenter. */
+/**
+ * The clock time a count-down-to-time timer counts down to: [timeOfDaySeconds] from the start of
+ * the clock, read with ProPresenter's [period] (`am`, `pm`, `is_24_hour`, `24_hour`).
+ */
+data class CountDownTarget(
+    val timeOfDaySeconds: Int,
+    val period: String
+)
+
+/** A timer configured in ProPresenter; [target] is a count-down-to-time timer's configured target. */
 data class Timer(
     val uuid: String,
     val name: String,
     val index: Int,
     val type: TimerType,
-    val allowsOverrun: Boolean
+    val allowsOverrun: Boolean,
+    val target: CountDownTarget? = null
 )
 
 /** A timer's state as `timers/current` names it; `overrun` reads as [OVERRAN], anything unknown as [UNKNOWN]. */

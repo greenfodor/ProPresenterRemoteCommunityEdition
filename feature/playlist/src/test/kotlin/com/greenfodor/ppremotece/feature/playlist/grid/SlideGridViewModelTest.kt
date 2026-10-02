@@ -590,12 +590,43 @@ class SlideGridViewModelTest {
     }
 
     @Test
-    fun `re-sync is disabled and sends nothing when the live arrangement is unknown`() = runTest {
+    fun `re-sync is disabled without a reason while the live item's playlist is loading`() = runTest {
         content.pendingPlaylists += PENDING_PLAYLIST
         val viewModel = viewModel()
         live.value = LiveState(
             ConnectionStatus.CONNECTED,
             PlaylistItemKey(PENDING_PLAYLIST, 0),
+            LiveSlide(SONG_C, index = 1, totalCues = 5)
+        )
+
+        viewModel.state.test {
+            val state = expectMostRecentItem()
+            assertThat(state.banner).isNotNull()
+            assertThat(state.resync).isNull()
+            viewModel.onAction(SlideGridAction.OnResyncClick)
+        }
+
+        assertThat(client.triggeredCues).isEmpty()
+    }
+
+    @Test
+    fun `re-sync is disabled and sends nothing when the live arrangement is unknown`() = runTest {
+        content.playlists[UNRESOLVED_PLAYLIST] = Playlist(
+            uuid = UNRESOLVED_PLAYLIST,
+            name = "Playlist 02",
+            items = listOf(
+                PlaylistItem(
+                    key = PlaylistItemKey(UNRESOLVED_PLAYLIST, 0),
+                    name = "Song C",
+                    type = PlaylistItemType.PRESENTATION,
+                    presentation = PresentationRef(SONG_C, arrangementUuid = "a-missing", arrangementName = "Missing")
+                )
+            )
+        )
+        val viewModel = viewModel()
+        live.value = LiveState(
+            ConnectionStatus.CONNECTED,
+            PlaylistItemKey(UNRESOLVED_PLAYLIST, 0),
             LiveSlide(SONG_C, index = 1, totalCues = 5)
         )
 
@@ -710,5 +741,6 @@ class SlideGridViewModelTest {
         const val PLAYLIST = "pl-1"
         const val SONG_C = "p-c"
         const val PENDING_PLAYLIST = "pl-2"
+        const val UNRESOLVED_PLAYLIST = "pl-3"
     }
 }

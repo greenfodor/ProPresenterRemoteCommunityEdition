@@ -12,12 +12,12 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
 
 /**
  * Splits a `status/updates` byte stream into frames separated by `\r\n\r\n` and decodes each
- * frame's `{url, data}` into a [StatusEvent]. Bytes of an incomplete frame are kept until a later
+ * frame's `{url, data}` into a [StatusEvent]; an error frame (a list of strings) decodes to
+ * [StatusEvent.Rejected] with its strings. Bytes of an incomplete frame are kept until a later
  * chunk completes it; more than [MAX_PENDING_BYTES] without a separator are dropped. One instance
  * serves one stream connection.
  */
@@ -43,8 +43,17 @@ class StatusFrameParser {
 
     fun events(chunk: ByteArray): List<StatusEvent> = feed(chunk).map(::decode)
 
-    fun decode(frame: String): StatusEvent {
-        val root = parseObject(frame) ?: return StatusEvent.Unknown(null)
+    fun decode(frame: String): StatusEvent =
+        when (val element = parseElement(frame)) {
+            is JsonArray -> element.mapNotNull { it.stringOrNull() }
+                .takeIf { it.isNotEmpty() }
+                ?.let(StatusEvent::Rejected)
+                ?: StatusEvent.Unknown(null)
+            is JsonObject -> decodeObject(element)
+            else -> StatusEvent.Unknown(null)
+        }
+
+    private fun decodeObject(root: JsonObject): StatusEvent {
         val url = (root["url"] as? JsonPrimitive)?.content
         val data = root["data"]
         return when (url) {
@@ -80,9 +89,9 @@ class StatusFrameParser {
                 .toSet()
         )
 
-    private fun parseObject(frame: String): JsonObject? =
+    private fun parseElement(frame: String): JsonElement? =
         try {
-            Json.parseToJsonElement(frame).jsonObject
+            Json.parseToJsonElement(frame)
         } catch (_: SerializationException) {
             null
         } catch (_: IllegalArgumentException) {

@@ -70,7 +70,8 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   when a presentation is live outside a playlist (or remembered from one after a clear);
 - one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
   "playlist/active", "status/layers", "timers", "timers/current", "macro_collections"]` (one unknown URL
-  ends the whole stream).
+  ends the whole stream); after an error frame `URL: x. Error: …` the reopened stream sends the same list
+  without `x` for the rest of that connection.
 
 Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content, such as a timer edit) is out of
 bounds, as are `timer/{id}/increment/…`, `timers/{op}` and any `/focus` route.

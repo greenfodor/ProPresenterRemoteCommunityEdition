@@ -1,7 +1,6 @@
 package com.greenfodor.ppremotece.core.data.session
 
 import assertk.assertThat
-import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
@@ -9,6 +8,7 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.data.network.FakeProPresenter
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.model.Cue
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
@@ -82,31 +82,33 @@ class ProPresenterSessionTest {
     }
 
     @Test
-    fun `the timers are cleared on disconnect`() = runBlocking {
+    fun `the timers are not loaded after a disconnect`() = runBlocking {
         fake.enqueueStream(fake.frames(listOf(TIMERS_FRAME)))
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
         val collector = launch { session.liveState.collect {} }
-        assertThat(withTimeout(5.seconds) { session.timers.first { it.isNotEmpty() } }.single().timer.name)
-            .isEqualTo("Timer 01")
+        val loaded = withTimeout(5.seconds) { session.timers.first { it is Loadable.Loaded } }
+        assertThat((loaded as Loadable.Loaded).value.single().timer.name).isEqualTo("Timer 01")
         collector.cancel()
 
         session.disconnect()
 
-        assertThat(withTimeout(2.seconds) { session.timers.first { it.isEmpty() } }).isEmpty()
+        assertThat(withTimeout(2.seconds) { session.timers.first { it == Loadable.NotLoaded } })
+            .isEqualTo(Loadable.NotLoaded)
     }
 
     @Test
-    fun `the macro collections are cleared on disconnect`() = runBlocking {
+    fun `the macro collections are not loaded after a disconnect`() = runBlocking {
         fake.enqueueStream(fake.frames(listOf(MACROS_FRAME)))
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
         val collector = launch { session.liveState.collect {} }
-        assertThat(withTimeout(5.seconds) { session.collections.first { it.isNotEmpty() } }.single().name)
-            .isEqualTo("Collection 01")
+        val loaded = withTimeout(5.seconds) { session.collections.first { it is Loadable.Loaded } }
+        assertThat((loaded as Loadable.Loaded).value.single().name).isEqualTo("Collection 01")
         collector.cancel()
 
         session.disconnect()
 
-        assertThat(withTimeout(2.seconds) { session.collections.first { it.isEmpty() } }).isEmpty()
+        assertThat(withTimeout(2.seconds) { session.collections.first { it == Loadable.NotLoaded } })
+            .isEqualTo(Loadable.NotLoaded)
     }
 
     @Test

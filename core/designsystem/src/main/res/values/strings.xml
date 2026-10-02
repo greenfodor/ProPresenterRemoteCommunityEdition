@@ -12,4 +12,5 @@
     <string name="cue_disabled">Disabled slide</string>
     <string name="cue_label">%1$d. %2$s</string>
     <string name="reconnecting">Reconnecting…</string>
+    <string name="not_available">Not available on this ProPresenter</string>
 </resources>

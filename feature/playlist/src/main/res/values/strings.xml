@@ -35,6 +35,7 @@
     <string name="grid_resync">Re-sync</string>
     <string name="grid_resync_not_in_arrangement">This slide isn\'t in %1$s</string>
     <string name="grid_resync_live_unknown">Live arrangement unknown</string>
+    <string name="grid_resync_no_enabled_after">No enabled slide after this one</string>
     <plurals name="grid_banner_named">
         <item quantity="one">Live in %1$s · %2$d cue</item>
         <item quantity="other">Live in %1$s · %2$d cues</item>

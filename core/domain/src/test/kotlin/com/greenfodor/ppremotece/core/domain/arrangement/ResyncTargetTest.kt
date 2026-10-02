@@ -2,7 +2,6 @@ package com.greenfodor.ppremotece.core.domain.arrangement
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isNull
 import com.greenfodor.ppremotece.core.domain.arrangement.SongFixtures.cueList
 import org.junit.jupiter.api.Test
 
@@ -46,7 +45,8 @@ class ResyncTargetTest {
     }
 
     @Test
-    fun `nothing is chosen when no enabled cue follows a disabled target`() {
-        assertThat(resyncTarget(long, liveIndex = 3, itemCues = short.map { it.copy(enabled = false) })).isNull()
+    fun `a disabled target with no enabled cue after it is no match`() {
+        assertThat(resyncTarget(long, liveIndex = 3, itemCues = short.map { it.copy(enabled = false) }))
+            .isEqualTo(ResyncTarget.NoMatch(NoMatchReason.NO_ENABLED_AFTER))
     }
 }

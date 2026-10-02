@@ -178,6 +178,7 @@ private fun noMatchText(reason: NoMatchReason, arrangement: ArrangementLabel?): 
             arrangement?.text() ?: stringResource(R.string.arrangement_song_order)
         )
         NoMatchReason.LIVE_ARRANGEMENT_UNKNOWN -> stringResource(R.string.grid_resync_live_unknown)
+        NoMatchReason.NO_ENABLED_AFTER -> stringResource(R.string.grid_resync_no_enabled_after)
     }
 
 @Composable

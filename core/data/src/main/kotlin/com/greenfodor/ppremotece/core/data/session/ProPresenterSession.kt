@@ -6,6 +6,7 @@ import com.greenfodor.ppremotece.core.data.thumbnail.presentationThumbnailUrl
 import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailUrl
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectedHost
@@ -60,7 +61,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * while disconnected), and [streamReconnects] emits each time the live stream is reopened. Each
  * successful connect clears the [ThumbnailCache] in the background; the connection's
  * [thumbnailRequests] are null until that clear has finished. [timers] and [collections] are the connection's
- * timers and macro collections, empty while disconnected.
+ * timers and macro collections, [Loadable.NotLoaded] while disconnected.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
@@ -106,16 +107,16 @@ class ProPresenterSession(
             .stateIn(sessionScope, SharingStarted.Eagerly, null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override val timers: StateFlow<List<LiveTimer>> =
+    override val timers: StateFlow<Loadable<List<LiveTimer>>> =
         connection
-            .flatMapLatest { it?.live?.timers ?: flowOf(emptyList()) }
-            .stateIn(sessionScope, SharingStarted.Eagerly, emptyList())
+            .flatMapLatest { it?.live?.timers ?: flowOf(Loadable.NotLoaded) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override val collections: StateFlow<List<MacroCollection>> =
+    override val collections: StateFlow<Loadable<List<MacroCollection>>> =
         connection
-            .flatMapLatest { it?.live?.collections ?: flowOf(emptyList()) }
-            .stateIn(sessionScope, SharingStarted.Eagerly, emptyList())
+            .flatMapLatest { it?.live?.collections ?: flowOf(Loadable.NotLoaded) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val thumbnailRequests: Flow<ThumbnailRequests?> =
