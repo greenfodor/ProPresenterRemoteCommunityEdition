@@ -18,7 +18,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -45,12 +47,15 @@ class TimersViewModel(
     val events = _events.receiveAsFlow()
 
     val state: StateFlow<TimersState> =
-        combine(timersRepository.timers, liveStateRepository.liveState) { timers, live ->
+        combine(
+            timersRepository.timers,
+            liveStateRepository.liveState.map { it.connection == ConnectionStatus.RECONNECTING }.distinctUntilChanged()
+        ) { timers, reconnecting ->
             TimersState(
                 timers = timers.map { list ->
                     list.map { TimerUi(it.timer.uuid, it.timer.name, timerCard(it.timer, it.reading)) }
                 },
-                dimmed = live.connection == ConnectionStatus.RECONNECTING
+                dimmed = reconnecting
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), TimersState())
 

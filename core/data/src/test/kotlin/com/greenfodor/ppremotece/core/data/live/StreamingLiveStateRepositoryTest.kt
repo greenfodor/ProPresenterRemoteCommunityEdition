@@ -567,6 +567,35 @@ class StreamingLiveStateRepositoryTest {
         assertThat(logged.toList()).containsExactly("URL: macro_collections. Error: 404 Not Found")
     }
 
+    @Test
+    fun `timers stay unavailable when only timers current was rejected`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(READINGS_REJECTED_FRAME), end = StreamEnd.EOF))
+        fake.enqueueStream(fake.frames(listOf(ONE_TIMER_FRAME, ONE_MACRO_FRAME)))
+        val collector = launch { repository.liveState.collect {} }
+
+        withTimeout(5.seconds) { repository.collections.first { it is Loadable.Loaded } }
+        collector.cancel()
+
+        assertThat(repository.timers.value).isEqualTo(Loadable.Unavailable)
+    }
+
+    @Test
+    fun `every url an error frame names is left out`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(TWO_REJECTED_FRAME), end = StreamEnd.EOF))
+        fake.enqueueStream(fake.frames(listOf(FakeProPresenter.HEARTBEAT_FRAME)))
+
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitUntil { it.connection == ConnectionStatus.RECONNECTING }
+            awaitUntil { it.connection == ConnectionStatus.CONNECTED }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(server.recordedStreamBodies()[1]).isEqualTo(
+            """["status/slide","timer/system_time","playlist/active","status/layers","timers"]"""
+        )
+        assertThat(repository.collections.value).isEqualTo(Loadable.Unavailable)
+    }
+
     /** Replays [capture] through [chunk] and returns the loaded timers once they match [settled]. */
     private suspend fun timersAfterChunk(
         chunk: Int,
@@ -638,6 +667,9 @@ class StreamingLiveStateRepositoryTest {
         const val SUBSCRIPTIONS_WITHOUT_MACROS_BODY =
             """["status/slide","timer/system_time","playlist/active","status/layers","timers","timers/current"]"""
         const val MACROS_REJECTED_FRAME = """["URL: macro_collections. Error: 404 Not Found"]"""
+        const val READINGS_REJECTED_FRAME = """["URL: timers/current. Error: 404 Not Found"]"""
+        const val TWO_REJECTED_FRAME =
+            """["URL: timers/current. Error: 404 Not Found","URL: macro_collections. Error: 404 Not Found"]"""
         const val EMPTY_TIMERS_FRAME = """{"url":"timers","data":[]}"""
         const val EMPTY_MACROS_FRAME = """{"url":"macro_collections","data":{"collections":[]}}"""
         const val ONE_TIMER_FRAME = """{"url":"timers","data":[{"id":{"name":"Timer 01","index":0,"uuid":"t-0"},""" +

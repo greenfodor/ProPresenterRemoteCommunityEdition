@@ -56,7 +56,8 @@ interface ProPresenterClient {
 
     suspend fun triggerMacro(uuid: String): EmptyResult<DataError.Network>
 
-    suspend fun macroIcon(uuid: String): Result<ServerIcon, DataError.Network>
+    /** Macro [uuid]'s icon; a client may serve an icon it read before unless [refresh] is set. */
+    suspend fun macroIcon(uuid: String, refresh: Boolean = false): Result<ServerIcon, DataError.Network>
 
     /** Starts, stops or resets timer [uuid]. */
     suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network>

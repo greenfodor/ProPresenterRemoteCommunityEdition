@@ -126,12 +126,12 @@ class KtorProPresenterClient(
     override suspend fun triggerMacro(uuid: String): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/macro/${uuid.encodeURLPathPart()}/trigger") }
 
-    override suspend fun macroIcon(uuid: String): Result<ServerIcon, DataError.Network> =
-        icon("v1/macro/${uuid.encodeURLPathPart()}/icon")
+    override suspend fun macroIcon(uuid: String, refresh: Boolean): Result<ServerIcon, DataError.Network> =
+        icon("v1/macro/${uuid.encodeURLPathPart()}/icon", refresh)
 
-    /** The icon at [path], read once per client. */
-    private suspend fun icon(path: String): Result<ServerIcon, DataError.Network> =
-        icons[path]?.let { Result.Success(it) } ?: readIcon(path).onSuccess { icons[path] = it }
+    /** The icon at [path], read once per client, and again when [refresh] is set. */
+    private suspend fun icon(path: String, refresh: Boolean = false): Result<ServerIcon, DataError.Network> =
+        icons[path]?.takeUnless { refresh }?.let { Result.Success(it) } ?: readIcon(path).onSuccess { icons[path] = it }
 
     private suspend fun readIcon(path: String): Result<ServerIcon, DataError.Network> =
         when (val read = safeCall<ByteArray> { httpClient.get("$baseUrl/$path") }) {

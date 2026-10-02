@@ -275,6 +275,15 @@ class KtorProPresenterClientTest {
     }
 
     @Test
+    fun `a refreshed macro icon is read again`() = runBlocking {
+        client.macroIcon(MACRO_UUID)
+        client.macroIcon(MACRO_UUID, refresh = true)
+        client.macroIcon(MACRO_UUID)
+
+        assertThat(fake.count("GET", "/v1/macro/$MACRO_UUID/icon")).isEqualTo(2)
+    }
+
+    @Test
     fun `a macro and a clear group with the same uuid keep their own icons`() = runBlocking {
         client.clearGroupIcon(MACRO_UUID)
         client.macroIcon(MACRO_UUID)

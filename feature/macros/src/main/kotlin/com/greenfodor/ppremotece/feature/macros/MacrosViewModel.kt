@@ -81,9 +81,10 @@ class MacrosViewModel(
     private fun readIcons(collections: List<MacroCollection>) {
         collections.flatMap { it.macros }.forEach { macro ->
             val version = IconVersion(macro.imageType, macro.color)
-            if (requestedIcons.put(macro.uuid, version) == version) return@forEach
+            val previous = requestedIcons.put(macro.uuid, version)
+            if (previous == version) return@forEach
             viewModelScope.launch {
-                iconReads.withPermit { client.macroIcon(macro.uuid) }
+                iconReads.withPermit { client.macroIcon(macro.uuid, refresh = previous != null) }
                     .onSuccess { icon -> icons.update { it + (macro.uuid to icon) } }
                     .onFailure { requestedIcons.remove(macro.uuid, version) }
             }

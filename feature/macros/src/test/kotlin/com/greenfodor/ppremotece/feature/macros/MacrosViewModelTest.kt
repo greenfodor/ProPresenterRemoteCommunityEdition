@@ -239,6 +239,7 @@ class MacrosViewModelTest {
         }
 
         assertThat(client.iconReads.count { it == "m-0" }).isEqualTo(3)
+        assertThat(client.refreshedIconReads).containsExactly("m-0", "m-0")
     }
 
     private val MacrosState.loaded: List<MacroSectionUi> get() = (sections as Loadable.Loaded).value
@@ -249,6 +250,7 @@ class MacrosViewModelTest {
     private class FakeMacroClient : ProPresenterClient by notServed() {
         val triggers = mutableListOf<String>()
         val iconReads = mutableListOf<String>()
+        val refreshedIconReads = mutableListOf<String>()
         val icons = mutableMapOf<String, Result<ServerIcon, DataError.Network>>()
         var gate = CompletableDeferred(Unit)
         var iconGate = CompletableDeferred(Unit)
@@ -262,8 +264,9 @@ class MacrosViewModelTest {
             return result
         }
 
-        override suspend fun macroIcon(uuid: String): Result<ServerIcon, DataError.Network> {
+        override suspend fun macroIcon(uuid: String, refresh: Boolean): Result<ServerIcon, DataError.Network> {
             iconReads += uuid
+            if (refresh) refreshedIconReads += uuid
             maxIconReadsInFlight = maxOf(maxIconReadsInFlight, ++iconReadsInFlight)
             iconGate.await()
             iconReadsInFlight--

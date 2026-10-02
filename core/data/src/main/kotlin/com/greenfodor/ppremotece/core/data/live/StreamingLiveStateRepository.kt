@@ -4,6 +4,7 @@ import android.util.Log
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.Loadable
+import com.greenfodor.ppremotece.core.domain.live.map
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CueSource
@@ -63,8 +64,8 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * `timers` and `timers/current` frames set [timers], each timer joined with its latest reading, and
  * `macro_collections` frames set [collections]; both are [Loadable.NotLoaded] until their first frame
  * and keep their content across reconnects. An error frame naming a subscribed url ([rejectedUrl])
- * removes that url from the subscriptions for the reopened stream ([withoutRejected]), marks the
- * content it feeds [Loadable.Unavailable] and is passed to [log] once.
+ * removes that url from the subscriptions for the reopened streams of this connection
+ * ([withoutRejected]), keeps the content it feeds [Loadable.Unavailable] and is passed to [log] once.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
@@ -82,19 +83,20 @@ class StreamingLiveStateRepository(
     private val timerList = MutableStateFlow<Loadable<List<Timer>>>(Loadable.NotLoaded)
     private val timerReadings = MutableStateFlow<List<TimerReading>>(emptyList())
     override val timers: StateFlow<Loadable<List<LiveTimer>>> =
-        combine(timerList, timerReadings) { list, readings ->
-            when (list) {
-                is Loadable.Loaded -> Loadable.Loaded(joinTimers(list.value, readings))
-                Loadable.NotLoaded -> Loadable.NotLoaded
-                Loadable.Unavailable -> Loadable.Unavailable
-            }
-        }.stateIn(scope, SharingStarted.Eagerly, Loadable.NotLoaded)
+        combine(timerList, timerReadings) { list, readings -> list.map { joinTimers(it, readings) } }
+            .stateIn(scope, SharingStarted.Eagerly, Loadable.NotLoaded)
 
     private val macroCollections = MutableStateFlow<Loadable<List<MacroCollection>>>(Loadable.NotLoaded)
     override val collections: StateFlow<Loadable<List<MacroCollection>>> = macroCollections.asStateFlow()
 
     @Volatile
     private var subscriptions = SUBSCRIPTIONS
+
+    @Volatile
+    private var timersRejected = false
+
+    @Volatile
+    private var macrosRejected = false
 
     override val liveState: StateFlow<LiveState> =
         channelFlow {
@@ -125,11 +127,12 @@ class StreamingLiveStateRepository(
                                     }
                                 }
                                 is StatusEvent.Layers -> next = next.copy(layers = event.active)
-                                is StatusEvent.Timers -> timerList.value = Loadable.Loaded(event.timers)
+                                is StatusEvent.Timers ->
+                                    if (!timersRejected) timerList.value = Loadable.Loaded(event.timers)
                                 is StatusEvent.TimerReadings -> timerReadings.value = event.readings
                                 is StatusEvent.MacroCollections ->
-                                    macroCollections.value = Loadable.Loaded(event.collections)
-                                is StatusEvent.Rejected -> reject(event.message)
+                                    if (!macrosRejected) macroCollections.value = Loadable.Loaded(event.collections)
+                                is StatusEvent.Rejected -> event.messages.forEach(::reject)
                                 else -> Unit
                             }
                         }
@@ -171,13 +174,22 @@ class StreamingLiveStateRepository(
         _lastLive.value = LiveCue(source, slide.presentationUuid, slide.index)
     }
 
-    /** Drops the url [message] names from [subscriptions] and marks the content it feeds unavailable. */
+    /**
+     * Drops the url [message] names from [subscriptions] and marks the content it feeds unavailable
+     * for the rest of this connection.
+     */
     private fun reject(message: String) {
-        val url = rejectedUrl(message)?.takeIf { it in subscriptions } ?: return
+        if (rejectedUrl(message) !in subscriptions) return
         subscriptions = withoutRejected(subscriptions, message)
-        when (url) {
-            "timers", "timers/current" -> timerList.value = Loadable.Unavailable
-            "macro_collections" -> macroCollections.value = Loadable.Unavailable
+        when (rejectedUrl(message)) {
+            "timers", "timers/current" -> {
+                timersRejected = true
+                timerList.value = Loadable.Unavailable
+            }
+            "macro_collections" -> {
+                macrosRejected = true
+                macroCollections.value = Loadable.Unavailable
+            }
         }
         log(message)
     }

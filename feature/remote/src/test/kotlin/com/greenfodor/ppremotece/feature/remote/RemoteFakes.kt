@@ -68,7 +68,8 @@ class FakeProPresenterClient : ProPresenterClient {
 
     override suspend fun triggerMacro(uuid: String): EmptyResult<DataError.Network> = notServed()
 
-    override suspend fun macroIcon(uuid: String): Result<ServerIcon, DataError.Network> = notServed()
+    override suspend fun macroIcon(uuid: String, refresh: Boolean): Result<ServerIcon, DataError.Network> =
+        notServed()
 
     override suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network> =
         notServed()

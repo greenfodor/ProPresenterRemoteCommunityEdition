@@ -17,7 +17,7 @@ import kotlinx.serialization.json.longOrNull
 /**
  * Splits a `status/updates` byte stream into frames separated by `\r\n\r\n` and decodes each
  * frame's `{url, data}` into a [StatusEvent]; an error frame (a list of strings) decodes to
- * [StatusEvent.Rejected] with its first string. Bytes of an incomplete frame are kept until a later
+ * [StatusEvent.Rejected] with its strings. Bytes of an incomplete frame are kept until a later
  * chunk completes it; more than [MAX_PENDING_BYTES] without a separator are dropped. One instance
  * serves one stream connection.
  */
@@ -45,7 +45,8 @@ class StatusFrameParser {
 
     fun decode(frame: String): StatusEvent =
         when (val element = parseElement(frame)) {
-            is JsonArray -> element.firstNotNullOfOrNull { it.stringOrNull() }
+            is JsonArray -> element.mapNotNull { it.stringOrNull() }
+                .takeIf { it.isNotEmpty() }
                 ?.let(StatusEvent::Rejected)
                 ?: StatusEvent.Unknown(null)
             is JsonObject -> decodeObject(element)

@@ -185,7 +185,9 @@ class SlideGridViewModel(
     val state: StateFlow<SlideGridState> =
         combine(grid, live, gridStep, liveItemRef) { (state, loaded), live, step, liveItem ->
             val read = liveItem?.takeIf { it.key == live.item }
-            val liveItemLoading = live.item != null && liveItem != null && (read == null || read.loading)
+            val liveItemLoading = live.item != null &&
+                live.item != (source as? CueSource.PlaylistItem)?.key &&
+                read?.loading != false
             if (loaded == null) {
                 state.copy(gridStep = step)
             } else {

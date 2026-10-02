@@ -224,8 +224,12 @@ class StatusFrameParserTest {
 
     @Test
     fun `an error frame decodes to the url it rejects`() {
-        assertThat(parser.decode("""["URL: stage/layouts. Error: 404 Not Found"]"""))
-            .isEqualTo(StatusEvent.Rejected("URL: stage/layouts. Error: 404 Not Found"))
+        assertThat(parser.decode("""["URL: stage/layouts. Error: 404 Not Found","URL: looks. Error: 404 Not Found"]"""))
+            .isEqualTo(
+                StatusEvent.Rejected(
+                    listOf("URL: stage/layouts. Error: 404 Not Found", "URL: looks. Error: 404 Not Found")
+                )
+            )
     }
 
     @Test
