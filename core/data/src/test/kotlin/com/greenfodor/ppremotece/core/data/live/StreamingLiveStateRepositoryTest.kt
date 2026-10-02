@@ -174,19 +174,14 @@ class StreamingLiveStateRepositoryTest {
             .isEqualTo(LiveCue(CueSource.PlaylistItem(item0), FakeProPresenter.SONG_A_UUID, cueIndex = 1))
     }
 
+    /**
+     * Replays capture [name] through [throughChunk]; every slide index and playlist active read is
+     * answered with the captured state after that chunk.
+     */
     private fun replayProbe(name: String, throughChunk: Int) {
-        val delivered = AtomicInteger()
-        val captured = CapturedLiveBodies(name)
-        fake.liveBodies = { captured.after(delivered.get()) }
-        fake.enqueueStream(
-            fake.stream(
-                name,
-                StreamEnd.STALL,
-                timeScale = 0.05,
-                delivered = delivered,
-                chunkLimit = throughChunk
-            )
-        )
+        val bodies = CapturedLiveBodies(name).after(throughChunk)
+        fake.liveBodies = { bodies }
+        fake.enqueueStream(fake.stream(name, StreamEnd.STALL, timeScale = 0.05, chunkLimit = throughChunk))
     }
 
     @Test
