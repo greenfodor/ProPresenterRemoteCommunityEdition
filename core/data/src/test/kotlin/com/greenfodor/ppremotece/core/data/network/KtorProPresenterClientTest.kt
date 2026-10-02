@@ -5,7 +5,6 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.data.Fixtures
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
-import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
@@ -13,6 +12,7 @@ import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
@@ -191,7 +191,7 @@ class KtorProPresenterClientTest {
     @Test
     fun `a clear group icon is read from its icon route`() = runBlocking {
         assertThat(client.clearGroupIcon(CLEAR_GROUP_UUID)).isEqualTo(
-            Result.Success(ClearGroupIcon.Vector(18f, 18f, listOf(IconPath("M1,1 L17,17", evenOdd = false))))
+            Result.Success(ServerIcon.Vector(18f, 18f, listOf(IconPath("M1,1 L17,17", evenOdd = false))))
         )
         assertThat(fake.requests.single().method).isEqualTo("GET")
         assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/clear/group/$CLEAR_GROUP_UUID/icon")
@@ -233,11 +233,13 @@ class KtorProPresenterClientTest {
         client.triggerClearGroup(CLEAR_GROUP_UUID)
         client.clearGroupIcon(CLEAR_GROUP_UUID)
         TimerOperation.entries.forEach { client.timerOperation(TIMER_UUID, it) }
+        client.triggerMacro(MACRO_UUID)
+        client.macroIcon(MACRO_UUID)
         client.triggerNext()
         client.triggerPrevious()
         client.statusUpdates(listOf("status/slide")).first()
 
-        assertThat(fake.requests.size).isEqualTo(21)
+        assertThat(fake.requests.size).isEqualTo(23)
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
     }
 
@@ -254,7 +256,34 @@ class KtorProPresenterClientTest {
         )
     }
 
+    @Test
+    fun `triggering a macro gets its trigger route`() = runBlocking {
+        assertThat(client.triggerMacro(MACRO_UUID)).isEqualTo(Result.Success(Unit))
+        assertThat(fake.requests.single().method).isEqualTo("GET")
+        assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/macro/$MACRO_UUID/trigger")
+    }
+
+    @Test
+    fun `a macro icon is read from its icon route once per connection`() = runBlocking {
+        assertThat(client.macroIcon(MACRO_UUID)).isEqualTo(
+            Result.Success(ServerIcon.Vector(18f, 18f, listOf(IconPath("M1,1 L17,17", evenOdd = false))))
+        )
+        client.macroIcon(MACRO_UUID)
+
+        assertThat(fake.requests.map { "${it.method} ${it.url.encodedPath}" })
+            .containsExactly("GET /v1/macro/$MACRO_UUID/icon")
+    }
+
+    @Test
+    fun `a macro and a clear group with the same uuid keep their own icons`() = runBlocking {
+        client.clearGroupIcon(MACRO_UUID)
+        client.macroIcon(MACRO_UUID)
+
+        assertThat(fake.count("GET", "/v1/macro/$MACRO_UUID/icon")).isEqualTo(1)
+    }
+
     private companion object {
+        const val MACRO_UUID = "701c977b-f340-428d-b397-a52d4f29437b"
         const val TIMER_UUID = "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
         const val CLEAR_GROUP_UUID = "5da095db-20ef-4246-b3d5-3b741312386b"
     }

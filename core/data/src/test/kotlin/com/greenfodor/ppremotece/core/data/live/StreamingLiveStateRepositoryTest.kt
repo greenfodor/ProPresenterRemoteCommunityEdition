@@ -15,6 +15,7 @@ import com.greenfodor.ppremotece.core.data.network.StreamEnd
 import com.greenfodor.ppremotece.core.data.network.StreamReplay
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CueSource
+import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
@@ -173,19 +174,14 @@ class StreamingLiveStateRepositoryTest {
             .isEqualTo(LiveCue(CueSource.PlaylistItem(item0), FakeProPresenter.SONG_A_UUID, cueIndex = 1))
     }
 
+    /**
+     * Replays capture [name] through [throughChunk]; every slide index and playlist active read is
+     * answered with the captured state after that chunk.
+     */
     private fun replayProbe(name: String, throughChunk: Int) {
-        val delivered = AtomicInteger()
-        val captured = CapturedLiveBodies(name)
-        fake.liveBodies = { captured.after(delivered.get()) }
-        fake.enqueueStream(
-            fake.stream(
-                name,
-                StreamEnd.STALL,
-                timeScale = 0.05,
-                delivered = delivered,
-                chunkLimit = throughChunk
-            )
-        )
+        val bodies = CapturedLiveBodies(name).after(throughChunk)
+        fake.liveBodies = { bodies }
+        fake.enqueueStream(fake.stream(name, StreamEnd.STALL, timeScale = 0.05, chunkLimit = throughChunk))
     }
 
     @Test
@@ -457,6 +453,23 @@ class StreamingLiveStateRepositoryTest {
         assertThat(timers.first().reading).isEqualTo(TimerReading(TIMER_0, "17:05:18", TimerState.STOPPED))
     }
 
+    @Test
+    fun `the stage 8 capture lists the macro collection with its macros and colours`() = runBlocking {
+        fake.enqueueStream(
+            fake.stream(STAGE_8_TIMERS, StreamEnd.STALL, timeScale = 0.0, chunkLimit = MACROS_READ_CHUNK)
+        )
+        val collector = launch { repository.liveState.collect {} }
+        val collections = withTimeout(5.seconds) { repository.collections.first { it.isNotEmpty() } }
+        collector.cancel()
+
+        val collection = collections.single()
+        assertThat(collection.name).isEqualTo("Collection 01")
+        assertThat(collection.macros.map { it.name })
+            .containsExactly("Macro 01", "Macro 02", "Macro 03", "Macro 04", "Macro 05")
+        assertThat(collection.macros.first().color)
+            .isEqualTo(GroupColor(red = 0.09019608f, green = 0.49803922f, blue = 1f, alpha = 1f))
+    }
+
     /** Replays the stage 8 capture through [chunk] and returns the timers once they match [settled]. */
     private suspend fun timersAfterChunk(chunk: Int, settled: (List<LiveTimer>) -> Boolean): List<LiveTimer> =
         coroutineScope {
@@ -497,11 +510,12 @@ class StreamingLiveStateRepositoryTest {
         const val ITEM_1_SLIDE_INDEX_CHUNK = 10
         const val PRESENTATION_ROUTE_SLIDE_INDEX_CHUNK = 16
         const val SAME_ITEM_SLIDE_INDEX_CHUNK = 28
-        const val SUBSCRIPTIONS_BODY =
-            """["status/slide","timer/system_time","playlist/active","status/layers","timers","timers/current"]"""
+        const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active","status/layers",""" +
+            """"timers","timers/current","macro_collections"]"""
         const val STAGE_8_TIMERS = "stage8-timers"
         const val TIMER_0 = "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
         const val TIMERS_READ_CHUNK = 7
+        const val MACROS_READ_CHUNK = 7
         const val TIMER_RUNNING_CHUNK = 13
         const val TIMER_STOPPED_CHUNK = 20
     }

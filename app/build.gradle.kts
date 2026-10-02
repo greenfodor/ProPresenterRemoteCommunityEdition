@@ -22,6 +22,7 @@ dependencies {
     implementation(project(":feature:clear"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:timers"))
+    implementation(project(":feature:macros"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

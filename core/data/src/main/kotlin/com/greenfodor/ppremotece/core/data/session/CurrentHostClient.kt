@@ -2,7 +2,6 @@ package com.greenfodor.ppremotece.core.data.session
 
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
-import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
@@ -12,6 +11,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
@@ -69,8 +69,14 @@ internal class CurrentHostClient(
     override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> =
         current()?.triggerClearGroup(uuid) ?: notConnected()
 
-    override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> =
+    override suspend fun clearGroupIcon(uuid: String): Result<ServerIcon, DataError.Network> =
         current()?.clearGroupIcon(uuid) ?: notConnected()
+
+    override suspend fun triggerMacro(uuid: String): EmptyResult<DataError.Network> =
+        current()?.triggerMacro(uuid) ?: notConnected()
+
+    override suspend fun macroIcon(uuid: String): Result<ServerIcon, DataError.Network> =
+        current()?.macroIcon(uuid) ?: notConnected()
 
     override suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network> =
         current()?.timerOperation(uuid, operation) ?: notConnected()

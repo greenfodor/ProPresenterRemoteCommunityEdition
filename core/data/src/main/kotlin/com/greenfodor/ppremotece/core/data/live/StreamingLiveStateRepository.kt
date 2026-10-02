@@ -2,11 +2,13 @@ package com.greenfodor.ppremotece.core.data.live
 
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
+import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
+import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
@@ -54,7 +56,8 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * called when the first chunk of a reopened stream arrives. Each `status/slide` frame sets the
  * slide text; each pair read naming a slide of the live item's presentation, or a slide live
  * without a playlist item, sets [lastLive], which outlives clears, reconnects and resubscriptions.
- * `timers` and `timers/current` frames set [timers], each timer joined with its latest reading.
+ * `timers` and `timers/current` frames set [timers], each timer joined with its latest reading, and
+ * `macro_collections` frames set [collections].
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
@@ -63,7 +66,8 @@ class StreamingLiveStateRepository(
     private val reconnectDelay: (attempt: Int) -> Duration = ::defaultReconnectDelay,
     private val onReconnected: () -> Unit = {}
 ) : LiveStateRepository,
-    TimersRepository {
+    TimersRepository,
+    MacrosRepository {
     private val _lastLive = MutableStateFlow<LiveCue?>(null)
     override val lastLive: StateFlow<LiveCue?> = _lastLive.asStateFlow()
 
@@ -71,6 +75,9 @@ class StreamingLiveStateRepository(
     private val timerReadings = MutableStateFlow<List<TimerReading>>(emptyList())
     override val timers: StateFlow<List<LiveTimer>> =
         combine(timerList, timerReadings, ::joinTimers).stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    private val macroCollections = MutableStateFlow<List<MacroCollection>>(emptyList())
+    override val collections: StateFlow<List<MacroCollection>> = macroCollections.asStateFlow()
 
     override val liveState: StateFlow<LiveState> =
         channelFlow {
@@ -103,6 +110,7 @@ class StreamingLiveStateRepository(
                                 is StatusEvent.Layers -> next = next.copy(layers = event.active)
                                 is StatusEvent.Timers -> timerList.value = event.timers
                                 is StatusEvent.TimerReadings -> timerReadings.value = event.readings
+                                is StatusEvent.MacroCollections -> macroCollections.value = event.collections
                                 else -> Unit
                             }
                         }
@@ -149,6 +157,14 @@ class StreamingLiveStateRepository(
 
     private companion object {
         val SUBSCRIPTIONS =
-            listOf("status/slide", "timer/system_time", "playlist/active", "status/layers", "timers", "timers/current")
+            listOf(
+                "status/slide",
+                "timer/system_time",
+                "playlist/active",
+                "status/layers",
+                "timers",
+                "timers/current",
+                "macro_collections"
+            )
     }
 }

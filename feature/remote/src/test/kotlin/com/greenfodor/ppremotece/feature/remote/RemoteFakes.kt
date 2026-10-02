@@ -4,7 +4,6 @@ import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
-import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
@@ -17,6 +16,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.remote.RemoteCommand
 import com.greenfodor.ppremotece.core.domain.result.DataError
@@ -64,7 +64,11 @@ class FakeProPresenterClient : ProPresenterClient {
 
     override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> = notServed()
 
-    override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> = notServed()
+    override suspend fun clearGroupIcon(uuid: String): Result<ServerIcon, DataError.Network> = notServed()
+
+    override suspend fun triggerMacro(uuid: String): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun macroIcon(uuid: String): Result<ServerIcon, DataError.Network> = notServed()
 
     override suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network> =
         notServed()

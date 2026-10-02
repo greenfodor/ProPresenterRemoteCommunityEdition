@@ -24,17 +24,20 @@ data class ClearGroup(
     val tint: GroupColor? = null
 )
 
-/** A clear group's icon: vector paths in a viewport, or the bytes of a PNG or JPEG image. */
-sealed interface ClearGroupIcon {
+/**
+ * An icon served by ProPresenter for a clear group or a macro: vector paths in a viewport, or the
+ * bytes of a PNG or JPEG image.
+ */
+sealed interface ServerIcon {
     data class Vector(
         val viewportWidth: Float,
         val viewportHeight: Float,
         val paths: List<IconPath>
-    ) : ClearGroupIcon
+    ) : ServerIcon
 
     class Image(
         val bytes: ByteArray
-    ) : ClearGroupIcon
+    ) : ServerIcon
 }
 
 /** One filled path of a vector icon in SVG path syntax; [evenOdd] selects the even-odd fill rule. */

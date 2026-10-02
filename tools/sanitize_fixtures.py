@@ -33,6 +33,7 @@ LIBRARY = "../stage6/library-0.json"
 LIBRARY_INDEX = 0
 TIMERS = "../stage8/_v1_timers.json"
 TIMERS_CURRENT = "../stage8/_v1_timers_current.json"
+MACRO_COLLECTIONS = "../stage8/_v1_macro_collections.json"
 TIMER_TYPES = {"countdown", "count_down_to_time", "elapsed"}
 TIMER_STATES = {"stopped", "running", "complete", "overrunning", "overran", "overrun"}
 TIMER_PERIODS = {"am", "pm", "is_24_hour"}
@@ -527,6 +528,10 @@ def main():
     for reading in readings:
         sanitizer.timer_reading(reading)
     write_json(out_dir / "timers-current.json", readings)
+
+    macro_collections = load(MACRO_COLLECTIONS)
+    sanitizer.macro_collections(macro_collections)
+    write_json(out_dir / "macro-collections.json", macro_collections)
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)

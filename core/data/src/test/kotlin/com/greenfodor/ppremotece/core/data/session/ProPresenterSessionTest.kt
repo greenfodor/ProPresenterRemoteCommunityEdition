@@ -96,6 +96,20 @@ class ProPresenterSessionTest {
     }
 
     @Test
+    fun `the macro collections are cleared on disconnect`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(MACROS_FRAME)))
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        val collector = launch { session.liveState.collect {} }
+        assertThat(withTimeout(5.seconds) { session.collections.first { it.isNotEmpty() } }.single().name)
+            .isEqualTo("Collection 01")
+        collector.cancel()
+
+        session.disconnect()
+
+        assertThat(withTimeout(2.seconds) { session.collections.first { it.isEmpty() } }).isEmpty()
+    }
+
+    @Test
     fun `disconnect keeps the saved host`() = runBlocking {
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
 
@@ -233,6 +247,8 @@ class ProPresenterSessionTest {
     }
 
     private companion object {
+        const val MACROS_FRAME = """{"url":"macro_collections","data":{"collections":[""" +
+            """{"id":{"uuid":"c-0","name":"Collection 01","index":0},"macros":[]}]}}"""
         const val TIMERS_FRAME = """{"url":"timers","data":[{"id":{"name":"Timer 01","index":0,"uuid":"t-0"},""" +
             """"allows_overrun":false,"elapsed":{"start_time":0}}]}"""
     }

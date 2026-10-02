@@ -61,6 +61,7 @@ private val CardPadding = 12.dp
 private val ButtonSize = 48.dp
 private val RunningBorder = 2.dp
 private val MinReadoutSize = 16.sp
+private const val COMPACT_COLUMNS = 2
 
 @Composable
 fun TimersRoot(
@@ -91,8 +92,9 @@ fun TimersRoot(
 }
 
 /**
- * The Timers tab: one card per timer in an adaptive grid (160 / 200 / 240 dp cells by width
- * class), with 88 dp below the last row; "No timers in ProPresenter" when there are none.
+ * The Timers tab: one card per timer in two columns on compact width and an adaptive grid of
+ * 200 / 240 dp cells on medium / expanded width, with 88 dp below the last row; "No timers in
+ * ProPresenter" when there are none.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,7 +132,7 @@ fun TimersScreen(
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minCellWidth(widthClass)),
+                    columns = columnsOf(widthClass),
                     contentPadding = PaddingValues(
                         start = GridPadding,
                         top = GridPadding,
@@ -155,11 +157,11 @@ fun TimersScreen(
     }
 }
 
-private fun minCellWidth(widthClass: WidthClass) =
+private fun columnsOf(widthClass: WidthClass): GridCells =
     when (widthClass) {
-        WidthClass.COMPACT -> 160.dp
-        WidthClass.MEDIUM -> 200.dp
-        WidthClass.EXPANDED -> 240.dp
+        WidthClass.COMPACT -> GridCells.Fixed(COMPACT_COLUMNS)
+        WidthClass.MEDIUM -> GridCells.Adaptive(200.dp)
+        WidthClass.EXPANDED -> GridCells.Adaptive(240.dp)
     }
 
 /**
