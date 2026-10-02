@@ -2,7 +2,6 @@ package com.greenfodor.ppremotece.feature.timers
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -35,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -44,9 +44,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.timers.TimerCard
 import com.greenfodor.ppremotece.core.domain.timers.TimerIcon
@@ -62,6 +64,7 @@ private val ButtonSize = 48.dp
 private val RunningBorder = 2.dp
 private val MinReadoutSize = 16.sp
 private const val COMPACT_COLUMNS = 2
+private const val DIMMED_ALPHA = 0.38f
 
 @Composable
 fun TimersRoot(
@@ -93,8 +96,9 @@ fun TimersRoot(
 
 /**
  * The Timers tab: one card per timer in two columns on compact width and an adaptive grid of
- * 200 / 240 dp cells on medium / expanded width, with 88 dp below the last row; "No timers in
- * ProPresenter" when there are none.
+ * 200 / 240 dp cells on medium / expanded width, with 88 dp below the last row; a spinner until the
+ * timers are loaded, "No timers in ProPresenter" when there are none, and "Not available on this
+ * ProPresenter" when the server rejected them ([LoadableList]).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,15 +126,7 @@ fun TimersScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
-            if (state.timers.isEmpty()) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        text = stringResource(R.string.timers_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
+            LoadableList(state.timers, emptyText = stringResource(R.string.timers_empty)) { timers ->
                 LazyVerticalGrid(
                     columns = columnsOf(widthClass),
                     contentPadding = PaddingValues(
@@ -143,10 +139,11 @@ fun TimersScreen(
                     verticalArrangement = Arrangement.spacedBy(GridGap),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(state.timers, key = { it.uuid }) { timer ->
+                    items(timers, key = { it.uuid }) { timer ->
                         TimerCardView(
                             timer = timer,
                             large = widthClass != WidthClass.COMPACT,
+                            dimmed = state.dimmed,
                             onToggle = { onAction(TimersAction.OnToggleClick(timer.uuid)) },
                             onReset = { onAction(TimersAction.OnResetClick(timer.uuid)) }
                         )
@@ -166,14 +163,22 @@ private fun columnsOf(widthClass: WidthClass): GridCells =
 
 /**
  * A timer card: the type icon and name, the readout in tabular numerals (`displayMedium` when
- * [large], else `displaySmall`, shrunk to fit one line; `error` while overrun), "Running" with a
- * 2 dp `secondary` outline while running, and 48 dp Start/Stop and Reset buttons.
+ * [large], else `displaySmall`, shrunk to fit one line; `error` while overrun), or "Counts down to"
+ * over the target, "Running" with a 2 dp `secondary` outline while running, and 48 dp Start/Stop
+ * and Reset buttons. The readout and target are drawn at 38 % alpha while [dimmed].
  */
 @Composable
-private fun TimerCardView(timer: TimerUi, large: Boolean, onToggle: () -> Unit, onReset: () -> Unit) {
+private fun TimerCardView(
+    timer: TimerUi,
+    large: Boolean,
+    dimmed: Boolean,
+    onToggle: () -> Unit,
+    onReset: () -> Unit
+) {
     val card = timer.card
     val readoutStyle = (if (large) MaterialTheme.typography.displayMedium else MaterialTheme.typography.displaySmall)
         .copy(fontFeatureSettings = "tnum")
+    val readoutAlpha = if (dimmed) DIMMED_ALPHA else 1f
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
@@ -194,19 +199,43 @@ private fun TimerCardView(timer: TimerUi, large: Boolean, onToggle: () -> Unit, 
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Text(
-                text = card.readout,
-                style = readoutStyle,
-                color = if (card.overrun) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                autoSize = TextAutoSize.StepBased(minFontSize = MinReadoutSize, maxFontSize = readoutStyle.fontSize),
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-            )
-            Text(
-                text = if (card.running) stringResource(R.string.timers_running) else "",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary
-            )
+            val target = card.target
+            if (target != null) {
+                Text(
+                    text = stringResource(R.string.timers_counts_down_to),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp).alpha(readoutAlpha)
+                )
+                Text(
+                    text = target,
+                    style = readoutStyle,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    autoSize = TextAutoSize.StepBased(
+                        minFontSize = MinReadoutSize,
+                        maxFontSize = readoutStyle.fontSize
+                    ),
+                    modifier = Modifier.fillMaxWidth().alpha(readoutAlpha)
+                )
+            } else {
+                Text(
+                    text = card.readout,
+                    style = readoutStyle,
+                    color = if (card.overrun) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    autoSize = TextAutoSize.StepBased(
+                        minFontSize = MinReadoutSize,
+                        maxFontSize = readoutStyle.fontSize
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).alpha(readoutAlpha)
+                )
+                Text(
+                    text = if (card.running) stringResource(R.string.timers_running) else "",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(top = 4.dp)
@@ -250,7 +279,14 @@ private val PreviewTimers = listOf(
     TimerUi(
         "t-0",
         "Timer 01",
-        TimerCard(TimerIcon.ALARM, "08:30:00", running = false, overrun = false, TimerOperation.START)
+        TimerCard(
+            TimerIcon.ALARM,
+            "08:23:24",
+            running = false,
+            overrun = false,
+            TimerOperation.START,
+            target = "8:30 PM"
+        )
     ),
     TimerUi(
         "t-1",
@@ -270,7 +306,7 @@ private val PreviewTimers = listOf(
     TimerUi(
         "t-4",
         "Timer 05",
-        TimerCard(TimerIcon.ALARM, "00:00:00", running = false, overrun = true, TimerOperation.START)
+        TimerCard(TimerIcon.ALARM, "-00:34:47", running = false, overrun = true, TimerOperation.START)
     )
 )
 
@@ -278,7 +314,24 @@ private val PreviewTimers = listOf(
 @Composable
 private fun TimersScreenCompactPreview() {
     PPRemoteTheme {
-        TimersScreen(state = TimersState(PreviewTimers), onAction = {}, widthClass = WidthClass.COMPACT)
+        TimersScreen(
+            state = TimersState(Loadable.Loaded(PreviewTimers)),
+            onAction = {},
+            widthClass = WidthClass.COMPACT
+        )
+    }
+}
+
+@Preview(widthDp = 411, heightDp = 640)
+@Composable
+private fun TimersScreenReconnectingPreview() {
+    PPRemoteTheme {
+        TimersScreen(
+            state = TimersState(Loadable.Loaded(PreviewTimers), dimmed = true),
+            onAction = {},
+            widthClass = WidthClass.COMPACT,
+            reconnecting = true
+        )
     }
 }
 
@@ -286,7 +339,11 @@ private fun TimersScreenCompactPreview() {
 @Composable
 private fun TimersScreenExpandedPreview() {
     PPRemoteTheme {
-        TimersScreen(state = TimersState(PreviewTimers), onAction = {}, widthClass = WidthClass.EXPANDED)
+        TimersScreen(
+            state = TimersState(Loadable.Loaded(PreviewTimers)),
+            onAction = {},
+            widthClass = WidthClass.EXPANDED
+        )
     }
 }
 
@@ -294,6 +351,14 @@ private fun TimersScreenExpandedPreview() {
 @Composable
 private fun TimersScreenEmptyPreview() {
     PPRemoteTheme {
-        TimersScreen(state = TimersState(), onAction = {}, widthClass = WidthClass.COMPACT, reconnecting = true)
+        TimersScreen(state = TimersState(Loadable.Loaded(emptyList())), onAction = {}, widthClass = WidthClass.COMPACT)
+    }
+}
+
+@Preview(widthDp = 411, heightDp = 320)
+@Composable
+private fun TimersScreenUnavailablePreview() {
+    PPRemoteTheme {
+        TimersScreen(state = TimersState(Loadable.Unavailable), onAction = {}, widthClass = WidthClass.COMPACT)
     }
 }

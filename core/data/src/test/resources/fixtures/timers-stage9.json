@@ -1,0 +1,37 @@
+[
+  {
+    "id": {
+      "name": "Timer 01",
+      "index": 0,
+      "uuid": "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
+    },
+    "allows_overrun": true,
+    "count_down_to_time": {
+      "time_of_day": 30600,
+      "period": "pm"
+    }
+  },
+  {
+    "id": {
+      "name": "Timer 02",
+      "index": 1,
+      "uuid": "c5fcf5b0-ee31-4143-9d54-6514d922b2bb"
+    },
+    "allows_overrun": true,
+    "count_down_to_time": {
+      "time_of_day": 42600,
+      "period": "is_24_hour"
+    }
+  },
+  {
+    "id": {
+      "name": "Timer 03",
+      "index": 2,
+      "uuid": "9bf671d2-475a-4716-af17-2ab73589734d"
+    },
+    "allows_overrun": false,
+    "elapsed": {
+      "start_time": 0
+    }
+  }
+]

@@ -5,8 +5,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,25 +21,21 @@ import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.ServerIcon
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
- * An icon served by ProPresenter at [size]: vector paths drawn in [tint], or a PNG or JPEG image,
- * decoded off the main thread at that size. Nothing is drawn when the icon can't be read.
+ * An icon served by ProPresenter at [size]: vector paths drawn in [tint], or a PNG or JPEG image
+ * decoded once per image at that size. Nothing is drawn when the icon can't be read.
  */
 @Composable
-fun ServerIcon(icon: ServerIcon, tint: Color, size: Dp, modifier: Modifier = Modifier) {
+fun ServerIconImage(icon: ServerIcon, tint: Color, size: Dp, modifier: Modifier = Modifier) {
     when (icon) {
         is ServerIcon.Vector -> remember(icon, size) { icon.toImageVector(size) }?.let {
             Icon(it, contentDescription = null, tint = tint, modifier = modifier.size(size))
         }
         is ServerIcon.Image -> {
             val sizePx = with(LocalDensity.current) { size.roundToPx() }
-            val bitmap by produceState<ImageBitmap?>(null, icon, sizePx) {
-                value = withContext(Dispatchers.Default) { decodeSampled(icon.bytes, sizePx) }
-            }
-            bitmap?.let { Image(it, contentDescription = null, modifier = modifier.size(size)) }
+            remember(icon.bytes, sizePx) { decodeSampled(icon.bytes, sizePx) }
+                ?.let { Image(it, contentDescription = null, modifier = modifier.size(size)) }
         }
     }
 }
@@ -76,9 +70,9 @@ private fun decodeSampled(bytes: ByteArray, sizePx: Int): ImageBitmap? {
 
 @Preview
 @Composable
-private fun ServerIconPreview() {
+private fun ServerIconImagePreview() {
     PPRemoteTheme {
-        ServerIcon(
+        ServerIconImage(
             icon = ServerIcon.Vector(
                 viewportWidth = 18f,
                 viewportHeight = 18f,

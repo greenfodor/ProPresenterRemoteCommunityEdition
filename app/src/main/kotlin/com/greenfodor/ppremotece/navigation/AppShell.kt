@@ -148,7 +148,8 @@ fun AppShell(
     modifier: Modifier = Modifier,
     viewModel: ShellViewModel = koinViewModel()
 ) {
-    val reconnecting by viewModel.reconnecting.collectAsStateWithLifecycle()
+    val reconnectingState = viewModel.reconnecting.collectAsStateWithLifecycle()
+    val reconnecting: () -> Boolean = remember(reconnectingState) { { reconnectingState.value } }
     val keepAwake by viewModel.keepAwake.collectAsStateWithLifecycle()
     val shellStacks = rememberShellStacks()
     val stacks = shellStacks::stacks
@@ -197,7 +198,7 @@ fun AppShell(
                 source = source,
                 widthClass = widthClass,
                 headerScrollsWithGrid = compactHeight,
-                reconnecting = reconnecting,
+                reconnecting = reconnecting(),
                 onBack = onBack,
                 closesPane = paneCount(windowSizeClass.minWidthDp) == 2,
                 floatingActionButton = fab ?: {}
@@ -280,7 +281,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
     listMode: ListMode,
     onModeChange: (ListMode) -> Unit,
     detail: NavKey?,
-    reconnecting: Boolean,
+    reconnecting: () -> Boolean,
     fab: (@Composable (SnackbarHostState) -> Unit)?,
     onOpenDetail: (NavKey) -> Unit,
     slideGrid: @Composable (CueSource) -> Unit
@@ -295,7 +296,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
             onModeChange = onModeChange,
             openItem = openGrid?.let { PlaylistItemKey(playlistUuid = it.playlistUuid, index = it.itemIndex) },
             openPresentation = (detail as? LibraryGridRoute)?.presentationUuid,
-            reconnecting = reconnecting,
+            reconnecting = reconnecting(),
             onOpenItem = { item ->
                 onOpenDetail(SlideGridRoute(playlistUuid = item.playlistUuid, itemIndex = item.index))
             },
@@ -315,7 +316,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
 @Suppress("LongParameterList")
 private fun EntryProviderScope<NavKey>.tabEntries(
     widthClass: WidthClass,
-    reconnecting: Boolean,
+    reconnecting: () -> Boolean,
     fab: (@Composable (SnackbarHostState) -> Unit)?,
     moreEntries: List<MoreEntry>,
     onBack: () -> Unit,
@@ -323,13 +324,13 @@ private fun EntryProviderScope<NavKey>.tabEntries(
     onDisconnected: () -> Unit
 ) {
     entry<RemoteRoute> {
-        RemoteRoot(widthClass = widthClass, reconnecting = reconnecting, floatingActionButton = fab)
+        RemoteRoot(widthClass = widthClass, reconnecting = reconnecting(), floatingActionButton = fab)
     }
     entry<MacrosRoute> {
-        MacrosRoot(widthClass = widthClass, reconnecting = reconnecting, floatingActionButton = fab)
+        MacrosRoot(widthClass = widthClass, reconnecting = reconnecting(), floatingActionButton = fab)
     }
     entry<TimersRoute> {
-        TimersRoot(widthClass = widthClass, reconnecting = reconnecting, floatingActionButton = fab)
+        TimersRoot(widthClass = widthClass, reconnecting = reconnecting(), floatingActionButton = fab)
     }
     entry<SettingsRoute> {
         SettingsRoot(onBack = onBack, onDisconnected = onDisconnected)

@@ -43,11 +43,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.LocalGroupColors
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
-import com.greenfodor.ppremotece.core.designsystem.ui.ServerIcon
+import com.greenfodor.ppremotece.core.designsystem.ui.ServerIconImage
 import com.greenfodor.ppremotece.core.designsystem.ui.toColor
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.ServerIcon
@@ -94,7 +96,9 @@ fun MacrosRoot(
 /**
  * The Macros tab: one section per collection in an adaptive grid of square tiles (160 / 200 /
  * 240 dp cells by width class), each section under a 48 dp header while there are several, with
- * 88 dp below the last row; "No macros in ProPresenter" when there are none.
+ * 88 dp below the last row; a spinner until the collections are loaded, "No macros in
+ * ProPresenter" when there are none, and "Not available on this ProPresenter" when the server
+ * rejected them ([LoadableList]).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,23 +126,25 @@ fun MacrosScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
-            if (state.sections.none { it.macros.isNotEmpty() }) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        text = stringResource(R.string.macros_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                MacroGrid(state = state, widthClass = widthClass, onAction = onAction)
+            LoadableList(state.sections, emptyText = stringResource(R.string.macros_empty)) { sections ->
+                MacroGrid(
+                    sections = sections,
+                    showHeaders = state.showHeaders,
+                    widthClass = widthClass,
+                    onAction = onAction
+                )
             }
         }
     }
 }
 
 @Composable
-private fun MacroGrid(state: MacrosState, widthClass: WidthClass, onAction: (MacrosAction) -> Unit) {
+private fun MacroGrid(
+    sections: List<MacroSectionUi>,
+    showHeaders: Boolean,
+    widthClass: WidthClass,
+    onAction: (MacrosAction) -> Unit
+) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minCellWidth(widthClass)),
         contentPadding = PaddingValues(
@@ -151,8 +157,8 @@ private fun MacroGrid(state: MacrosState, widthClass: WidthClass, onAction: (Mac
         verticalArrangement = Arrangement.spacedBy(GridGap),
         modifier = Modifier.fillMaxSize()
     ) {
-        state.sections.forEach { section ->
-            if (state.showHeaders) {
+        sections.forEach { section ->
+            if (showHeaders) {
                 item(key = "header:${section.uuid}", span = { GridItemSpan(maxLineSpan) }) {
                     Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.height(HeaderHeight)) {
                         Text(
@@ -201,7 +207,7 @@ private fun MacroTile(macro: MacroUi, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxSize().padding(TilePadding)
             ) {
                 macro.icon?.let {
-                    ServerIcon(icon = it, tint = Color.White, size = IconSize)
+                    ServerIconImage(icon = it, tint = Color.White, size = IconSize)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
                 Text(
@@ -248,7 +254,7 @@ private val PreviewMacros = listOf(
 private fun MacrosScreenPreview() {
     PPRemoteTheme {
         MacrosScreen(
-            state = MacrosState(listOf(MacroSectionUi("c-0", "Collection 01", PreviewMacros))),
+            state = MacrosState(Loadable.Loaded(listOf(MacroSectionUi("c-0", "Collection 01", PreviewMacros)))),
             onAction = {},
             widthClass = WidthClass.COMPACT
         )
@@ -261,9 +267,11 @@ private fun MacrosScreenTwoCollectionsPreview() {
     PPRemoteTheme {
         MacrosScreen(
             state = MacrosState(
-                sections = listOf(
-                    MacroSectionUi("c-0", "Collection 01", PreviewMacros.take(3)),
-                    MacroSectionUi("c-1", "Collection 02", PreviewMacros.drop(3))
+                sections = Loadable.Loaded(
+                    listOf(
+                        MacroSectionUi("c-0", "Collection 01", PreviewMacros.take(3)),
+                        MacroSectionUi("c-1", "Collection 02", PreviewMacros.drop(3))
+                    )
                 ),
                 showHeaders = true
             ),
@@ -277,6 +285,11 @@ private fun MacrosScreenTwoCollectionsPreview() {
 @Composable
 private fun MacrosScreenEmptyPreview() {
     PPRemoteTheme {
-        MacrosScreen(state = MacrosState(), onAction = {}, widthClass = WidthClass.COMPACT, reconnecting = true)
+        MacrosScreen(
+            state = MacrosState(Loadable.Loaded(emptyList())),
+            onAction = {},
+            widthClass = WidthClass.COMPACT,
+            reconnecting = true
+        )
     }
 }

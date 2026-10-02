@@ -1,10 +1,13 @@
 package com.greenfodor.ppremotece.feature.timers
 
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.timers.TimerCard
 
+/** The timers, not loaded until the stream's first `timers` frame, and whether their readouts are [dimmed]. */
 data class TimersState(
-    val timers: List<TimerUi> = emptyList()
+    val timers: Loadable<List<TimerUi>> = Loadable.NotLoaded,
+    val dimmed: Boolean = false
 )
 
 data class TimerUi(

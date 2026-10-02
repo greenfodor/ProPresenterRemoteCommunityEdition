@@ -2,6 +2,7 @@
     <string name="timers_title">Timers</string>
     <string name="timers_empty">No timers in ProPresenter</string>
     <string name="timers_running">Running</string>
+    <string name="timers_counts_down_to">Counts down to</string>
     <string name="timers_start">Start %1$s</string>
     <string name="timers_stop">Stop %1$s</string>
     <string name="timers_reset">Reset %1$s</string>

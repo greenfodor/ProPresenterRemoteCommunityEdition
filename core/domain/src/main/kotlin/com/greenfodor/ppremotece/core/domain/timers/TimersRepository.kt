@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.core.domain.timers
 
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
 import kotlinx.coroutines.flow.StateFlow
@@ -10,9 +11,9 @@ data class LiveTimer(
     val reading: TimerReading?
 )
 
-/** The connected host's timers from its status stream; empty while disconnected. */
+/** The connected host's timers from its status stream; [Loadable.NotLoaded] while disconnected. */
 interface TimersRepository {
-    val timers: StateFlow<List<LiveTimer>>
+    val timers: StateFlow<Loadable<List<LiveTimer>>>
 }
 
 /** Each of [timers], in order and once per uuid, with its reading from [readings] by uuid. */

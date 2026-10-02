@@ -19,6 +19,7 @@ import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.CueSource
+import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.Presentation
@@ -114,19 +115,31 @@ class SlideGridViewModel(
     private var loaded: Content.Loaded? = null
     private val live = liveStateRepository.liveState
 
-    /** Another live playlist item of this grid's playlist item and its presentation ref, null until read. */
-    private val liveItemRef: Flow<Pair<PlaylistItemKey, PresentationRef?>?> =
+    /**
+     * Another live playlist item than this grid's, with its presentation ref once its playlist is
+     * read, or [LiveItemRead.loading] while that read has not answered.
+     */
+    private val liveItemRef: Flow<LiveItemRead?> =
         if (source is CueSource.PlaylistItem) {
             val liveItem = live.map { state -> state.item?.takeIf { it != source.key } }.distinctUntilChanged()
             val livePlaylist = liveItem.map { it?.playlistUuid }.distinctUntilChanged().flatMapLatest { uuid ->
                 if (uuid == null) {
                     flowOf(null)
                 } else {
-                    contentRepository.playlist(uuid).map { (it as? Result.Success)?.data }.onStart { emit(null) }
+                    contentRepository.playlist(uuid).map<_, Result<Playlist, DataError.Network>?> { it }.onStart {
+                        emit(null)
+                    }
                 }
             }
-            combine(liveItem, livePlaylist) { key, playlist ->
-                key?.let { it to playlist?.items?.firstOrNull { item -> item.key == it }?.presentation }
+            combine(liveItem, livePlaylist) { key, read ->
+                key?.let {
+                    val playlist = (read as? Result.Success)?.data
+                    LiveItemRead(
+                        key = it,
+                        ref = playlist?.items?.firstOrNull { item -> item.key == it }?.presentation,
+                        loading = read == null
+                    )
+                }
             }
         } else {
             flowOf(null)
@@ -171,11 +184,19 @@ class SlideGridViewModel(
 
     val state: StateFlow<SlideGridState> =
         combine(grid, live, gridStep, liveItemRef) { (state, loaded), live, step, liveItem ->
-            val liveItemRef = liveItem?.takeIf { it.first == live.item }?.second
+            val read = liveItem?.takeIf { it.key == live.item }
+            val liveItemLoading = live.item != null && liveItem != null && (read == null || read.loading)
             if (loaded == null) {
                 state.copy(gridStep = step)
             } else {
-                val withLive = state.withLive(source, loaded.presentation, loaded.cueList, live, liveItemRef)
+                val withLive = state.withLive(
+                    source,
+                    loaded.presentation,
+                    loaded.cueList,
+                    live,
+                    read?.ref,
+                    liveItemLoading
+                )
                 withLive.copy(stepsEnabled = alwaysSteps || withLive.liveCueIndex != null, gridStep = step)
             }
         }.stateIn(
@@ -309,3 +330,10 @@ class SlideGridViewModel(
         }
     }
 }
+
+/** The live playlist item [key] with its presentation [ref]; [loading] while its playlist is not read yet. */
+private data class LiveItemRead(
+    val key: PlaylistItemKey,
+    val ref: PresentationRef?,
+    val loading: Boolean
+)

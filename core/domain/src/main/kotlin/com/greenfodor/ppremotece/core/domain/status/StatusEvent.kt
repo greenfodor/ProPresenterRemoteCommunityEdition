@@ -48,6 +48,11 @@ sealed interface StatusEvent {
         val collections: List<MacroCollection>
     ) : StatusEvent
 
+    /** An error frame naming a subscribed url the server rejected, as sent: `URL: {url}. Error: …`. */
+    data class Rejected(
+        val message: String
+    ) : StatusEvent
+
     data class Heartbeat(
         val epochSeconds: Long
     ) : StatusEvent

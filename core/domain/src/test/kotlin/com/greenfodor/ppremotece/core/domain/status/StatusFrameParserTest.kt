@@ -4,6 +4,7 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import com.greenfodor.ppremotece.core.domain.model.CountDownTarget
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.Macro
@@ -197,7 +198,14 @@ class StatusFrameParserTest {
         assertThat(parser.decode(frame)).isEqualTo(
             StatusEvent.Timers(
                 listOf(
-                    Timer("t-0", "Timer 01", 0, TimerType.COUNTDOWN_TO_TIME, allowsOverrun = true),
+                    Timer(
+                        "t-0",
+                        "Timer 01",
+                        0,
+                        TimerType.COUNTDOWN_TO_TIME,
+                        allowsOverrun = true,
+                        target = CountDownTarget(timeOfDaySeconds = 30600, period = "pm")
+                    ),
                     Timer("t-1", "Timer 02", 1, TimerType.COUNTDOWN, allowsOverrun = false),
                     Timer("t-2", "Timer 03", 2, TimerType.ELAPSED, allowsOverrun = false)
                 )
@@ -206,10 +214,18 @@ class StatusFrameParserTest {
     }
 
     @Test
-    fun `a timer of an unknown type is left out`() {
+    fun `a timer of an unknown type is kept as unknown`() {
         val frame = """{"url":"timers","data":[{"id":{"name":"Timer 01","index":0,"uuid":"t-0"},"lap":{}}]}"""
 
-        assertThat(parser.decode(frame)).isEqualTo(StatusEvent.Timers(emptyList()))
+        assertThat(parser.decode(frame)).isEqualTo(
+            StatusEvent.Timers(listOf(Timer("t-0", "Timer 01", 0, TimerType.UNKNOWN, allowsOverrun = false)))
+        )
+    }
+
+    @Test
+    fun `an error frame decodes to the url it rejects`() {
+        assertThat(parser.decode("""["URL: stage/layouts. Error: 404 Not Found"]"""))
+            .isEqualTo(StatusEvent.Rejected("URL: stage/layouts. Error: 404 Not Found"))
     }
 
     @Test
@@ -261,7 +277,7 @@ class StatusFrameParserTest {
             """{"id":{"uuid":"c-0","name":"Collection 01","index":0},"macros":[""" +
             """{"id":{"uuid":"m-0","name":"Macro 01","index":0},""" +
             """"color":{"red":1.0,"green":0.5,"blue":0.0,"alpha":1.0},"image_type":"Default","actions":[]},""" +
-            """{"id":{"uuid":"m-1","name":"Macro 02","index":1},"image_type":"Default","actions":[]}""" +
+            """{"id":{"uuid":"m-1","name":"Macro 02","index":1},"image_type":"Custom","actions":[]}""" +
             """]}]}}"""
 
         assertThat(parser.decode(frame)).isEqualTo(
@@ -272,8 +288,14 @@ class StatusFrameParserTest {
                         name = "Collection 01",
                         index = 0,
                         macros = listOf(
-                            Macro("m-0", "Macro 01", 0, GroupColor(red = 1f, green = 0.5f, blue = 0f, alpha = 1f)),
-                            Macro("m-1", "Macro 02", 1, color = null)
+                            Macro(
+                                "m-0",
+                                "Macro 01",
+                                0,
+                                GroupColor(red = 1f, green = 0.5f, blue = 0f, alpha = 1f),
+                                imageType = "Default"
+                            ),
+                            Macro("m-1", "Macro 02", 1, color = null, imageType = "Custom")
                         )
                     )
                 )

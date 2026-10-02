@@ -4,8 +4,15 @@ import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
+import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.model.LiveCue
+import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
@@ -42,7 +49,11 @@ class TimersViewModelTest {
         TimerReading("t-1", "00:00:05", TimerState.RUNNING)
     )
     private val repository = object : TimersRepository {
-        override val timers = MutableStateFlow(listOf(stopped, running))
+        override val timers = MutableStateFlow<Loadable<List<LiveTimer>>>(Loadable.Loaded(listOf(stopped, running)))
+    }
+    private val live = object : LiveStateRepository {
+        override val liveState = MutableStateFlow(LiveState.Initial.copy(connection = ConnectionStatus.CONNECTED))
+        override val lastLive = MutableStateFlow<LiveCue?>(null)
     }
     private val client = FakeTimerClient()
     private val dispatcher = UnconfinedTestDispatcher()
@@ -57,15 +68,48 @@ class TimersViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = TimersViewModel(repository, client)
+    private fun viewModel() = TimersViewModel(repository, live, client)
+
+    private val TimersState.loaded: List<TimerUi> get() = (timers as Loadable.Loaded).value
 
     @Test
     fun `each timer is shown as its card`() = runTest {
         viewModel().state.test {
-            val timers = expectMostRecentItem().timers
+            val timers = expectMostRecentItem().loaded
             assertThat(timers.map { it.name }).containsExactly("Timer 01", "Timer 02")
             assertThat(timers.map { it.card.icon }).containsExactly(TimerIcon.ALARM, TimerIcon.AVG_PACE)
             assertThat(timers.map { it.card.running }).containsExactly(false, true)
+        }
+    }
+
+    @Test
+    fun `timers are not loaded until the repository loads them`() = runTest {
+        repository.timers.value = Loadable.NotLoaded
+
+        viewModel().state.test {
+            assertThat(expectMostRecentItem().timers).isEqualTo(Loadable.NotLoaded)
+            repository.timers.value = Loadable.Loaded(emptyList())
+            assertThat(awaitItem().timers).isEqualTo(Loadable.Loaded(emptyList()))
+        }
+    }
+
+    @Test
+    fun `timers the server rejected are unavailable`() = runTest {
+        repository.timers.value = Loadable.Unavailable
+
+        viewModel().state.test {
+            assertThat(expectMostRecentItem().timers).isEqualTo(Loadable.Unavailable)
+        }
+    }
+
+    @Test
+    fun `readouts are dimmed while the stream reconnects`() = runTest {
+        viewModel().state.test {
+            assertThat(expectMostRecentItem().dimmed).isFalse()
+            live.liveState.value = live.liveState.value.copy(connection = ConnectionStatus.RECONNECTING)
+            assertThat(awaitItem().dimmed).isTrue()
+            live.liveState.value = live.liveState.value.copy(connection = ConnectionStatus.CONNECTED)
+            assertThat(awaitItem().dimmed).isFalse()
         }
     }
 
@@ -85,9 +129,8 @@ class TimersViewModelTest {
 
         viewModel.onAction(TimersAction.OnToggleClick("t-0"))
         viewModel.onAction(TimersAction.OnToggleClick("t-0"))
-        repository.timers.value = listOf(
-            stopped.copy(reading = TimerReading("t-0", "08:29:59", TimerState.RUNNING)),
-            running
+        repository.timers.value = Loadable.Loaded(
+            listOf(stopped.copy(reading = TimerReading("t-0", "08:29:59", TimerState.RUNNING)), running)
         )
         viewModel.onAction(TimersAction.OnToggleClick("t-0"))
 
@@ -134,8 +177,9 @@ class TimersViewModelTest {
         viewModel.onAction(TimersAction.OnResetClick("t-0"))
         viewModel.onAction(TimersAction.OnResetClick("t-1"))
         client.gate.complete(Unit)
-        repository.timers.value =
+        repository.timers.value = Loadable.Loaded(
             listOf(stopped.copy(reading = TimerReading("t-0", "08:29:59", TimerState.RUNNING)), running)
+        )
         viewModel.onAction(TimersAction.OnResetClick("t-0"))
 
         assertThat(client.operations).containsExactly(

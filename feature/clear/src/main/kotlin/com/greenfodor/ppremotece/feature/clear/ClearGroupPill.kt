@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.greenfodor.ppremotece.core.designsystem.ui.ServerIcon
+import com.greenfodor.ppremotece.core.designsystem.ui.ServerIconImage
 import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 
 private val GroupPillHeight = 56.dp
@@ -35,7 +35,7 @@ internal fun GroupPill(name: String, icon: ServerIcon?, tint: Color, onClick: ()
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(start = if (icon != null) 16.dp else 24.dp, end = 24.dp)
         ) {
-            icon?.let { ServerIcon(it, tint, GroupIconSize) }
+            icon?.let { ServerIconImage(it, tint, GroupIconSize) }
             Text(
                 text = name,
                 style = MaterialTheme.typography.titleSmall,

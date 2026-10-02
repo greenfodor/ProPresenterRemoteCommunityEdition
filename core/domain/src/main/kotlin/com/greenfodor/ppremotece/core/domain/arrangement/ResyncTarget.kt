@@ -19,16 +19,19 @@ enum class NoMatchReason {
     NOT_IN_ARRANGEMENT,
 
     /** The arrangement the live slide plays in can't be resolved. */
-    LIVE_ARRANGEMENT_UNKNOWN
+    LIVE_ARRANGEMENT_UNKNOWN,
+
+    /** The matching cue is disabled and no enabled cue follows it. */
+    NO_ENABLED_AFTER
 }
 
 /**
  * The cue of [itemCues] showing the slide at [liveIndex] of [liveCues]: the same repeat of that
  * slide (group and slide in group), else its first occurrence. A disabled cue moves to the next
- * enabled cue; null when there is none. No match when the slide is not in [itemCues], or when
+ * enabled cue; no match when there is none. No match when the slide is not in [itemCues], or when
  * [liveCues] is null (the live arrangement is unresolved).
  */
-fun resyncTarget(liveCues: List<Cue>?, liveIndex: Int, itemCues: List<Cue>): ResyncTarget? {
+fun resyncTarget(liveCues: List<Cue>?, liveIndex: Int, itemCues: List<Cue>): ResyncTarget {
     if (liveCues == null) return ResyncTarget.NoMatch(NoMatchReason.LIVE_ARRANGEMENT_UNKNOWN)
     val target = liveCues.firstOrNull { it.index == liveIndex }?.let { live ->
         val repeat = liveCues.count { it.index < liveIndex && it.sameSlideAs(live) }
@@ -39,6 +42,7 @@ fun resyncTarget(liveCues: List<Cue>?, liveIndex: Int, itemCues: List<Cue>): Res
         target == null -> ResyncTarget.NoMatch(NoMatchReason.NOT_IN_ARRANGEMENT)
         target.enabled -> ResyncTarget.Cue(target.index)
         else -> nextCueIndex(itemCues, target.index)?.let { ResyncTarget.Cue(it) }
+            ?: ResyncTarget.NoMatch(NoMatchReason.NO_ENABLED_AFTER)
     }
 }
 

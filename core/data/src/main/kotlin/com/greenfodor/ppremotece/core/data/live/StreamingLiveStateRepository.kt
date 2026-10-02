@@ -1,7 +1,9 @@
 package com.greenfodor.ppremotece.core.data.live
 
+import android.util.Log
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CueSource
@@ -15,6 +17,8 @@ import com.greenfodor.ppremotece.core.domain.model.TimerReading
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import com.greenfodor.ppremotece.core.domain.status.StatusFrameParser
+import com.greenfodor.ppremotece.core.domain.status.rejectedUrl
+import com.greenfodor.ppremotece.core.domain.status.withoutRejected
 import com.greenfodor.ppremotece.core.domain.timers.LiveTimer
 import com.greenfodor.ppremotece.core.domain.timers.TimersRepository
 import com.greenfodor.ppremotece.core.domain.timers.joinTimers
@@ -57,27 +61,40 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * slide text; each pair read naming a slide of the live item's presentation, or a slide live
  * without a playlist item, sets [lastLive], which outlives clears, reconnects and resubscriptions.
  * `timers` and `timers/current` frames set [timers], each timer joined with its latest reading, and
- * `macro_collections` frames set [collections].
+ * `macro_collections` frames set [collections]; both are [Loadable.NotLoaded] until their first frame
+ * and keep their content across reconnects. An error frame naming a subscribed url ([rejectedUrl])
+ * removes that url from the subscriptions for the reopened stream ([withoutRejected]), marks the
+ * content it feeds [Loadable.Unavailable] and is passed to [log] once.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
     scope: CoroutineScope,
     private val watchdogTimeout: Duration = 10.seconds,
     private val reconnectDelay: (attempt: Int) -> Duration = ::defaultReconnectDelay,
-    private val onReconnected: () -> Unit = {}
+    private val onReconnected: () -> Unit = {},
+    private val log: (String) -> Unit = { Log.w(TAG, it) }
 ) : LiveStateRepository,
     TimersRepository,
     MacrosRepository {
     private val _lastLive = MutableStateFlow<LiveCue?>(null)
     override val lastLive: StateFlow<LiveCue?> = _lastLive.asStateFlow()
 
-    private val timerList = MutableStateFlow<List<Timer>>(emptyList())
+    private val timerList = MutableStateFlow<Loadable<List<Timer>>>(Loadable.NotLoaded)
     private val timerReadings = MutableStateFlow<List<TimerReading>>(emptyList())
-    override val timers: StateFlow<List<LiveTimer>> =
-        combine(timerList, timerReadings, ::joinTimers).stateIn(scope, SharingStarted.Eagerly, emptyList())
+    override val timers: StateFlow<Loadable<List<LiveTimer>>> =
+        combine(timerList, timerReadings) { list, readings ->
+            when (list) {
+                is Loadable.Loaded -> Loadable.Loaded(joinTimers(list.value, readings))
+                Loadable.NotLoaded -> Loadable.NotLoaded
+                Loadable.Unavailable -> Loadable.Unavailable
+            }
+        }.stateIn(scope, SharingStarted.Eagerly, Loadable.NotLoaded)
 
-    private val macroCollections = MutableStateFlow<List<MacroCollection>>(emptyList())
-    override val collections: StateFlow<List<MacroCollection>> = macroCollections.asStateFlow()
+    private val macroCollections = MutableStateFlow<Loadable<List<MacroCollection>>>(Loadable.NotLoaded)
+    override val collections: StateFlow<Loadable<List<MacroCollection>>> = macroCollections.asStateFlow()
+
+    @Volatile
+    private var subscriptions = SUBSCRIPTIONS
 
     override val liveState: StateFlow<LiveState> =
         channelFlow {
@@ -108,9 +125,11 @@ class StreamingLiveStateRepository(
                                     }
                                 }
                                 is StatusEvent.Layers -> next = next.copy(layers = event.active)
-                                is StatusEvent.Timers -> timerList.value = event.timers
+                                is StatusEvent.Timers -> timerList.value = Loadable.Loaded(event.timers)
                                 is StatusEvent.TimerReadings -> timerReadings.value = event.readings
-                                is StatusEvent.MacroCollections -> macroCollections.value = event.collections
+                                is StatusEvent.MacroCollections ->
+                                    macroCollections.value = Loadable.Loaded(event.collections)
+                                is StatusEvent.Rejected -> reject(event.message)
                                 else -> Unit
                             }
                         }
@@ -152,10 +171,22 @@ class StreamingLiveStateRepository(
         _lastLive.value = LiveCue(source, slide.presentationUuid, slide.index)
     }
 
+    /** Drops the url [message] names from [subscriptions] and marks the content it feeds unavailable. */
+    private fun reject(message: String) {
+        val url = rejectedUrl(message)?.takeIf { it in subscriptions } ?: return
+        subscriptions = withoutRejected(subscriptions, message)
+        when (url) {
+            "timers", "timers/current" -> timerList.value = Loadable.Unavailable
+            "macro_collections" -> macroCollections.value = Loadable.Unavailable
+        }
+        log(message)
+    }
+
     @OptIn(FlowPreview::class)
-    private fun streamChunks() = client.statusUpdates(SUBSCRIPTIONS).timeout(watchdogTimeout)
+    private fun streamChunks() = client.statusUpdates(subscriptions).timeout(watchdogTimeout)
 
     private companion object {
+        const val TAG = "LiveStream"
         val SUBSCRIPTIONS =
             listOf(
                 "status/slide",

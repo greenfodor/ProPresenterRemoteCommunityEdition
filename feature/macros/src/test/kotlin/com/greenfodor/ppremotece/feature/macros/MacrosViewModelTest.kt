@@ -3,11 +3,13 @@ package com.greenfodor.ppremotece.feature.macros
 import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.hasSize
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
@@ -44,7 +46,7 @@ class MacrosViewModelTest {
     private val second = MacroCollection("c-1", "Collection 02", 1, listOf(Macro("m-2", "Macro 03", 0, color = null)))
     private val icon = ServerIcon.Vector(18f, 18f, listOf(IconPath("M0,0 L18,18", evenOdd = true)))
     private val repository = object : MacrosRepository {
-        override val collections = MutableStateFlow(listOf(first))
+        override val collections = MutableStateFlow<Loadable<List<MacroCollection>>>(Loadable.Loaded(listOf(first)))
     }
     private val client = FakeMacroClient()
     private val dispatcher = UnconfinedTestDispatcher()
@@ -66,19 +68,19 @@ class MacrosViewModelTest {
         viewModel().state.test {
             val state = expectMostRecentItem()
             assertThat(state.showHeaders).isFalse()
-            assertThat(state.sections.single().macros.map { it.name }).containsExactly("Macro 01", "Macro 02")
-            assertThat(state.sections.single().macros.map { it.color }).containsExactly(red, null)
+            assertThat(state.loaded.single().macros.map { it.name }).containsExactly("Macro 01", "Macro 02")
+            assertThat(state.loaded.single().macros.map { it.color }).containsExactly(red, null)
         }
     }
 
     @Test
     fun `each collection is a section with a header when there are several`() = runTest(dispatcher) {
-        repository.collections.value = listOf(first, second)
+        repository.collections.value = Loadable.Loaded(listOf(first, second))
 
         viewModel().state.test {
             val state = expectMostRecentItem()
             assertThat(state.showHeaders).isTrue()
-            assertThat(state.sections.map { it.name }).containsExactly("Collection 01", "Collection 02")
+            assertThat(state.loaded.map { it.name }).containsExactly("Collection 01", "Collection 02")
         }
     }
 
@@ -88,12 +90,12 @@ class MacrosViewModelTest {
         val viewModel = viewModel()
 
         viewModel.state.test {
-            val macros = expectMostRecentItem().sections.single().macros
+            val macros = expectMostRecentItem().loaded.single().macros
             assertThat(macros.map { it.icon }).containsExactly(icon, null)
             client.icons["m-1"] = Result.Success(icon)
             client.icons["m-2"] = Result.Success(icon)
-            repository.collections.value = listOf(first, second)
-            repository.collections.value = listOf(first)
+            repository.collections.value = Loadable.Loaded(listOf(first, second))
+            repository.collections.value = Loadable.Loaded(listOf(first))
             cancelAndIgnoreRemainingEvents()
         }
         viewModel.state.test { cancelAndIgnoreRemainingEvents() }
@@ -108,7 +110,7 @@ class MacrosViewModelTest {
         viewModel.state.test {
             assertThat(expectMostRecentItem().macro("m-0").icon).isNull()
             client.icons["m-0"] = Result.Success(icon)
-            repository.collections.value = listOf(first.copy(name = "Collection 01 renamed"))
+            repository.collections.value = Loadable.Loaded(listOf(first.copy(name = "Collection 01 renamed")))
             assertThat(expectMostRecentItem().macro("m-0").icon).isEqualTo(icon)
         }
         assertThat(client.iconReads.count { it == "m-0" }).isEqualTo(2)
@@ -174,14 +176,74 @@ class MacrosViewModelTest {
 
     @Test
     fun `no collections leave no sections`() = runTest(dispatcher) {
-        repository.collections.value = emptyList()
+        repository.collections.value = Loadable.Loaded(emptyList())
 
         viewModel().state.test {
-            assertThat(expectMostRecentItem().sections.firstOrNull()).isNull()
+            assertThat(expectMostRecentItem().sections).isEqualTo(Loadable.Loaded(emptyList()))
         }
     }
 
-    private fun MacrosState.macro(uuid: String) = sections.flatMap { it.macros }.first { it.uuid == uuid }
+    @Test
+    fun `collections without macros are hidden`() = runTest(dispatcher) {
+        repository.collections.value =
+            Loadable.Loaded(listOf(first, MacroCollection("c-2", "Collection 03", 2, emptyList())))
+
+        viewModel().state.test {
+            val state = expectMostRecentItem()
+            assertThat(state.loaded.map { it.name }).containsExactly("Collection 01")
+            assertThat(state.showHeaders).isFalse()
+        }
+    }
+
+    @Test
+    fun `macros are not loaded until the repository loads them and unavailable when rejected`() =
+        runTest(dispatcher) {
+            repository.collections.value = Loadable.NotLoaded
+
+            viewModel().state.test {
+                assertThat(expectMostRecentItem().sections).isEqualTo(Loadable.NotLoaded)
+                repository.collections.value = Loadable.Unavailable
+                assertThat(awaitItem().sections).isEqualTo(Loadable.Unavailable)
+            }
+        }
+
+    @Test
+    fun `at most four icon reads are in flight`() = runTest(dispatcher) {
+        client.iconGate = CompletableDeferred()
+        val many = (0 until 7).map { Macro("m-$it", "Macro ${it + 1}", it, color = null) }
+        repository.collections.value = Loadable.Loaded(listOf(MacroCollection("c-0", "Collection 01", 0, many)))
+
+        viewModel().state.test {
+            assertThat(client.iconReads).hasSize(4)
+            client.iconGate.complete(Unit)
+            assertThat(client.iconReads).hasSize(7)
+            assertThat(client.maxIconReadsInFlight).isEqualTo(4)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a macro's icon is read again when its image type or colour changes`() = runTest(dispatcher) {
+        client.icons["m-0"] = Result.Success(icon)
+        val custom = first.copy(macros = listOf(first.macros[0].copy(imageType = "Custom"), first.macros[1]))
+        val recoloured = custom.copy(macros = listOf(custom.macros[0].copy(color = null), custom.macros[1]))
+        val renamed = recoloured.copy(
+            macros = listOf(recoloured.macros[0].copy(name = "Macro 01 renamed"), recoloured.macros[1])
+        )
+
+        viewModel().state.test {
+            repository.collections.value = Loadable.Loaded(listOf(custom))
+            repository.collections.value = Loadable.Loaded(listOf(recoloured))
+            repository.collections.value = Loadable.Loaded(listOf(renamed))
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.iconReads.count { it == "m-0" }).isEqualTo(3)
+    }
+
+    private val MacrosState.loaded: List<MacroSectionUi> get() = (sections as Loadable.Loaded).value
+
+    private fun MacrosState.macro(uuid: String) = loaded.flatMap { it.macros }.first { it.uuid == uuid }
 
     /** Records macro triggers and icon reads; every other call is not served. */
     private class FakeMacroClient : ProPresenterClient by notServed() {
@@ -189,6 +251,9 @@ class MacrosViewModelTest {
         val iconReads = mutableListOf<String>()
         val icons = mutableMapOf<String, Result<ServerIcon, DataError.Network>>()
         var gate = CompletableDeferred(Unit)
+        var iconGate = CompletableDeferred(Unit)
+        var maxIconReadsInFlight = 0
+        private var iconReadsInFlight = 0
         var result: EmptyResult<DataError.Network> = Result.Success(Unit)
 
         override suspend fun triggerMacro(uuid: String): EmptyResult<DataError.Network> {
@@ -199,6 +264,9 @@ class MacrosViewModelTest {
 
         override suspend fun macroIcon(uuid: String): Result<ServerIcon, DataError.Network> {
             iconReads += uuid
+            maxIconReadsInFlight = maxOf(maxIconReadsInFlight, ++iconReadsInFlight)
+            iconGate.await()
+            iconReadsInFlight--
             return icons[uuid] ?: Result.Failure(DataError.Network.SERIALIZATION)
         }
     }
