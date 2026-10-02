@@ -4,8 +4,13 @@ import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
+import com.greenfodor.ppremotece.core.domain.model.Timer
+import com.greenfodor.ppremotece.core.domain.model.TimerReading
+import com.greenfodor.ppremotece.core.domain.model.TimerState
+import com.greenfodor.ppremotece.core.domain.model.TimerType
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -52,20 +57,27 @@ class StatusFrameParser {
             "presentation/active" ->
                 StatusEvent.PresentationActive(data.child("presentation").child("id").child("uuid").stringOrNull())
             "playlist/active" -> playlistActiveOf(data)
-            "status/layers" -> (data as? JsonObject)?.let { layers ->
-                StatusEvent.Layers(
-                    layers
-                        .filterValues { (it as? JsonPrimitive)?.booleanOrNull == true }
-                        .keys
-                        .mapNotNull(OutputLayer::fromApiName)
-                        .toSet()
-                )
-            } ?: StatusEvent.Unknown(url)
+            "status/layers" -> (data as? JsonObject)?.toLayers()
             "timer/system_time" -> (data as? JsonPrimitive)?.longOrNull?.let { StatusEvent.Heartbeat(it) }
-                ?: StatusEvent.Unknown(url)
-            else -> StatusEvent.Unknown(url)
-        }
+            else -> timerEventOf(url, data as? JsonArray)
+        } ?: StatusEvent.Unknown(url)
     }
+
+    private fun timerEventOf(url: String?, data: JsonArray?): StatusEvent? =
+        when {
+            data == null -> null
+            url == "timers" -> StatusEvent.Timers(data.mapNotNull { it.toTimer() })
+            url == "timers/current" -> StatusEvent.TimerReadings(data.mapNotNull { it.toTimerReading() })
+            else -> null
+        }
+
+    private fun JsonObject.toLayers() =
+        StatusEvent.Layers(
+            filterValues { (it as? JsonPrimitive)?.booleanOrNull == true }
+                .keys
+                .mapNotNull(OutputLayer::fromApiName)
+                .toSet()
+        )
 
     private fun parseObject(frame: String): JsonObject? =
         try {
@@ -86,6 +98,32 @@ class StatusFrameParser {
         }
     }
 
+    private fun JsonElement?.toTimer(): Timer? {
+        val id = child("id")
+        val uuid = id.child("uuid").stringOrNull()
+        val type = TIMER_TYPES.entries.firstOrNull { (key, _) -> child(key) != null }?.value
+        return if (uuid != null && type != null) {
+            Timer(
+                uuid = uuid,
+                name = id.child("name").stringOrNull().orEmpty(),
+                index = id.child("index").intOrNull() ?: 0,
+                type = type,
+                allowsOverrun = (child("allows_overrun") as? JsonPrimitive)?.booleanOrNull ?: false
+            )
+        } else {
+            null
+        }
+    }
+
+    private fun JsonElement?.toTimerReading(): TimerReading? {
+        val uuid = child("id").child("uuid").stringOrNull() ?: return null
+        return TimerReading(
+            uuid = uuid,
+            time = child("time").stringOrNull().orEmpty(),
+            state = TimerState.fromApiName(child("state").stringOrNull())
+        )
+    }
+
     private fun JsonElement?.toSlideText(): SlideText? =
         (this as? JsonObject)?.let {
             SlideText(
@@ -104,6 +142,11 @@ class StatusFrameParser {
     companion object {
         const val MAX_PENDING_BYTES = 1 shl 20
         private val SEPARATOR = "\r\n\r\n".encodeToByteArray()
+        private val TIMER_TYPES = mapOf(
+            "countdown" to TimerType.COUNTDOWN,
+            "count_down_to_time" to TimerType.COUNTDOWN_TO_TIME,
+            "elapsed" to TimerType.ELAPSED
+        )
     }
 }
 

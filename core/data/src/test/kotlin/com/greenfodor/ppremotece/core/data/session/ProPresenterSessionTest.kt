@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.data.session
 
 import assertk.assertThat
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
@@ -78,6 +79,20 @@ class ProPresenterSessionTest {
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
 
         assertThat(withTimeout(2.seconds) { session.lastLive.first { it == null } }).isNull()
+    }
+
+    @Test
+    fun `the timers are cleared on disconnect`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(TIMERS_FRAME)))
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        val collector = launch { session.liveState.collect {} }
+        assertThat(withTimeout(5.seconds) { session.timers.first { it.isNotEmpty() } }.single().timer.name)
+            .isEqualTo("Timer 01")
+        collector.cancel()
+
+        session.disconnect()
+
+        assertThat(withTimeout(2.seconds) { session.timers.first { it.isEmpty() } }).isEmpty()
     }
 
     @Test
@@ -215,6 +230,11 @@ class ProPresenterSessionTest {
         assertThat(
             lastLive
         ).isEqualTo(LiveCue(CueSource.PlaylistItem(item), FakeProPresenter.SONG_A_UUID, cueIndex = 3))
+    }
+
+    private companion object {
+        const val TIMERS_FRAME = """{"url":"timers","data":[{"id":{"name":"Timer 01","index":0,"uuid":"t-0"},""" +
+            """"allows_overrun":false,"elapsed":{"start_time":0}}]}"""
     }
 
     private fun host() = ProPresenterHost(name = "Host 01", address = server.hostName, port = server.port)

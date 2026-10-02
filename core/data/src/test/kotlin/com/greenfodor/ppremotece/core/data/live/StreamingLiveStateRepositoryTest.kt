@@ -21,11 +21,18 @@ import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
+import com.greenfodor.ppremotece.core.domain.model.TimerReading
+import com.greenfodor.ppremotece.core.domain.model.TimerState
+import com.greenfodor.ppremotece.core.domain.model.TimerType
+import com.greenfodor.ppremotece.core.domain.timers.LiveTimer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import mockwebserver3.MockWebServer
@@ -407,6 +414,60 @@ class StreamingLiveStateRepositoryTest {
     }
 
     @Test
+    fun `the stream subscribes to exactly the live and timer urls`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(FakeProPresenter.HEARTBEAT_FRAME)))
+
+        repository.liveState.test(timeout = 5.seconds) {
+            awaitUntil { it.connection == ConnectionStatus.CONNECTED }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        val stream = generateSequence { server.takeRequest(5, TimeUnit.SECONDS) }
+            .first { it.url.encodedPath == "/v1/status/updates" }
+        assertThat(stream.body?.utf8()).isEqualTo(SUBSCRIPTIONS_BODY)
+    }
+
+    @Test
+    fun `the stage 8 capture joins each timer with its reading`() = runBlocking {
+        val timers = timersAfterChunk(TIMERS_READ_CHUNK) { it.size == 3 && it.all { timer -> timer.reading != null } }
+
+        assertThat(timers.map { it.timer.name to it.timer.type }).containsExactly(
+            "Timer 01" to TimerType.COUNTDOWN_TO_TIME,
+            "Timer 02" to TimerType.COUNTDOWN_TO_TIME,
+            "Timer 03" to TimerType.ELAPSED
+        )
+        assertThat(timers.map { it.reading }).containsExactly(
+            TimerReading(TIMER_0, "17:14:53", TimerState.STOPPED),
+            TimerReading("c5fcf5b0-ee31-4143-9d54-6514d922b2bb", "11:50:00", TimerState.STOPPED),
+            TimerReading("9bf671d2-475a-4716-af17-2ab73589734d", "00:00:00", TimerState.STOPPED)
+        )
+    }
+
+    @Test
+    fun `the stage 8 capture shows timer 1 running with its latest readout`() = runBlocking {
+        val timers = timersAfterChunk(TIMER_RUNNING_CHUNK) { it.firstOrNull()?.reading?.time == "17:05:20" }
+
+        assertThat(timers.first().reading).isEqualTo(TimerReading(TIMER_0, "17:05:20", TimerState.RUNNING))
+    }
+
+    @Test
+    fun `the stage 8 capture ends with timer 1 stopped at its frozen readout`() = runBlocking {
+        val timers = timersAfterChunk(TIMER_STOPPED_CHUNK) { it.firstOrNull()?.reading?.time == "17:05:18" }
+
+        assertThat(timers.first().reading).isEqualTo(TimerReading(TIMER_0, "17:05:18", TimerState.STOPPED))
+    }
+
+    /** Replays the stage 8 capture through [chunk] and returns the timers once they match [settled]. */
+    private suspend fun timersAfterChunk(chunk: Int, settled: (List<LiveTimer>) -> Boolean): List<LiveTimer> =
+        coroutineScope {
+            fake.enqueueStream(fake.stream(STAGE_8_TIMERS, StreamEnd.STALL, timeScale = 0.0, chunkLimit = chunk))
+            val collector = launch { repository.liveState.collect {} }
+            val timers = withTimeout(5.seconds) { repository.timers.first(settled) }
+            collector.cancel()
+            timers
+        }
+
+    @Test
     fun `reconnect delay doubles from half a second and is capped at ten seconds`() {
         assertThat((0..6).map { defaultReconnectDelay(it).inWholeMilliseconds })
             .containsExactly(500L, 1_000L, 2_000L, 4_000L, 8_000L, 10_000L, 10_000L)
@@ -436,6 +497,12 @@ class StreamingLiveStateRepositoryTest {
         const val ITEM_1_SLIDE_INDEX_CHUNK = 10
         const val PRESENTATION_ROUTE_SLIDE_INDEX_CHUNK = 16
         const val SAME_ITEM_SLIDE_INDEX_CHUNK = 28
-        const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active","status/layers"]"""
+        const val SUBSCRIPTIONS_BODY =
+            """["status/slide","timer/system_time","playlist/active","status/layers","timers","timers/current"]"""
+        const val STAGE_8_TIMERS = "stage8-timers"
+        const val TIMER_0 = "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
+        const val TIMERS_READ_CHUNK = 7
+        const val TIMER_RUNNING_CHUNK = 13
+        const val TIMER_STOPPED_CHUNK = 20
     }
 }

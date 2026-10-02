@@ -21,6 +21,7 @@ dependencies {
     implementation(project(":feature:remote"))
     implementation(project(":feature:clear"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:timers"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

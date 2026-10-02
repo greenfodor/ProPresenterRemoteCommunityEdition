@@ -12,6 +12,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
@@ -61,6 +62,9 @@ class FakeProPresenterClient : ProPresenterClient {
     override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> = notServed()
 
     override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> = notServed()
+
+    override suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network> =
+        notServed()
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> {
         steps += "next"

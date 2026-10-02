@@ -1,0 +1,11 @@
+<resources>
+    <string name="timers_title">Timers</string>
+    <string name="timers_empty">No timers in ProPresenter</string>
+    <string name="timers_running">Running</string>
+    <string name="timers_start">Start %1$s</string>
+    <string name="timers_stop">Stop %1$s</string>
+    <string name="timers_reset">Reset %1$s</string>
+    <string name="timers_error_start">Couldn\'t start %1$s</string>
+    <string name="timers_error_stop">Couldn\'t stop %1$s</string>
+    <string name="timers_error_reset">Couldn\'t reset %1$s</string>
+</resources>

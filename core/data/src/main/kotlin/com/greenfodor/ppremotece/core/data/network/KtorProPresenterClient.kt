@@ -22,6 +22,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
@@ -133,6 +134,9 @@ class KtorProPresenterClient(
                     ?.let { Result.Success(it) }
                     ?: Result.Failure(DataError.Network.SERIALIZATION)
         }
+
+    override suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/v1/timer/${uuid.encodeURLPathPart()}/${operation.apiName}") }
 
     override suspend fun triggerNext(): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/trigger/next") }

@@ -11,6 +11,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
@@ -52,6 +53,9 @@ interface ProPresenterClient {
     suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network>
 
     suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network>
+
+    /** Starts, stops or resets timer [uuid]. */
+    suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network>
 
     suspend fun triggerNext(): EmptyResult<DataError.Network>
 

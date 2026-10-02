@@ -8,9 +8,14 @@ import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.Timer
+import com.greenfodor.ppremotece.core.domain.model.TimerReading
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import com.greenfodor.ppremotece.core.domain.status.StatusFrameParser
+import com.greenfodor.ppremotece.core.domain.timers.LiveTimer
+import com.greenfodor.ppremotece.core.domain.timers.TimersRepository
+import com.greenfodor.ppremotece.core.domain.timers.joinTimers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -23,6 +28,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.timeout
 import kotlin.math.pow
@@ -48,6 +54,7 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * called when the first chunk of a reopened stream arrives. Each `status/slide` frame sets the
  * slide text; each pair read naming a slide of the live item's presentation, or a slide live
  * without a playlist item, sets [lastLive], which outlives clears, reconnects and resubscriptions.
+ * `timers` and `timers/current` frames set [timers], each timer joined with its latest reading.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
@@ -55,9 +62,15 @@ class StreamingLiveStateRepository(
     private val watchdogTimeout: Duration = 10.seconds,
     private val reconnectDelay: (attempt: Int) -> Duration = ::defaultReconnectDelay,
     private val onReconnected: () -> Unit = {}
-) : LiveStateRepository {
+) : LiveStateRepository,
+    TimersRepository {
     private val _lastLive = MutableStateFlow<LiveCue?>(null)
     override val lastLive: StateFlow<LiveCue?> = _lastLive.asStateFlow()
+
+    private val timerList = MutableStateFlow<List<Timer>>(emptyList())
+    private val timerReadings = MutableStateFlow<List<TimerReading>>(emptyList())
+    override val timers: StateFlow<List<LiveTimer>> =
+        combine(timerList, timerReadings, ::joinTimers).stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     override val liveState: StateFlow<LiveState> =
         channelFlow {
@@ -88,6 +101,8 @@ class StreamingLiveStateRepository(
                                     }
                                 }
                                 is StatusEvent.Layers -> next = next.copy(layers = event.active)
+                                is StatusEvent.Timers -> timerList.value = event.timers
+                                is StatusEvent.TimerReadings -> timerReadings.value = event.readings
                                 else -> Unit
                             }
                         }
@@ -133,6 +148,7 @@ class StreamingLiveStateRepository(
     private fun streamChunks() = client.statusUpdates(SUBSCRIPTIONS).timeout(watchdogTimeout)
 
     private companion object {
-        val SUBSCRIPTIONS = listOf("status/slide", "timer/system_time", "playlist/active", "status/layers")
+        val SUBSCRIPTIONS =
+            listOf("status/slide", "timer/system_time", "playlist/active", "status/layers", "timers", "timers/current")
     }
 }

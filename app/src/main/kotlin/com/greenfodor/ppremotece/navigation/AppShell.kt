@@ -90,6 +90,8 @@ import com.greenfodor.ppremotece.feature.settings.MoreRoute
 import com.greenfodor.ppremotece.feature.settings.MoreScreen
 import com.greenfodor.ppremotece.feature.settings.SettingsRoot
 import com.greenfodor.ppremotece.feature.settings.SettingsRoute
+import com.greenfodor.ppremotece.feature.timers.TimersRoot
+import com.greenfodor.ppremotece.feature.timers.TimersRoute
 import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
@@ -112,10 +114,14 @@ private enum class ShellDestination(
         PlaylistsRoute
     ),
     REMOTE(ShellItem(ShellTab.REMOTE, DesignR.drawable.ic_settings_remote, R.string.shell_remote), RemoteRoute),
+    TIMERS(ShellItem(ShellTab.TIMERS, DesignR.drawable.ic_timer, R.string.shell_timers), TimersRoute),
     SETTINGS(ShellItem(ShellTab.SETTINGS, DesignR.drawable.ic_settings, R.string.shell_settings), SettingsRoute)
 }
 
 private val MoreItem = ShellItem(ShellTab.MORE, DesignR.drawable.ic_more_horiz, R.string.shell_more)
+
+/** The tabs that show the Clear FAB with the bar layout. */
+private val ClearFabTabs = setOf(ShellTab.PRESENTATION, ShellTab.REMOTE, ShellTab.TIMERS)
 
 /** Each tab's root route. */
 private val TabRoots: Map<ShellTab, NavKey> =
@@ -158,7 +164,7 @@ fun AppShell(
     val widthClass = widthClassOf(windowSizeClass.minWidthDp)
     val compactHeight = !windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
     val layout = navigationLayout(windowSizeClass.minWidthDp)
-    val clearShown = layout == NavigationLayout.RAIL || tab == ShellTab.PRESENTATION || tab == ShellTab.REMOTE
+    val clearShown = layout == NavigationLayout.RAIL || tab in ClearFabTabs
     LaunchedEffect(clearShown) { if (!clearShown) clearOpen = false }
     val fab: (@Composable (SnackbarHostState) -> Unit)? = if (layout == NavigationLayout.BAR) {
         { snackbars -> ClearFab(snackbarHostState = snackbars, open = clearOpen, onOpenChange = { clearOpen = it }) }
@@ -302,7 +308,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
     }
 }
 
-/** The Remote, Settings and More entries. */
+/** The Remote, Timers, Settings and More entries. */
 @Suppress("LongParameterList")
 private fun EntryProviderScope<NavKey>.tabEntries(
     widthClass: WidthClass,
@@ -315,6 +321,9 @@ private fun EntryProviderScope<NavKey>.tabEntries(
 ) {
     entry<RemoteRoute> {
         RemoteRoot(widthClass = widthClass, reconnecting = reconnecting, floatingActionButton = fab)
+    }
+    entry<TimersRoute> {
+        TimersRoot(widthClass = widthClass, reconnecting = reconnecting, floatingActionButton = fab)
     }
     entry<SettingsRoute> {
         SettingsRoot(onBack = onBack, onDisconnected = onDisconnected)

@@ -10,6 +10,7 @@ import com.greenfodor.ppremotece.feature.connect.connectModule
 import com.greenfodor.ppremotece.feature.playlist.playlistModule
 import com.greenfodor.ppremotece.feature.remote.remoteModule
 import com.greenfodor.ppremotece.feature.settings.settingsModule
+import com.greenfodor.ppremotece.feature.timers.timersModule
 import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
@@ -28,7 +29,8 @@ class PPRemoteApplication :
                 playlistModule,
                 remoteModule,
                 clearModule,
-                settingsModule
+                settingsModule,
+                timersModule
             )
         }
     }

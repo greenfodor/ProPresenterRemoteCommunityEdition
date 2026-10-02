@@ -40,6 +40,7 @@ MVI presentation (State / Action / Event, `XxxRoot` / `XxxScreen`, `UiText`).
 | `:feature:remote`    | `ppremotece.android.feature`         | Remote tab: live and next boxes, item steps, Prev/Next                           |
 | `:feature:clear`     | `ppremotece.android.feature`         | Clear FAB, rail item and sheet: layer clears and clear groups                    |
 | `:feature:settings`  | `ppremotece.android.feature`         | More list and Settings screen                                                    |
+| `:feature:timers`    | `ppremotece.android.feature`         | Timers tab: one card per timer with Start/Stop and Reset                         |
 
 **Dependency rules:** `domain` depends on nothing; `data` → `domain`; `designsystem` → `domain`;
 features → `domain` + `designsystem`, never `data` and never each other; `:app` → everything and
@@ -60,12 +61,15 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
   trigger `GET /v1/playlist/{pl}/{item}/trigger`, `GET /v1/trigger/next`,
   `GET /v1/trigger/previous` (from the playlist grid, the Remote, and the library grid while its
-  presentation is live outside a playlist) and the clear calls;
+  presentation is live outside a playlist), the clear calls and the timer operations
+  `GET /v1/timer/{uuid}/start`, `GET /v1/timer/{uuid}/stop` and `GET /v1/timer/{uuid}/reset`;
 - the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode and
   when a presentation is live outside a playlist (or remembered from one after a clear);
-- one `POST /v1/status/updates` stream.
+- one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
+  "playlist/active", "status/layers", "timers", "timers/current"]` (one unknown URL ends the whole stream).
 
-Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content) is out of bounds.
+Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content, such as a timer edit) is out of
+bounds, as are `timer/{id}/increment/…`, `timers/{op}` and any `/focus` route.
 Inside a playlist, trigger by `(playlist uuid, item index, cue index)`, or by
 `(playlist uuid, item index)` for the item trigger, only;
 `/v1/presentation/active/{n}/trigger`, `/v1/presentation/{uuid}/{n}/trigger` and

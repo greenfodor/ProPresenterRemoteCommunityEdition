@@ -21,6 +21,7 @@ import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
+import com.greenfodor.ppremotece.core.domain.timers.TimersRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,7 +33,12 @@ val coreDataModule = module {
     single { HttpClientFactory.create() }
     single { SavedHostStore(androidContext()) }
     single { ProPresenterSession(get(), get<SavedHostStore>(), get()) } binds
-        arrayOf(ConnectionRepository::class, LiveStateRepository::class, ThumbnailSource::class)
+        arrayOf(
+            ConnectionRepository::class,
+            LiveStateRepository::class,
+            TimersRepository::class,
+            ThumbnailSource::class
+        )
     single<ProPresenterClient> { get<ProPresenterSession>().client }
     single<HostDiscovery> { NsdHostDiscovery(androidContext()) }
     single<ImageLoader> { thumbnailImageLoader(androidContext(), get()) }
