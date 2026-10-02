@@ -3,7 +3,6 @@ package com.greenfodor.ppremotece.feature.clear
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
-import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
@@ -15,6 +14,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
@@ -29,7 +29,7 @@ class FakeClearClient : ProPresenterClient {
     val failingGroups = mutableSetOf<String>()
     var groups: List<ClearGroup> = emptyList()
     var groupReads = 0
-    val icons = mutableMapOf<String, ClearGroupIcon>()
+    val icons = mutableMapOf<String, ServerIcon>()
     val iconReads = mutableListOf<String>()
 
     override suspend fun clearLayer(layer: OutputLayer): EmptyResult<DataError.Network> {
@@ -72,10 +72,14 @@ class FakeClearClient : ProPresenterClient {
         cueIndex: Int
     ): EmptyResult<DataError.Network> = notServed()
 
-    override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> {
+    override suspend fun clearGroupIcon(uuid: String): Result<ServerIcon, DataError.Network> {
         iconReads += uuid
         return icons[uuid]?.let { Result.Success(it) } ?: Result.Failure(DataError.Network.NOT_FOUND)
     }
+
+    override suspend fun triggerMacro(uuid: String): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun macroIcon(uuid: String): Result<ServerIcon, DataError.Network> = notServed()
 
     override suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network> =
         notServed()

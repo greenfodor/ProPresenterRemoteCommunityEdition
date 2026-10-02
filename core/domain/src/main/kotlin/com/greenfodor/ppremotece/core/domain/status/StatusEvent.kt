@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.status
 
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
@@ -40,6 +41,11 @@ sealed interface StatusEvent {
     /** Every timer's current reading, from a `timers/current` frame. */
     data class TimerReadings(
         val readings: List<TimerReading>
+    ) : StatusEvent
+
+    /** The macro collections, from a `macro_collections` frame. */
+    data class MacroCollections(
+        val collections: List<MacroCollection>
     ) : StatusEvent
 
     data class Heartbeat(

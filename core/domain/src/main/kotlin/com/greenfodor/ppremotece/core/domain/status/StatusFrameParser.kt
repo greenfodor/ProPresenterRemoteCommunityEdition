@@ -4,10 +4,6 @@ import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
-import com.greenfodor.ppremotece.core.domain.model.Timer
-import com.greenfodor.ppremotece.core.domain.model.TimerReading
-import com.greenfodor.ppremotece.core.domain.model.TimerState
-import com.greenfodor.ppremotece.core.domain.model.TimerType
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -59,17 +55,22 @@ class StatusFrameParser {
             "playlist/active" -> playlistActiveOf(data)
             "status/layers" -> (data as? JsonObject)?.toLayers()
             "timer/system_time" -> (data as? JsonPrimitive)?.longOrNull?.let { StatusEvent.Heartbeat(it) }
-            else -> timerEventOf(url, data as? JsonArray)
+            else -> listEventOf(url, data)
         } ?: StatusEvent.Unknown(url)
     }
 
-    private fun timerEventOf(url: String?, data: JsonArray?): StatusEvent? =
-        when {
-            data == null -> null
-            url == "timers" -> StatusEvent.Timers(data.mapNotNull { it.toTimer() })
-            url == "timers/current" -> StatusEvent.TimerReadings(data.mapNotNull { it.toTimerReading() })
+    private fun listEventOf(url: String?, data: JsonElement?): StatusEvent? {
+        val timers = data as? JsonArray
+        val collections = data.child("collections") as? JsonArray
+        return when {
+            url == "timers" && timers != null -> StatusEvent.Timers(timers.mapNotNull { it.toTimer() })
+            url == "timers/current" && timers != null ->
+                StatusEvent.TimerReadings(timers.mapNotNull { it.toTimerReading() })
+            url == "macro_collections" && collections != null ->
+                StatusEvent.MacroCollections(collections.mapNotNull { it.toMacroCollection() })
             else -> null
         }
+    }
 
     private fun JsonObject.toLayers() =
         StatusEvent.Layers(
@@ -98,32 +99,6 @@ class StatusFrameParser {
         }
     }
 
-    private fun JsonElement?.toTimer(): Timer? {
-        val id = child("id")
-        val uuid = id.child("uuid").stringOrNull()
-        val type = TIMER_TYPES.entries.firstOrNull { (key, _) -> child(key) != null }?.value
-        return if (uuid != null && type != null) {
-            Timer(
-                uuid = uuid,
-                name = id.child("name").stringOrNull().orEmpty(),
-                index = id.child("index").intOrNull() ?: 0,
-                type = type,
-                allowsOverrun = (child("allows_overrun") as? JsonPrimitive)?.booleanOrNull ?: false
-            )
-        } else {
-            null
-        }
-    }
-
-    private fun JsonElement?.toTimerReading(): TimerReading? {
-        val uuid = child("id").child("uuid").stringOrNull() ?: return null
-        return TimerReading(
-            uuid = uuid,
-            time = child("time").stringOrNull().orEmpty(),
-            state = TimerState.fromApiName(child("state").stringOrNull())
-        )
-    }
-
     private fun JsonElement?.toSlideText(): SlideText? =
         (this as? JsonObject)?.let {
             SlideText(
@@ -142,11 +117,6 @@ class StatusFrameParser {
     companion object {
         const val MAX_PENDING_BYTES = 1 shl 20
         private val SEPARATOR = "\r\n\r\n".encodeToByteArray()
-        private val TIMER_TYPES = mapOf(
-            "countdown" to TimerType.COUNTDOWN,
-            "count_down_to_time" to TimerType.COUNTDOWN_TO_TIME,
-            "elapsed" to TimerType.ELAPSED
-        )
     }
 }
 
@@ -160,11 +130,11 @@ fun playlistActiveOf(data: JsonElement?): StatusEvent.PlaylistActive =
         )
     }
 
-private fun JsonElement?.child(key: String): JsonElement? = (this as? JsonObject)?.get(key)
+internal fun JsonElement?.child(key: String): JsonElement? = (this as? JsonObject)?.get(key)
 
-private fun JsonElement?.stringOrNull(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.content
+internal fun JsonElement?.stringOrNull(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.content
 
-private fun JsonElement?.intOrNull(): Int? = (this as? JsonPrimitive)?.intOrNull
+internal fun JsonElement?.intOrNull(): Int? = (this as? JsonPrimitive)?.intOrNull
 
 private fun JsonElement?.toPlaylistItemKey(): PlaylistItemKey? {
     val playlistUuid = child("playlist").child("uuid").stringOrNull()

@@ -1,7 +1,7 @@
 package com.greenfodor.ppremotece.core.data.network
 
-import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.IconPath
+import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import org.w3c.dom.Element
 import org.xml.sax.InputSource
 import org.xml.sax.SAXException
@@ -24,11 +24,11 @@ private const val VIEWBOX_PARTS = 4
  * cannot be read, has a document type declaration, a `transform`, a `viewBox` not at 0,0, or no
  * filled path.
  */
-internal fun parseSvgIcon(svg: String): ClearGroupIcon.Vector? =
+internal fun parseSvgIcon(svg: String): ServerIcon.Vector? =
     svgRoot(svg)?.let { root ->
         viewportOf(root)?.let { (width, height) ->
             val paths = buildList { collectPaths(root, filled = true, evenOdd = false, into = this) }
-            ClearGroupIcon.Vector(width, height, paths).takeIf { paths.isNotEmpty() }
+            ServerIcon.Vector(width, height, paths).takeIf { paths.isNotEmpty() }
         }
     }
 

@@ -7,9 +7,9 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
-import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
+import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -96,7 +96,7 @@ class ClearViewModelTest {
 
     @Test
     fun `each group's icon is read once and missing icons are left out`() = runTest(dispatcher) {
-        val icon = ClearGroupIcon.Vector(18f, 18f, listOf(IconPath("M0,0 L1,1", evenOdd = false)))
+        val icon = ServerIcon.Vector(18f, 18f, listOf(IconPath("M0,0 L1,1", evenOdd = false)))
         client.icons[LYRICS.uuid] = icon
         val viewModel = openedWith(CLEAR_ALL, LYRICS)
 

@@ -6,7 +6,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.toUiText
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
-import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
+import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.onFailure
@@ -35,7 +35,7 @@ class ClearViewModel(
     liveStateRepository: LiveStateRepository
 ) : ViewModel() {
     private val groups = MutableStateFlow<List<ClearGroup>>(emptyList())
-    private val icons = MutableStateFlow<Map<String, ClearGroupIcon>>(emptyMap())
+    private val icons = MutableStateFlow<Map<String, ServerIcon>>(emptyMap())
     private val iconsReading = mutableSetOf<String>()
 
     val state: StateFlow<ClearState> =

@@ -18,6 +18,7 @@ import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.HostDiscovery
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
@@ -37,6 +38,7 @@ val coreDataModule = module {
             ConnectionRepository::class,
             LiveStateRepository::class,
             TimersRepository::class,
+            MacrosRepository::class,
             ThumbnailSource::class
         )
     single<ProPresenterClient> { get<ProPresenterSession>().client }

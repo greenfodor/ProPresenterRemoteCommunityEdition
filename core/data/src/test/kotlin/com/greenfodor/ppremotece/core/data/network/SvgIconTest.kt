@@ -3,8 +3,8 @@ package com.greenfodor.ppremotece.core.data.network
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
-import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.IconPath
+import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import org.junit.jupiter.api.Test
 
 class SvgIconTest {
@@ -18,10 +18,27 @@ class SvgIconTest {
             """</g></svg>"""
 
         assertThat(parseSvgIcon(svg)).isEqualTo(
-            ClearGroupIcon.Vector(
+            ServerIcon.Vector(
                 viewportWidth = 18f,
                 viewportHeight = 18f,
                 paths = listOf(IconPath("M0,0 L1,1", evenOdd = false), IconPath("M2,2 L3,3", evenOdd = true))
+            )
+        )
+    }
+
+    @Test
+    fun `a cut-out path keeps the even-odd rule it inherits from its group`() {
+        val svg = """<?xml version="1.0" encoding="UTF-8"?>""" +
+            """<svg width="18px" height="18px" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">""" +
+            """<title>icon</title><g stroke="none" stroke-width="1" fill="#FFFFFF" fill-rule="evenodd">""" +
+            """<path d="M0,0 L18,0 L18,18 L0,18 Z M6,6 L6,12 L12,12 L12,6 Z"/>""" +
+            """</g></svg>"""
+
+        assertThat(parseSvgIcon(svg)).isEqualTo(
+            ServerIcon.Vector(
+                viewportWidth = 18f,
+                viewportHeight = 18f,
+                paths = listOf(IconPath("M0,0 L18,0 L18,18 L0,18 Z M6,6 L6,12 L12,12 L12,6 Z", evenOdd = true))
             )
         )
     }
@@ -31,7 +48,7 @@ class SvgIconTest {
         val svg = """<svg width="24" height="12" xmlns="http://www.w3.org/2000/svg"><path d="M0,0 L1,1"/></svg>"""
 
         assertThat(parseSvgIcon(svg)).isEqualTo(
-            ClearGroupIcon.Vector(24f, 12f, listOf(IconPath("M0,0 L1,1", evenOdd = false)))
+            ServerIcon.Vector(24f, 12f, listOf(IconPath("M0,0 L1,1", evenOdd = false)))
         )
     }
 
@@ -43,7 +60,7 @@ class SvgIconTest {
             """<path d="M1,1"/></svg>"""
 
         assertThat(parseSvgIcon(svg)).isEqualTo(
-            ClearGroupIcon.Vector(18f, 18f, listOf(IconPath("M1,1", evenOdd = false)))
+            ServerIcon.Vector(18f, 18f, listOf(IconPath("M1,1", evenOdd = false)))
         )
     }
 

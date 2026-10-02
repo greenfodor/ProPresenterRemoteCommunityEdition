@@ -7,10 +7,12 @@ import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailUrl
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectedHost
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveState
+import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
@@ -57,8 +59,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * [sessionKey] names the current connection (`{n}@{address}:{port}`, new on each connect, null
  * while disconnected), and [streamReconnects] emits each time the live stream is reopened. Each
  * successful connect clears the [ThumbnailCache] in the background; the connection's
- * [thumbnailRequests] are null until that clear has finished. [timers] are the connection's timers, empty
- * while disconnected.
+ * [thumbnailRequests] are null until that clear has finished. [timers] and [collections] are the connection's
+ * timers and macro collections, empty while disconnected.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
@@ -67,6 +69,7 @@ class ProPresenterSession(
 ) : ConnectionRepository,
     LiveStateRepository,
     TimersRepository,
+    MacrosRepository,
     ThumbnailSource {
     private class Connection(
         val client: KtorProPresenterClient,
@@ -106,6 +109,12 @@ class ProPresenterSession(
     override val timers: StateFlow<List<LiveTimer>> =
         connection
             .flatMapLatest { it?.live?.timers ?: flowOf(emptyList()) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val collections: StateFlow<List<MacroCollection>> =
+        connection
+            .flatMapLatest { it?.live?.collections ?: flowOf(emptyList()) }
             .stateIn(sessionScope, SharingStarted.Eagerly, emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)

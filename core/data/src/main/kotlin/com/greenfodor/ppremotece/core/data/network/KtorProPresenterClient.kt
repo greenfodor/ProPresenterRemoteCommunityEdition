@@ -12,7 +12,6 @@ import com.greenfodor.ppremotece.core.data.mapper.toDomain
 import com.greenfodor.ppremotece.core.data.mapper.toLibrary
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
-import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
@@ -22,6 +21,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistTreeNode
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
@@ -52,9 +52,10 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * [ProPresenterClient] for the ProPresenter HTTP API at [baseUrl], plus the `status/updates`
- * stream. Sends only GET reads (including clear-group icons, read once per uuid as PNG, JPEG or SVG
- * of at most 256 KB), the item-cue, item, presentation-cue, next and previous triggers, the layer
- * and clear-group clears, and the stream POST.
+ * stream. Sends only GET reads (including clear-group and macro icons, each read once per route as
+ * PNG, JPEG or SVG of at most 256 KB), the item-cue, item, presentation-cue, next and previous
+ * triggers, the layer and clear-group clears, the timer operations, the macro trigger, and the
+ * stream POST.
  */
 @Suppress("TooManyFunctions")
 class KtorProPresenterClient(
@@ -62,7 +63,7 @@ class KtorProPresenterClient(
     baseUrl: String
 ) : ProPresenterClient {
     private val baseUrl = baseUrl.trimEnd('/')
-    private val icons = ConcurrentHashMap<String, ClearGroupIcon>()
+    private val icons = ConcurrentHashMap<String, ServerIcon>()
 
     override suspend fun version(): Result<ProPresenterVersion, DataError.Network> =
         safeCall<VersionDto> { httpClient.get("$baseUrl/version") }.map { it.toDomain() }
@@ -119,15 +120,21 @@ class KtorProPresenterClient(
     override suspend fun triggerClearGroup(uuid: String): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/clear/group/${uuid.encodeURLPathPart()}/trigger") }
 
-    override suspend fun clearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> =
-        icons[uuid]?.let { Result.Success(it) } ?: readClearGroupIcon(uuid).onSuccess { icons[uuid] = it }
+    override suspend fun clearGroupIcon(uuid: String): Result<ServerIcon, DataError.Network> =
+        icon("v1/clear/group/${uuid.encodeURLPathPart()}/icon")
 
-    private suspend fun readClearGroupIcon(uuid: String): Result<ClearGroupIcon, DataError.Network> =
-        when (
-            val read = safeCall<ByteArray> {
-                httpClient.get("$baseUrl/v1/clear/group/${uuid.encodeURLPathPart()}/icon")
-            }
-        ) {
+    override suspend fun triggerMacro(uuid: String): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/v1/macro/${uuid.encodeURLPathPart()}/trigger") }
+
+    override suspend fun macroIcon(uuid: String): Result<ServerIcon, DataError.Network> =
+        icon("v1/macro/${uuid.encodeURLPathPart()}/icon")
+
+    /** The icon at [path], read once per client. */
+    private suspend fun icon(path: String): Result<ServerIcon, DataError.Network> =
+        icons[path]?.let { Result.Success(it) } ?: readIcon(path).onSuccess { icons[path] = it }
+
+    private suspend fun readIcon(path: String): Result<ServerIcon, DataError.Network> =
+        when (val read = safeCall<ByteArray> { httpClient.get("$baseUrl/$path") }) {
             is Result.Failure -> Result.Failure(read.error)
             is Result.Success ->
                 withContext(Dispatchers.Default) { read.data.takeIf { it.size <= MAX_ICON_BYTES }?.let(::iconOf) }
@@ -170,9 +177,9 @@ class KtorProPresenterClient(
             }
         }
 
-    private fun iconOf(bytes: ByteArray): ClearGroupIcon? =
+    private fun iconOf(bytes: ByteArray): ServerIcon? =
         if (IMAGE_SIGNATURES.any { signature -> bytes.take(signature.size) == signature }) {
-            ClearGroupIcon.Image(bytes)
+            ServerIcon.Image(bytes)
         } else {
             parseSvgIcon(bytes.decodeToString())
         }

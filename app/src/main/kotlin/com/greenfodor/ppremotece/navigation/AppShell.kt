@@ -76,6 +76,8 @@ import com.greenfodor.ppremotece.core.domain.settings.keepScreenOn
 import com.greenfodor.ppremotece.feature.clear.ClearFab
 import com.greenfodor.ppremotece.feature.clear.ClearRailButton
 import com.greenfodor.ppremotece.feature.clear.ClearRailItem
+import com.greenfodor.ppremotece.feature.macros.MacrosRoot
+import com.greenfodor.ppremotece.feature.macros.MacrosRoute
 import com.greenfodor.ppremotece.feature.playlist.LibraryGridRoute
 import com.greenfodor.ppremotece.feature.playlist.PlaylistsRoute
 import com.greenfodor.ppremotece.feature.playlist.SelectItemPlaceholder
@@ -114,6 +116,7 @@ private enum class ShellDestination(
         PlaylistsRoute
     ),
     REMOTE(ShellItem(ShellTab.REMOTE, DesignR.drawable.ic_settings_remote, R.string.shell_remote), RemoteRoute),
+    MACROS(ShellItem(ShellTab.MACROS, DesignR.drawable.ic_bolt, R.string.shell_macros), MacrosRoute),
     TIMERS(ShellItem(ShellTab.TIMERS, DesignR.drawable.ic_timer, R.string.shell_timers), TimersRoute),
     SETTINGS(ShellItem(ShellTab.SETTINGS, DesignR.drawable.ic_settings, R.string.shell_settings), SettingsRoute)
 }
@@ -121,7 +124,7 @@ private enum class ShellDestination(
 private val MoreItem = ShellItem(ShellTab.MORE, DesignR.drawable.ic_more_horiz, R.string.shell_more)
 
 /** The tabs that show the Clear FAB with the bar layout. */
-private val ClearFabTabs = setOf(ShellTab.PRESENTATION, ShellTab.REMOTE, ShellTab.TIMERS)
+private val ClearFabTabs = setOf(ShellTab.PRESENTATION, ShellTab.REMOTE, ShellTab.MACROS, ShellTab.TIMERS)
 
 /** Each tab's root route. */
 private val TabRoots: Map<ShellTab, NavKey> =
@@ -308,7 +311,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
     }
 }
 
-/** The Remote, Timers, Settings and More entries. */
+/** The Remote, Macros, Timers, Settings and More entries. */
 @Suppress("LongParameterList")
 private fun EntryProviderScope<NavKey>.tabEntries(
     widthClass: WidthClass,
@@ -321,6 +324,9 @@ private fun EntryProviderScope<NavKey>.tabEntries(
 ) {
     entry<RemoteRoute> {
         RemoteRoot(widthClass = widthClass, reconnecting = reconnecting, floatingActionButton = fab)
+    }
+    entry<MacrosRoute> {
+        MacrosRoot(widthClass = widthClass, reconnecting = reconnecting, floatingActionButton = fab)
     }
     entry<TimersRoute> {
         TimersRoot(widthClass = widthClass, reconnecting = reconnecting, floatingActionButton = fab)

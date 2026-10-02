@@ -48,10 +48,10 @@ import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.toColor
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
-import com.greenfodor.ppremotece.core.domain.model.ClearGroupIcon
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
+import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -59,7 +59,7 @@ import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val LayerButtonHeight = 72.dp
 private val PreviewTint = GroupColor(red = 0.94f, green = 0.5f, blue = 0.5f, alpha = 1f)
-private val PreviewIcon = ClearGroupIcon.Vector(
+private val PreviewIcon = ServerIcon.Vector(
     18f,
     18f,
     listOf(IconPath("M2,2 L16,2 L16,16 L2,16 Z", evenOdd = false))

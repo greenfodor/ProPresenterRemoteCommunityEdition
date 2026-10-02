@@ -128,7 +128,7 @@ class FakeProPresenter(
             path == "/v1/libraries" -> json(Fixtures.text(Fixtures.LIBRARIES))
             path.startsWith("/v1/library/") -> fixture("library", path.removePrefix("/v1/library/"))
             path.startsWith("/v1/clear/") -> dispatchClear(path)
-            TIMER_OPERATION.matches(path) -> status(204)
+            path.startsWith("/v1/timer/") || path.startsWith("/v1/macro/") -> dispatchTimerOrMacro(path)
             path.endsWith("/trigger") -> dispatchTrigger(path)
             path.startsWith("/v1/playlist/") -> fixture("playlist", path.removePrefix("/v1/playlist/"))
             path.startsWith("/v1/presentation/") -> fixture("presentation", path.removePrefix("/v1/presentation/"))
@@ -150,6 +150,14 @@ class FakeProPresenter(
                 slideReads.release()
                 json(liveBodies?.invoke()?.slideIndex ?: slideIndexBodies.poll() ?: SLIDE_INDEX)
             }
+        }
+
+    private fun dispatchTimerOrMacro(path: String): MockResponse =
+        when {
+            TIMER_OPERATION.matches(path) || MACRO_TRIGGER.matches(path) -> status(204)
+            MACRO_ICON.matches(path) ->
+                MockResponse.Builder().addHeader("Content-Type", "image/svg+xml").body(iconBody).build()
+            else -> status(404)
         }
 
     private fun dispatchTrigger(path: String): MockResponse =
@@ -201,6 +209,8 @@ class FakeProPresenter(
         private val CLEAR_GROUP_TRIGGER = Regex("^/v1/clear/group/[0-9a-f-]+/trigger$")
         private val CLEAR_GROUP_ICON = Regex("^/v1/clear/group/[0-9a-f-]+/icon$")
         private val TIMER_OPERATION = Regex("^/v1/timer/[0-9a-f-]+/(start|stop|reset)$")
+        private val MACRO_TRIGGER = Regex("^/v1/macro/[0-9a-f-]+/trigger$")
+        private val MACRO_ICON = Regex("^/v1/macro/[0-9a-f-]+/icon$")
         const val ICON_SVG = """<svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">""" +
             """<path d="M1,1 L17,17" fill="#FFFFFF"/></svg>"""
         const val NO_SLIDE_INDEX = """{"presentation_index":null}"""
@@ -243,6 +253,7 @@ class FakeProPresenter(
             "GET" to Regex("^/v1/clear/group/[0-9a-f-]+/trigger$"),
             "GET" to Regex("^/v1/clear/group/[0-9a-f-]+/icon$"),
             "GET" to Regex("^/v1/timer/[0-9a-f-]+/(start|stop|reset)$"),
+            "GET" to Regex("^/v1/macro/[0-9a-f-]+/(trigger|icon)$"),
             "POST" to Regex("^/v1/status/updates$")
         )
 

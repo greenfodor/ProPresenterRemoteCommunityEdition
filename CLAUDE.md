@@ -41,6 +41,7 @@ MVI presentation (State / Action / Event, `XxxRoot` / `XxxScreen`, `UiText`).
 | `:feature:clear`     | `ppremotece.android.feature`         | Clear FAB, rail item and sheet: layer clears and clear groups                    |
 | `:feature:settings`  | `ppremotece.android.feature`         | More list and Settings screen                                                    |
 | `:feature:timers`    | `ppremotece.android.feature`         | Timers tab: one card per timer with Start/Stop and Reset                         |
+| `:feature:macros`    | `ppremotece.android.feature`         | Macros tab: one section per collection, a tile per macro that triggers it        |
 
 **Dependency rules:** `domain` depends on nothing; `data` → `domain`; `designsystem` → `domain`;
 features → `domain` + `designsystem`, never `data` and never each other; `:app` → everything and
@@ -56,17 +57,20 @@ Versions come only from `gradle/libs.versions.toml`.
 ## ProPresenter network rule (P-10)
 
 The app talks to ProPresenter's HTTP `/v1` API and sends only:
-- `GET` reads (including `GET /v1/clear/group/{id}/icon`, the clear group's icon, `GET /v1/libraries`,
+- `GET` reads (including `GET /v1/clear/group/{id}/icon`, the clear group's icon, `GET /v1/macro/{uuid}/icon`,
+  the macro's icon, `GET /v1/libraries`,
   `GET /v1/library/{uuid}` and `GET /v1/playlist/active`, read with the slide index on each slide change),
   the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
   trigger `GET /v1/playlist/{pl}/{item}/trigger`, `GET /v1/trigger/next`,
   `GET /v1/trigger/previous` (from the playlist grid, the Remote, and the library grid while its
   presentation is live outside a playlist), the clear calls and the timer operations
-  `GET /v1/timer/{uuid}/start`, `GET /v1/timer/{uuid}/stop` and `GET /v1/timer/{uuid}/reset`;
+  `GET /v1/timer/{uuid}/start`, `GET /v1/timer/{uuid}/stop` and `GET /v1/timer/{uuid}/reset`, and the
+  macro trigger `GET /v1/macro/{uuid}/trigger`;
 - the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode and
   when a presentation is live outside a playlist (or remembered from one after a clear);
 - one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
-  "playlist/active", "status/layers", "timers", "timers/current"]` (one unknown URL ends the whole stream).
+  "playlist/active", "status/layers", "timers", "timers/current", "macro_collections"]` (one unknown URL
+  ends the whole stream).
 
 Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content, such as a timer edit) is out of
 bounds, as are `timer/{id}/increment/…`, `timers/{op}` and any `/focus` route.

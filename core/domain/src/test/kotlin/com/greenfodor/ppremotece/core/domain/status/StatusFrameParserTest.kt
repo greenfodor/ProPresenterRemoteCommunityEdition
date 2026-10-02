@@ -4,7 +4,10 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
+import com.greenfodor.ppremotece.core.domain.model.Macro
+import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.SlideText
@@ -250,6 +253,38 @@ class StatusFrameParserTest {
         assertThat(parser.decode("""{"url":"timers","data":{}}""")).isEqualTo(StatusEvent.Unknown("timers"))
         assertThat(parser.decode("""{"url":"timers/current","data":null}"""))
             .isEqualTo(StatusEvent.Unknown("timers/current"))
+    }
+
+    @Test
+    fun `macro collections decode each collection with its macros and colours`() {
+        val frame = """{"url":"macro_collections","data":{"collections":[""" +
+            """{"id":{"uuid":"c-0","name":"Collection 01","index":0},"macros":[""" +
+            """{"id":{"uuid":"m-0","name":"Macro 01","index":0},""" +
+            """"color":{"red":1.0,"green":0.5,"blue":0.0,"alpha":1.0},"image_type":"Default","actions":[]},""" +
+            """{"id":{"uuid":"m-1","name":"Macro 02","index":1},"image_type":"Default","actions":[]}""" +
+            """]}]}}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(
+            StatusEvent.MacroCollections(
+                listOf(
+                    MacroCollection(
+                        uuid = "c-0",
+                        name = "Collection 01",
+                        index = 0,
+                        macros = listOf(
+                            Macro("m-0", "Macro 01", 0, GroupColor(red = 1f, green = 0.5f, blue = 0f, alpha = 1f)),
+                            Macro("m-1", "Macro 02", 1, color = null)
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `macro collections without a list decode to unknown`() {
+        assertThat(parser.decode("""{"url":"macro_collections","data":[]}"""))
+            .isEqualTo(StatusEvent.Unknown("macro_collections"))
     }
 
     private fun bytes(text: String) = text.encodeToByteArray()
