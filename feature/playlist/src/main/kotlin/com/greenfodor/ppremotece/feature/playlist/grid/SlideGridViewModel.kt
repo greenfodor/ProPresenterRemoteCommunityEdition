@@ -7,9 +7,10 @@ import com.greenfodor.ppremotece.core.designsystem.ui.toUiText
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementBanner
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementExpander
 import com.greenfodor.ppremotece.core.domain.arrangement.CueList
+import com.greenfodor.ppremotece.core.domain.arrangement.ResyncTarget
 import com.greenfodor.ppremotece.core.domain.arrangement.currentCueList
 import com.greenfodor.ppremotece.core.domain.arrangement.groupSequence
-import com.greenfodor.ppremotece.core.domain.arrangement.resyncCue
+import com.greenfodor.ppremotece.core.domain.arrangement.resyncTarget
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
@@ -68,7 +69,8 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * at once and saved when the drag ends, and a chosen view mode is saved for the width class.
  * [firstVisibleCue] keeps the first cue shown across view mode switches. A playlist item's grid
  * shows the [ArrangementBanner] while its presentation is live in another arrangement, and Re-sync
- * triggers this item's cue at the live slide ([resyncCue]); the group strip lists the
+ * triggers this item's cue at the live slide ([resyncTarget]), and is disabled without a match. A
+ * setting that can't be saved shows a message. The group strip lists the
  * [groupSequence], and a pill tap scrolls to the occurrence's first cue.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -110,7 +112,6 @@ class SlideGridViewModel(
     private val viewMode: Flow<ViewMode?> =
         widthClass.flatMapLatest { it?.let(gridPreferences::viewMode) ?: flowOf(null) }
     private var loaded: Content.Loaded? = null
-    private var resyncTarget: Int? = null
     private val live = liveStateRepository.liveState
 
     /** Another live playlist item of this grid's playlist item and its presentation ref, null until read. */
@@ -175,8 +176,6 @@ class SlideGridViewModel(
                 state.copy(gridStep = step)
             } else {
                 val withLive = state.withLive(source, loaded.presentation, loaded.cueList, live, liveItemRef)
-                resyncTarget =
-                    withLive.banner?.let { resyncTargetOf(loaded.presentation, loaded.cueList, live, liveItemRef) }
                 withLive.copy(stepsEnabled = alwaysSteps || withLive.liveCueIndex != null, gridStep = step)
             }
         }.stateIn(
@@ -218,14 +217,16 @@ class SlideGridViewModel(
             is SlideGridAction.OnGridStepChange -> draggedStep.value = action.step
             SlideGridAction.OnGridStepChangeFinished -> saveDraggedStep()
             is SlideGridAction.OnViewModeChange -> widthClass.value?.let { current ->
-                viewModelScope.launch { gridPreferences.setViewMode(current, action.mode) }
+                viewModelScope.launch {
+                    gridPreferences.setViewMode(current, action.mode).onFailure { showWriteError(it) }
+                }
             }
         }
     }
 
     private fun resync() {
         val item = (source as? CueSource.PlaylistItem)?.key ?: return
-        val cue = resyncTarget ?: return
+        val cue = (state.value.resync as? ResyncTarget.Cue)?.index ?: return
         send { client.triggerCue(item, cue) }
     }
 
@@ -233,7 +234,7 @@ class SlideGridViewModel(
         val step = draggedStep.value ?: return
         val current = widthClass.value ?: return
         viewModelScope.launch {
-            gridPreferences.setGridStep(current, step)
+            gridPreferences.setGridStep(current, step).onFailure { showWriteError(it) }
             draggedStep.compareAndSet(step, null)
         }
     }
@@ -293,6 +294,10 @@ class SlideGridViewModel(
             is Result.Failure -> Content.Failed(result.error.toUiText())
             is Result.Success -> Content.Loaded(result.data.name, result.data, currentCueList(result.data))
         }
+
+    private suspend fun showWriteError(error: DataError.Local) {
+        _events.send(SlideGridEvent.ShowError(error.toUiText()))
+    }
 
     private fun step(trigger: suspend () -> EmptyResult<DataError.Network>) {
         if (state.value.stepsEnabled) send(trigger)

@@ -21,10 +21,11 @@ import kotlinx.coroutines.launch
 
 /**
  * Connect screen: browses for hosts once the local network permission is granted and, when the
- * route allows it and the auto-connect setting is on, connects to the saved host on start;
- * otherwise the saved host's address and port fill the empty fields, and connecting to them keeps
- * the saved host's name. The permission is requested on start and again on each connect attempt
- * while it is missing; a failed auto-connect leaves its address and port filled in.
+ * route allows it, the auto-connect setting is on and the last disconnect did not ask to stay
+ * disconnected, connects to the saved host on start; otherwise the saved host's address and port
+ * fill the empty fields, and connecting to them keeps the saved host's name. The permission is
+ * requested on start and again on each connect attempt while it is missing; a failed auto-connect
+ * leaves its address and port filled in.
  */
 class ConnectViewModel(
     private val connectionRepository: ConnectionRepository,
@@ -64,7 +65,7 @@ class ConnectViewModel(
         viewModelScope.launch {
             val host = connectionRepository.savedHost()
             savedHost = host
-            if (host != null && autoConnect && appPreferences.autoConnect().first()) {
+            if (host != null && autoConnect && autoConnectAllowed()) {
                 connect(host)
                 return@launch
             }
@@ -72,6 +73,9 @@ class ConnectViewModel(
             if (!granted) _events.send(ConnectEvent.RequestLocalNetworkPermission)
         }
     }
+
+    private suspend fun autoConnectAllowed(): Boolean =
+        appPreferences.autoConnect().first() && !connectionRepository.stayDisconnected()
 
     private fun onPermissionResult(granted: Boolean) {
         permissionGranted = granted

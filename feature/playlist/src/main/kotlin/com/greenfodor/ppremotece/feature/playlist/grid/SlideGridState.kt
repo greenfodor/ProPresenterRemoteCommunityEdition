@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.feature.playlist.grid
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementBanner
 import com.greenfodor.ppremotece.core.domain.arrangement.GroupSequence
+import com.greenfodor.ppremotece.core.domain.arrangement.ResyncTarget
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
@@ -18,6 +19,7 @@ data class SlideGridState(
     val aspect: Float = DEFAULT_SLIDE_ASPECT,
     val countMismatch: Boolean = false,
     val banner: ArrangementBanner? = null,
+    val resync: ResyncTarget? = null,
     val groupSequence: GroupSequence = GroupSequence(emptyList(), livePill = null),
     val liveCueIndex: Int? = null,
     val nextCueIndex: Int? = null,

@@ -1,10 +1,17 @@
 package com.greenfodor.ppremotece.core.data.settings
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.preferencesOf
+import androidx.datastore.preferences.core.stringPreferencesKey
+import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
+import assertk.assertions.isInstanceOf
 import assertk.assertions.isTrue
+import com.greenfodor.ppremotece.core.data.FlakyDataStore
+import com.greenfodor.ppremotece.core.domain.result.DataError
+import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -55,5 +63,28 @@ class DataStoreAppPreferencesTest {
 
         preferences.setAutoConnect(true)
         assertThat(preferences.autoConnect().first()).isTrue()
+    }
+
+    @Test
+    fun `a read error gives the default, then the saved value is read again`() = runTest {
+        val dataStore = FlakyDataStore(preferencesOf(stringPreferencesKey("keep_awake") to "ALWAYS"), readFailures = 1)
+
+        DataStoreAppPreferences(dataStore).keepAwake().test {
+            assertThat(awaitItem()).isEqualTo(KeepAwake.REMOTE_ONLY)
+            assertThat(awaitItem()).isEqualTo(KeepAwake.ALWAYS)
+        }
+    }
+
+    @Test
+    fun `a failed write is reported`() = runTest {
+        val preferences = DataStoreAppPreferences(FlakyDataStore().apply { failWrites = true })
+
+        assertThat(preferences.setKeepAwake(KeepAwake.ALWAYS)).isEqualTo(Result.Failure(DataError.Local.WRITE_FAILED))
+        assertThat(preferences.setAutoConnect(false)).isEqualTo(Result.Failure(DataError.Local.WRITE_FAILED))
+    }
+
+    @Test
+    fun `a saved value is reported as saved`() = runBlocking {
+        assertThat(preferences.setAutoConnect(false)).isInstanceOf<Result.Success<Unit>>()
     }
 }

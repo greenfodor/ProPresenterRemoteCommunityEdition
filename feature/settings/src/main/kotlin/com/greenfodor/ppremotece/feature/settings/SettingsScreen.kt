@@ -14,6 +14,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -21,6 +23,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -32,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
+import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
@@ -57,15 +61,21 @@ fun SettingsRoot(
     val context = LocalContext.current
     val appVersion = remember(context) { appVersion(context) }
     val uriHandler = LocalUriHandler.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             SettingsEvent.Disconnected -> onDisconnected()
+            is SettingsEvent.ShowError -> scope.launch {
+                snackbarHostState.showSnackbar(event.message.asString(context))
+            }
         }
     }
     SettingsScreen(
         state = state,
         onAction = viewModel::onAction,
         appVersion = appVersion,
+        snackbarHostState = snackbarHostState,
         onBack = onBack,
         onOpenSource = { uriHandler.tryOpenUri(SOURCE_URL) },
         modifier = modifier
@@ -81,10 +91,12 @@ fun SettingsScreen(
     appVersion: String,
     onBack: () -> Unit,
     onOpenSource: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },

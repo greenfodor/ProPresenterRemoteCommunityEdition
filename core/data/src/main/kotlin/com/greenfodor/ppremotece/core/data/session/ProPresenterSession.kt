@@ -50,7 +50,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The connection to the current ProPresenter host: its [KtorProPresenterClient] and its
- * [StreamingLiveStateRepository], which lives in a scope that [disconnect] cancels; [disconnect] keeps the saved host.
+ * [StreamingLiveStateRepository], which lives in a scope that [disconnect] cancels; [disconnect] keeps the saved host
+ * and marks it to stay disconnected.
  * [sessionKey] names the current connection (`{n}@{address}:{port}`, new on each connect, null
  * while disconnected), and [streamReconnects] emits each time the live stream is reopened. Each
  * successful connect clears the [ThumbnailCache] in the background; the connection's
@@ -101,30 +102,40 @@ class ProPresenterSession(
     override val thumbnailRequests: Flow<ThumbnailRequests?> =
         connection.flatMapLatest { it?.thumbnails ?: flowOf(null) }
 
-    override suspend fun savedHost(): ProPresenterHost? = savedHostStore.read()
+    override suspend fun savedHost(): ProPresenterHost? = readSavedHost()?.host
+
+    override suspend fun stayDisconnected(): Boolean = readSavedHost()?.stayDisconnected == true
 
     override suspend fun connect(host: ProPresenterHost): Result<ProPresenterVersion, DataError.Network> {
         val baseUrl = "http://${host.address}:${host.port}/"
         val client = KtorProPresenterClient(httpClient, baseUrl)
         return client.version().onSuccess { version ->
+            val namedByVersion = host.name == host.address ||
+                readSavedHost()?.let {
+                    it.namedByVersion && it.host.address == host.address && it.host.port == host.port
+                } ==
+                true
+            val named = if (namedByVersion) host.copy(name = version.name.ifBlank { host.address }) else host
             val scope = CoroutineScope(sessionScope.coroutineContext + SupervisorJob(sessionScope.coroutineContext.job))
             val live = StreamingLiveStateRepository(client, scope, onReconnected = { _streamReconnects.tryEmit(Unit) })
             val thumbnails = MutableStateFlow<ThumbnailRequests?>(null)
             connection.getAndUpdate { Connection(client, live, thumbnails, scope) }?.scope?.cancel()
             _sessionKey.value = "${connectCount.incrementAndGet()}@${host.address}:${host.port}"
-            _connectedHost.value = ConnectedHost(host, version)
+            _connectedHost.value = ConnectedHost(named, version)
             restoreAllowed = true
             scope.launch {
                 thumbnailCache.clear()
                 thumbnails.value = thumbnailRequests(baseUrl, version.name)
             }
             try {
-                savedHostStore.save(host)
+                savedHostStore.save(named, namedByVersion)
             } catch (_: IOException) {
                 // The connection stays open; only the saved host is not updated.
             }
         }
     }
+
+    private suspend fun readSavedHost(): SavedHost? = savedHostStore.read()
 
     override suspend fun disconnect() {
         restoreAllowed = false
@@ -133,6 +144,11 @@ class ProPresenterSession(
             connection.getAndUpdate { null }?.scope?.cancel()
             _sessionKey.value = null
             _connectedHost.value = null
+        }
+        try {
+            savedHostStore.setStayDisconnected()
+        } catch (_: IOException) {
+            // The saved host stays as it was.
         }
     }
 
@@ -163,7 +179,7 @@ class ProPresenterSession(
 
     private suspend fun currentClient(): ProPresenterClient? =
         connection.value?.client ?: restoreMutex.withLock {
-            connection.value?.client ?: savedHostStore.read()?.takeIf { restoreAllowed }?.let { host ->
+            connection.value?.client ?: savedHostStore.read()?.host?.takeIf { restoreAllowed }?.let { host ->
                 connect(host)
                 connection.value?.client
             }

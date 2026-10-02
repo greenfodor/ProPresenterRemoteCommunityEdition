@@ -4,7 +4,7 @@ import com.greenfodor.ppremotece.core.domain.arrangement.CueList
 import com.greenfodor.ppremotece.core.domain.arrangement.arrangementBanner
 import com.greenfodor.ppremotece.core.domain.arrangement.groupSequence
 import com.greenfodor.ppremotece.core.domain.arrangement.liveCueList
-import com.greenfodor.ppremotece.core.domain.arrangement.resyncCue
+import com.greenfodor.ppremotece.core.domain.arrangement.resyncTarget
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.liveCueIndex
 import com.greenfodor.ppremotece.core.domain.live.nextCueIndex
@@ -51,7 +51,10 @@ internal fun gridState(
     )
 }
 
-/** This grid with [live]'s live and next cues, the arrangement banner and the group strip. */
+/**
+ * This grid with [live]'s live and next cues, the arrangement banner with its Re-sync target
+ * ([resyncTarget]) and the group strip. The live arrangement is expanded once.
+ */
 internal fun SlideGridState.withLive(
     source: CueSource,
     presentation: Presentation,
@@ -60,24 +63,17 @@ internal fun SlideGridState.withLive(
     liveItemRef: PresentationRef?
 ): SlideGridState {
     val liveIndex = liveCueIndex(live, source, presentation.uuid, cueList.cues)
+    val slide = live.slide?.takeIf { it.presentationUuid == presentation.uuid && source is CueSource.PlaylistItem }
+    val liveCues = slide?.let { liveCueList(presentation, live, liveItemRef) }
+    val banner = slide?.let { arrangementBanner(source, cueList, live, presentation, liveCues) }
     return copy(
         liveCueIndex = liveIndex,
         nextCueIndex = nextCueIndex(live, source, presentation.uuid, cueList.cues),
-        banner = arrangementBanner(source, cueList, live, presentation, liveItemRef),
+        banner = banner,
+        resync = banner?.let { resyncTarget(liveCues?.cues, checkNotNull(slide).index, cueList.cues) },
         groupSequence = groupSequence(cueList, liveIndex)
     )
 }
-
-/** The cue of [cueList] that Re-sync triggers for [live]'s slide ([resyncCue]); null without a live slide. */
-internal fun resyncTargetOf(
-    presentation: Presentation,
-    cueList: CueList,
-    live: LiveState,
-    liveItemRef: PresentationRef?
-): Int? =
-    live.slide?.let { slide ->
-        resyncCue(liveCueList(presentation, live, liveItemRef)?.cues, slide.index, cueList.cues)
-    }
 
 /** Triggers [cueIndex] of [source]: by playlist item, or by presentation. */
 internal suspend fun ProPresenterClient.trigger(source: CueSource, cueIndex: Int): EmptyResult<DataError.Network> =

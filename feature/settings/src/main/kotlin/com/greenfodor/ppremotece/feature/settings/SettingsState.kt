@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.feature.settings
 
+import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 
 /**
@@ -33,4 +34,8 @@ sealed interface SettingsAction {
 
 sealed interface SettingsEvent {
     data object Disconnected : SettingsEvent
+
+    data class ShowError(
+        val message: UiText
+    ) : SettingsEvent
 }

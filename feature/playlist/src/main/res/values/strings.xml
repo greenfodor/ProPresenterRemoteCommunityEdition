@@ -5,6 +5,7 @@
     <string name="playlists_expand">Expand</string>
     <string name="playlists_collapse">Collapse</string>
     <string name="arrangement_unnamed">Unnamed arrangement</string>
+    <string name="arrangement_song_order">Song order</string>
     <string name="grid_back">Back</string>
     <string name="grid_close">Close</string>
     <string name="grid_previous">Previous</string>
@@ -32,6 +33,8 @@
         <item quantity="other">%1$s · %2$d cues</item>
     </plurals>
     <string name="grid_resync">Re-sync</string>
+    <string name="grid_resync_not_in_arrangement">This slide isn\'t in %1$s</string>
+    <string name="grid_resync_live_unknown">Live arrangement unknown</string>
     <plurals name="grid_banner_named">
         <item quantity="one">Live in %1$s · %2$d cue</item>
         <item quantity="other">Live in %1$s · %2$d cues</item>

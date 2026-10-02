@@ -5,11 +5,13 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
+import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.model.ConnectedHost
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
+import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
@@ -24,6 +26,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -113,20 +116,52 @@ class SettingsViewModelTest {
         assertThat(viewModel.state.value.confirmingDisconnect).isFalse()
     }
 
+    @Test
+    fun `a keep awake choice that can't be saved shows the setting message`() = runTest(dispatcher) {
+        preferences.failWrites = true
+        val viewModel = viewModel()
+
+        viewModel.events.test {
+            viewModel.onAction(SettingsAction.OnKeepAwakeChange(KeepAwake.ALWAYS))
+
+            assertThat(awaitItem().messageId()).isEqualTo(DesignR.string.setting_not_saved)
+        }
+    }
+
+    @Test
+    fun `an auto-connect switch that can't be saved shows the setting message`() = runTest(dispatcher) {
+        preferences.failWrites = true
+        val viewModel = viewModel()
+
+        viewModel.events.test {
+            viewModel.onAction(SettingsAction.OnAutoConnectChange(false))
+
+            assertThat(awaitItem().messageId()).isEqualTo(DesignR.string.setting_not_saved)
+        }
+    }
+
+    private fun SettingsEvent.messageId() = ((this as SettingsEvent.ShowError).message as UiText.StringResource).id
+
     private class FakeAppPreferences : AppPreferences {
         val keepAwake = MutableStateFlow(KeepAwake.REMOTE_ONLY)
         val autoConnect = MutableStateFlow(true)
 
         override fun keepAwake(): Flow<KeepAwake> = keepAwake
 
-        override suspend fun setKeepAwake(mode: KeepAwake) {
+        var failWrites = false
+
+        override suspend fun setKeepAwake(mode: KeepAwake): EmptyResult<DataError.Local> {
+            if (failWrites) return Result.Failure(DataError.Local.WRITE_FAILED)
             keepAwake.value = mode
+            return Result.Success(Unit)
         }
 
         override fun autoConnect(): Flow<Boolean> = autoConnect
 
-        override suspend fun setAutoConnect(enabled: Boolean) {
+        override suspend fun setAutoConnect(enabled: Boolean): EmptyResult<DataError.Local> {
+            if (failWrites) return Result.Failure(DataError.Local.WRITE_FAILED)
             autoConnect.value = enabled
+            return Result.Success(Unit)
         }
     }
 
@@ -137,6 +172,8 @@ class SettingsViewModelTest {
         override val connectedHost = MutableStateFlow<ConnectedHost?>(connected)
 
         override suspend fun savedHost(): ProPresenterHost? = connectedHost.value?.host
+
+        override suspend fun stayDisconnected(): Boolean = false
 
         override suspend fun connect(host: ProPresenterHost): Result<ProPresenterVersion, DataError.Network> =
             Result.Failure(DataError.Network.TIMEOUT)

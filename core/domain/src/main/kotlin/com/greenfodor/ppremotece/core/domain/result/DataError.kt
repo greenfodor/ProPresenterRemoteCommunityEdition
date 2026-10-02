@@ -9,4 +9,8 @@ sealed interface DataError : Error {
         SERIALIZATION,
         UNKNOWN
     }
+
+    enum class Local : DataError {
+        WRITE_FAILED
+    }
 }

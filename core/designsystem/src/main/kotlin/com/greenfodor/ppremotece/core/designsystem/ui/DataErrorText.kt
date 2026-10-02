@@ -14,3 +14,10 @@ fun DataError.Network.toUiText(): UiText =
             DataError.Network.UNKNOWN -> R.string.error_unknown
         }
     )
+
+fun DataError.Local.toUiText(): UiText =
+    UiText.StringResource(
+        when (this) {
+            DataError.Local.WRITE_FAILED -> R.string.setting_not_saved
+        }
+    )

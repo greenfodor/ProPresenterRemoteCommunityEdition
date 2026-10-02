@@ -9,12 +9,16 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.greenfodor.ppremotece.core.domain.result.DataError
+import com.greenfodor.ppremotece.core.domain.result.EmptyResult
+import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
 import java.io.IOException
 
 /** The `app_settings` DataStore. */
@@ -22,7 +26,8 @@ internal val Context.appSettingsDataStore by preferencesDataStore(name = "app_se
 
 /**
  * [AppPreferences] in [dataStore] under `keep_awake` and `auto_connect`; [KeepAwake.Default]
- * and auto-connect on when unset. Read and write errors leave the saved values unchanged.
+ * and auto-connect on when unset. A read error gives the defaults, then the values are read again
+ * after [READ_RETRY_DELAY_MS]; a write error leaves the saved value unchanged and is returned.
  */
 class DataStoreAppPreferences(
     private val dataStore: DataStore<Preferences>
@@ -32,31 +37,38 @@ class DataStoreAppPreferences(
             KeepAwake.entries.firstOrNull { it.name == preferences[KEEP_AWAKE] } ?: KeepAwake.Default
         }
 
-    override suspend fun setKeepAwake(mode: KeepAwake) {
-        write { it[KEEP_AWAKE] = mode.name }
+    override suspend fun setKeepAwake(mode: KeepAwake): EmptyResult<DataError.Local> = write {
+        it[KEEP_AWAKE] =
+            mode.name
     }
 
     override fun autoConnect(): Flow<Boolean> = read { it[AUTO_CONNECT] ?: true }
 
-    override suspend fun setAutoConnect(enabled: Boolean) {
+    override suspend fun setAutoConnect(enabled: Boolean): EmptyResult<DataError.Local> =
         write { it[AUTO_CONNECT] = enabled }
-    }
 
     private fun <T> read(value: (Preferences) -> T): Flow<T> =
         dataStore.data
-            .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-            .map(value)
+            .retryWhen { cause, _ ->
+                (cause is IOException).also { recoverable ->
+                    if (recoverable) {
+                        emit(emptyPreferences())
+                        delay(READ_RETRY_DELAY_MS)
+                    }
+                }
+            }.map(value)
             .distinctUntilChanged()
 
-    private suspend fun write(change: (MutablePreferences) -> Unit) {
+    private suspend fun write(change: (MutablePreferences) -> Unit): EmptyResult<DataError.Local> =
         try {
             dataStore.edit(change)
+            Result.Success(Unit)
         } catch (_: IOException) {
-            // The previously saved value stays in place.
+            Result.Failure(DataError.Local.WRITE_FAILED)
         }
-    }
 
     private companion object {
+        const val READ_RETRY_DELAY_MS = 1_000L
         val KEEP_AWAKE = stringPreferencesKey("keep_awake")
         val AUTO_CONNECT = booleanPreferencesKey("auto_connect")
     }

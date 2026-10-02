@@ -381,6 +381,8 @@ private fun GridHeader(state: SlideGridState, horizontalPadding: Dp, onAction: (
         state.banner?.let { banner ->
             ArrangementBannerBar(
                 banner = banner,
+                resync = state.resync,
+                arrangement = state.label,
                 onResync = { onAction(SlideGridAction.OnResyncClick) },
                 horizontalPadding = horizontalPadding
             )

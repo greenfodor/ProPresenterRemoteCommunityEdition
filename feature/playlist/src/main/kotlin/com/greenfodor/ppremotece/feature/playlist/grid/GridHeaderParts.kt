@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.feature.playlist.grid
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,8 +41,12 @@ import com.greenfodor.ppremotece.core.designsystem.ui.toColor
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementBanner
 import com.greenfodor.ppremotece.core.domain.arrangement.GroupPill
 import com.greenfodor.ppremotece.core.domain.arrangement.GroupSequence
+import com.greenfodor.ppremotece.core.domain.arrangement.NoMatchReason
+import com.greenfodor.ppremotece.core.domain.arrangement.ResyncTarget
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
+import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.R
+import com.greenfodor.ppremotece.feature.playlist.text
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val PillHeight = 32.dp
@@ -106,10 +111,16 @@ private fun GroupPillChip(pill: GroupPill, live: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** The `tertiaryContainer` "Live in …" banner with its Re-sync action. */
+/**
+ * The `tertiaryContainer` "Live in …" banner with its Re-sync action, which is enabled only for a
+ * [ResyncTarget.Cue]; a [ResyncTarget.NoMatch] adds its reason as a second line, naming this
+ * item's [arrangement].
+ */
 @Composable
 internal fun ArrangementBannerBar(
     banner: ArrangementBanner,
+    resync: ResyncTarget?,
+    arrangement: ArrangementLabel?,
     onResync: () -> Unit,
     horizontalPadding: Dp,
     modifier: Modifier = Modifier
@@ -123,16 +134,29 @@ internal fun ArrangementBannerBar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = horizontalPadding + 4.dp, end = horizontalPadding)
         ) {
-            Text(
-                text = bannerText(banner),
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(vertical = 8.dp)
-            )
+            Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
+                Text(
+                    text = bannerText(banner),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                (resync as? ResyncTarget.NoMatch)?.let { noMatch ->
+                    Text(
+                        text = noMatchText(noMatch.reason, arrangement),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
             TextButton(
                 onClick = onResync,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onTertiaryContainer)
+                enabled = resync is ResyncTarget.Cue,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    disabledContentColor = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = DISABLED_ALPHA)
+                )
             ) {
                 Icon(
                     painterResource(DesignR.drawable.ic_sync),
@@ -147,6 +171,16 @@ internal fun ArrangementBannerBar(
 }
 
 @Composable
+private fun noMatchText(reason: NoMatchReason, arrangement: ArrangementLabel?): String =
+    when (reason) {
+        NoMatchReason.NOT_IN_ARRANGEMENT -> stringResource(
+            R.string.grid_resync_not_in_arrangement,
+            arrangement?.text() ?: stringResource(R.string.arrangement_song_order)
+        )
+        NoMatchReason.LIVE_ARRANGEMENT_UNKNOWN -> stringResource(R.string.grid_resync_live_unknown)
+    }
+
+@Composable
 private fun bannerText(banner: ArrangementBanner): String {
     val count = banner.totalCues
     val name = banner.arrangementName
@@ -156,6 +190,8 @@ private fun bannerText(banner: ArrangementBanner): String {
         else -> pluralStringResource(R.plurals.grid_banner_other, count, count)
     }
 }
+
+private const val DISABLED_ALPHA = 0.38f
 
 private val PreviewChorus = GroupColor(red = 0.2f, green = 0.4f, blue = 0.8f, alpha = 1f)
 private val PreviewPills = listOf(
@@ -184,25 +220,26 @@ private fun GroupStripLivePreview() {
 
 @Preview(widthDp = 411)
 @Composable
-private fun ArrangementBannerNamedPreview() {
+private fun ArrangementBannerPreview() {
     PPRemoteTheme {
-        ArrangementBannerBar(ArrangementBanner("Short", isSongOrder = false, totalCues = 7), {
-        }, horizontalPadding = 8.dp)
-    }
-}
-
-@Preview(widthDp = 411)
-@Composable
-private fun ArrangementBannerSongOrderPreview() {
-    PPRemoteTheme {
-        ArrangementBannerBar(ArrangementBanner(null, isSongOrder = true, totalCues = 15), {}, horizontalPadding = 8.dp)
-    }
-}
-
-@Preview(widthDp = 411)
-@Composable
-private fun ArrangementBannerGenericPreview() {
-    PPRemoteTheme {
-        ArrangementBannerBar(ArrangementBanner(null, isSongOrder = false, totalCues = 9), {}, horizontalPadding = 8.dp)
+        Column {
+            listOf(
+                ArrangementBanner("Short", isSongOrder = false, totalCues = 7) to ResyncTarget.Cue(3),
+                ArrangementBanner(null, isSongOrder = true, totalCues = 15) to ResyncTarget.Cue(3),
+                ArrangementBanner(null, isSongOrder = false, totalCues = 9) to ResyncTarget.Cue(3),
+                ArrangementBanner("Full", isSongOrder = false, totalCues = 26) to
+                    ResyncTarget.NoMatch(NoMatchReason.NOT_IN_ARRANGEMENT),
+                ArrangementBanner(null, isSongOrder = false, totalCues = 9) to
+                    ResyncTarget.NoMatch(NoMatchReason.LIVE_ARRANGEMENT_UNKNOWN)
+            ).forEach { (banner, resync) ->
+                ArrangementBannerBar(
+                    banner = banner,
+                    resync = resync,
+                    arrangement = ArrangementLabel.Named("Chorus Only"),
+                    onResync = {},
+                    horizontalPadding = 8.dp
+                )
+            }
+        }
     }
 }

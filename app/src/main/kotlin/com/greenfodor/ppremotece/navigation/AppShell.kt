@@ -2,15 +2,18 @@ package com.greenfodor.ppremotece.navigation
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -39,10 +42,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -55,6 +61,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowSizeClass
 import com.greenfodor.ppremotece.R
+import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.domain.layout.NavigationLayout
 import com.greenfodor.ppremotece.core.domain.layout.RAIL_SLOT_DP
 import com.greenfodor.ppremotece.core.domain.layout.ShellTab
@@ -68,6 +75,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.settings.keepScreenOn
 import com.greenfodor.ppremotece.feature.clear.ClearFab
 import com.greenfodor.ppremotece.feature.clear.ClearRailButton
+import com.greenfodor.ppremotece.feature.clear.ClearRailItem
 import com.greenfodor.ppremotece.feature.playlist.LibraryGridRoute
 import com.greenfodor.ppremotece.feature.playlist.PlaylistsRoute
 import com.greenfodor.ppremotece.feature.playlist.SelectItemPlaceholder
@@ -109,11 +117,20 @@ private enum class ShellDestination(
 
 private val MoreItem = ShellItem(ShellTab.MORE, DesignR.drawable.ic_more_horiz, R.string.shell_more)
 
+/** Each tab's root route. */
+private val TabRoots: Map<ShellTab, NavKey> =
+    ShellDestination.entries.associate { it.item.tab to it.route } + (ShellTab.MORE to MoreRoute)
+
+/** The rail's own vertical padding: 4 dp above, 4 dp below and 4 dp between its destinations and the footer. */
+private const val RAIL_PADDING_DP = 12
+
+private val RailItemSpacing = 4.dp
+
 /**
  * The connected app: its destinations in a bottom bar below 600 dp and a rail from 600 dp, over one
  * [NavDisplay] of the tabs' [TabStacks]. Destinations that do not fit ([navigationSlots]) are listed
- * under More. The rail ends with the Clear button and no screen shows the Clear FAB; with the bar,
- * each screen shows the Clear FAB.
+ * under More, whose rows select their own tabs. The rail ends with the Clear button in a pinned
+ * 64 dp footer and no screen shows the Clear FAB; with the bar, each screen shows the Clear FAB.
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -148,17 +165,6 @@ fun AppShell(
     } else {
         null
     }
-    val slideGrid = @Composable { source: CueSource ->
-        SlideGridRoot(
-            source = source,
-            widthClass = widthClass,
-            headerScrollsWithGrid = compactHeight,
-            reconnecting = reconnecting,
-            onBack = { update(stacks().back()) },
-            closesPane = paneCount(windowSizeClass.minWidthDp) == 2,
-            floatingActionButton = fab ?: {}
-        )
-    }
     val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)
     val onSelect = { selected: ShellTab -> update(stacks().select(selected)) }
 
@@ -167,20 +173,29 @@ fun AppShell(
         val availableDp = when (layout) {
             NavigationLayout.BAR -> maxWidth
             NavigationLayout.RAIL ->
-                maxHeight - insets.calculateTopPadding() - insets.calculateBottomPadding() - RAIL_SLOT_DP.dp
+                maxHeight - insets.calculateTopPadding() - insets.calculateBottomPadding() -
+                    RAIL_SLOT_DP.dp - RAIL_PADDING_DP.dp
         }
         val slots = navigationSlots(layout, availableDp.value.toInt(), ShellDestination.entries)
         val items = slots.shown.map { it.item } + listOfNotNull(MoreItem.takeIf { slots.more.isNotEmpty() })
-        val settingsInMore = ShellDestination.SETTINGS in slots.more
-        LaunchedEffect(settingsInMore) {
-            val next = stacks().withSettingsInMore(settingsInMore)
-            if (next != stacks()) update(next)
+        val inMore = slots.more.map { it.item.tab }.toSet()
+        val onBack = { update(stacks().back(inMore)) }
+        val slideGrid = @Composable { source: CueSource ->
+            SlideGridRoot(
+                source = source,
+                widthClass = widthClass,
+                headerScrollsWithGrid = compactHeight,
+                reconnecting = reconnecting,
+                onBack = onBack,
+                closesPane = paneCount(windowSizeClass.minWidthDp) == 2,
+                floatingActionButton = fab ?: {}
+            )
         }
 
         ShellFrame(
             layout = layout,
             items = items,
-            current = tab,
+            current = stacks().highlighted(inMore),
             onSelect = onSelect,
             snackbars = shellSnackbars,
             clearOpen = clearOpen,
@@ -189,7 +204,7 @@ fun AppShell(
             NavDisplay(
                 backStack = stacks().displayed,
                 modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
-                onBack = { update(stacks().back()) },
+                onBack = onBack,
                 entryDecorators = listOf(
                     rememberSaveableStateHolderNavEntryDecorator(),
                     rememberViewModelStoreNavEntryDecorator()
@@ -210,8 +225,10 @@ fun AppShell(
                         reconnecting = reconnecting,
                         fab = fab,
                         moreEntries = slots.more.map { MoreEntry(it.item.icon, it.item.label, it.route) },
-                        onBack = { update(stacks().back()) },
-                        onOpenFromMore = { route -> update(stacks().openFromMore(route)) },
+                        onBack = onBack,
+                        onOpenFromMore = { route ->
+                            update(stacks().select(ShellDestination.entries.first { it.route == route }.item.tab))
+                        },
                         onDisconnected = onDisconnected
                     )
                 }
@@ -222,42 +239,26 @@ fun AppShell(
 
 /** The tabs' saveable back stacks and the selected tab, read and written as [TabStacks]. */
 private class ShellStacks(
-    val presentation: NavBackStack<NavKey>,
-    private val remote: NavBackStack<NavKey>,
-    private val settings: NavBackStack<NavKey>,
-    private val more: NavBackStack<NavKey>,
+    private val backStacks: Map<ShellTab, NavBackStack<NavKey>>,
     private val tab: MutableState<ShellTab>
 ) {
     val current: ShellTab get() = tab.value
 
-    fun stacks(): TabStacks =
-        TabStacks(
-            presentation = presentation.toList(),
-            remote = remote.toList(),
-            settings = settings.toList(),
-            more = more.toList(),
-            current = tab.value
-        )
+    val presentation: List<NavKey> get() = backStacks.getValue(ShellTab.PRESENTATION)
+
+    fun stacks(): TabStacks = TabStacks(backStacks.mapValues { (_, stack) -> stack.toList() }, tab.value)
 
     fun update(next: TabStacks) {
-        presentation.replaceWith(next.presentation)
-        remote.replaceWith(next.remote)
-        settings.replaceWith(next.settings)
-        more.replaceWith(next.more)
+        next.stacks.forEach { (tab, keys) -> backStacks.getValue(tab).replaceWith(keys) }
         tab.value = next.current
     }
 }
 
 @Composable
 private fun rememberShellStacks(): ShellStacks {
-    val presentation = rememberNavBackStack(PlaylistsRoute)
-    val remote = rememberNavBackStack(RemoteRoute)
-    val settings = rememberNavBackStack(SettingsRoute)
-    val more = rememberNavBackStack(MoreRoute)
+    val backStacks = ShellTab.entries.associateWith { rememberNavBackStack(TabRoots.getValue(it)) }
     val tab = rememberSaveable { mutableStateOf(ShellTab.PRESENTATION) }
-    return remember(presentation, remote, settings, more, tab) {
-        ShellStacks(presentation, remote, settings, more, tab)
-    }
+    return remember(backStacks, tab) { ShellStacks(backStacks, tab) }
 }
 
 /** The playlist tree or library list, and the slide grid opened from it. */
@@ -365,6 +366,7 @@ private fun ShellFrame(
     }
 }
 
+/** The rail: [items] in the height left above a pinned 64 dp footer holding [clearButton]. */
 @Composable
 private fun ShellRail(
     items: List<ShellItem>,
@@ -376,16 +378,23 @@ private fun ShellRail(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.Start)
     ) {
-        items.forEach { item ->
-            NavigationRailItem(
-                selected = current == item.tab,
-                onClick = { onSelect(item.tab) },
-                icon = { Icon(painterResource(item.icon), contentDescription = null) },
-                label = { Text(stringResource(item.label)) }
-            )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(RailItemSpacing),
+            modifier = Modifier.weight(1f).clipToBounds()
+        ) {
+            items.forEach { item ->
+                NavigationRailItem(
+                    selected = current == item.tab,
+                    onClick = { onSelect(item.tab) },
+                    icon = { Icon(painterResource(item.icon), contentDescription = null) },
+                    label = { Text(stringResource(item.label)) }
+                )
+            }
         }
-        Spacer(modifier = Modifier.weight(1f))
-        clearButton()
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.height(RAIL_SLOT_DP.dp)) {
+            clearButton()
+        }
     }
 }
 
@@ -417,5 +426,29 @@ private fun KeepScreenOn(on: Boolean) {
     DisposableEffect(view, on) {
         view.keepScreenOn = on
         onDispose { view.keepScreenOn = false }
+    }
+}
+
+@Preview(heightDp = 400)
+@Composable
+private fun ShellRailPreview() {
+    PPRemoteTheme {
+        ShellRail(
+            items = ShellDestination.entries.map { it.item },
+            current = ShellTab.PRESENTATION,
+            onSelect = {}
+        ) { ClearRailItem(onClick = {}) }
+    }
+}
+
+@Preview(heightDp = 240)
+@Composable
+private fun ShellRailMoreHighlightedPreview() {
+    PPRemoteTheme {
+        ShellRail(
+            items = listOf(ShellDestination.PRESENTATION.item, MoreItem),
+            current = ShellTab.MORE,
+            onSelect = {}
+        ) { ClearRailItem(onClick = {}) }
     }
 }

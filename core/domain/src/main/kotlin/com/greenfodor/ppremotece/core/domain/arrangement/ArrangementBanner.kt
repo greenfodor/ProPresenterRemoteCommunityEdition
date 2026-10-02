@@ -18,34 +18,37 @@ data class ArrangementBanner(
 )
 
 /**
- * The cue list ProPresenter plays for [presentation] while [live] shows it: the arrangement of the
- * live item ([liveItemRef]), or the presentation's current arrangement when no item is live; null
- * when that arrangement can't be resolved or its cue count is not the live slide's.
+ * The cue list ProPresenter plays for [presentation] while [live] shows it ([liveItemResolution]):
+ * the arrangement of the live item ([liveItemRef]), or the presentation's current arrangement when
+ * no item is live; null when that arrangement can't be resolved or its cue count is not the live
+ * slide's.
  */
 fun liveCueList(presentation: Presentation, live: LiveState, liveItemRef: PresentationRef?): CueList? {
-    val ref = if (live.item == null) {
-        PresentationRef(presentation.uuid, presentation.currentArrangementUuid, arrangementName = "")
+    val resolution = if (live.item == null) {
+        liveItemResolution(presentation, itemRef = null)
     } else {
-        liveItemRef?.takeIf { it.presentationUuid == presentation.uuid } ?: return null
+        liveItemRef?.let { liveItemResolution(presentation, it) }
     }
-    val resolved = ref.arrangementUuid.isEmpty() || ArrangementExpander.resolve(presentation, ref) != null
-    return ArrangementExpander.expand(presentation, ref).takeIf { cueList ->
-        resolved && live.slide?.totalCues?.let { it == cueList.cues.size } != false
-    }
+    return resolution
+        ?.takeIf {
+            it.arrangementResolved &&
+                live.slide?.totalCues?.let { total -> total == it.cueList.cues.size } != false
+        }
+        ?.cueList
 }
 
 /**
  * The banner for [source]'s grid, showing [itemCueList] of [presentation]: shown when the
- * presentation is live but not through this item, and the live arrangement ([liveCueList]) orders
- * its slides (group and slide in group) differently; an unresolved live arrangement is compared by
- * cue count. Null for a presentation source.
+ * presentation is live but not through this item, and the live arrangement ([liveCues], from
+ * [liveCueList]) orders its slides (group and slide in group) differently; an unresolved live
+ * arrangement is compared by cue count. Null for a presentation source.
  */
 fun arrangementBanner(
     source: CueSource,
     itemCueList: CueList,
     live: LiveState,
     presentation: Presentation,
-    liveItemRef: PresentationRef?
+    liveCues: CueList?
 ): ArrangementBanner? {
     val slide = live.slide
         ?.takeIf {
@@ -54,7 +57,6 @@ fun arrangementBanner(
                 live.item != source.key
         }
         ?: return null
-    val liveCues = liveCueList(presentation, live, liveItemRef)
     return when {
         liveCues == null ->
             ArrangementBanner(null, isSongOrder = false, slide.totalCues).takeIf {
