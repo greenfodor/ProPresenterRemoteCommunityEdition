@@ -1,7 +1,9 @@
 package com.greenfodor.ppremotece.core.data.layout
 
 import android.content.Context
+import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
@@ -11,20 +13,30 @@ import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
+import com.greenfodor.ppremotece.core.domain.result.DataError
+import com.greenfodor.ppremotece.core.domain.result.EmptyResult
+import com.greenfodor.ppremotece.core.domain.result.Result
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
 import java.io.IOException
 
 /** The `grid_preferences` DataStore. */
-internal val Context.gridPreferencesDataStore by preferencesDataStore(name = "grid_preferences")
+internal val Context.gridPreferencesDataStore by preferencesDataStore(
+    name = "grid_preferences",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }
+)
 
 /**
  * [GridPreferences] in [dataStore], one key per width class for the step (`grid_step_compact`,
  * `grid_step_medium`, `grid_step_expanded`) and for the view mode (`view_mode_compact`,
  * `view_mode_medium`, `view_mode_expanded`); [GridStep.Default] and [ViewMode.GRID] when unset.
- * Read and write errors leave the saved values unchanged.
+ * A corrupt file is replaced with an empty one. A read error gives the defaults, then, unless the
+ * file is corrupt, the values are read again after [READ_RETRY_DELAY_MS]; a write error leaves the
+ * saved value unchanged and is returned.
  */
 class DataStoreGridPreferences(
     private val dataStore: DataStore<Preferences>
@@ -34,32 +46,38 @@ class DataStoreGridPreferences(
             GridStep.entries.firstOrNull { it.name == name }
         }
 
-    override suspend fun setGridStep(widthClass: WidthClass, step: GridStep) {
+    override suspend fun setGridStep(widthClass: WidthClass, step: GridStep): EmptyResult<DataError.Local> =
         write(STEP_KEYS.getValue(widthClass), step.name)
-    }
 
     override fun viewMode(widthClass: WidthClass): Flow<ViewMode> =
         read(MODE_KEYS.getValue(widthClass), ViewMode.GRID) { name -> ViewMode.entries.firstOrNull { it.name == name } }
 
-    override suspend fun setViewMode(widthClass: WidthClass, mode: ViewMode) {
+    override suspend fun setViewMode(widthClass: WidthClass, mode: ViewMode): EmptyResult<DataError.Local> =
         write(MODE_KEYS.getValue(widthClass), mode.name)
-    }
 
     private fun <T> read(key: Preferences.Key<String>, default: T, parse: (String) -> T?): Flow<T> =
         dataStore.data
-            .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-            .map { preferences -> preferences[key]?.let(parse) ?: default }
+            .retryWhen { cause, _ ->
+                if (cause is IOException) emit(emptyPreferences())
+                (cause is IOException && cause !is CorruptionException).also { retry ->
+                    if (retry) delay(READ_RETRY_DELAY_MS)
+                }
+            }.catch { if (it !is CorruptionException) throw it }.map { preferences ->
+                preferences[key]?.let(parse)
+                    ?: default
+            }
             .distinctUntilChanged()
 
-    private suspend fun write(key: Preferences.Key<String>, value: String) {
+    private suspend fun write(key: Preferences.Key<String>, value: String): EmptyResult<DataError.Local> =
         try {
             dataStore.edit { it[key] = value }
+            Result.Success(Unit)
         } catch (_: IOException) {
-            // The previously saved value stays in place.
+            Result.Failure(DataError.Local.WRITE_FAILED)
         }
-    }
 
     private companion object {
+        const val READ_RETRY_DELAY_MS = 1_000L
         val STEP_KEYS = keys("grid_step")
         val MODE_KEYS = keys("view_mode")
 

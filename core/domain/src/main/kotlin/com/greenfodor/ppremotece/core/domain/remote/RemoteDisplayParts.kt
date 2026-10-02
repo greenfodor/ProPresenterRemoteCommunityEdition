@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.core.domain.remote
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementExpander
 import com.greenfodor.ppremotece.core.domain.arrangement.CueList
+import com.greenfodor.ppremotece.core.domain.arrangement.liveItemResolution
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
@@ -19,8 +20,8 @@ internal fun textDisplay(text: SlideText?) =
     )
 
 /**
- * Runs [block] with the item's presentation and cue list; a loading display while the
- * presentation is not read yet, and null when the item plays no presentation.
+ * Runs [block] with the item's presentation and cue list ([liveItemResolution]); a loading display
+ * while the presentation is not read yet, and null when the item plays no presentation.
  */
 internal fun withCues(
     item: PlaylistItem,
@@ -32,7 +33,7 @@ internal fun withCues(
     return when {
         ref == null -> null
         presentation == null -> RemoteDisplay(status = RemoteStatus.LOADING)
-        else -> block(presentation, ArrangementExpander.expand(presentation, ref))
+        else -> liveItemResolution(presentation, ref)?.let { block(presentation, it.cueList) }
     }
 }
 

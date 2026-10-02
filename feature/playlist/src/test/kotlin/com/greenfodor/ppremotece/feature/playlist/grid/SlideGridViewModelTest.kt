@@ -10,7 +10,10 @@ import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementBanner
+import com.greenfodor.ppremotece.core.domain.arrangement.NoMatchReason
+import com.greenfodor.ppremotece.core.domain.arrangement.ResyncTarget
 import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.ViewMode
@@ -32,6 +35,8 @@ import com.greenfodor.ppremotece.core.domain.model.PresentationRef
 import com.greenfodor.ppremotece.core.domain.model.Slide
 import com.greenfodor.ppremotece.core.domain.model.SlideSize
 import com.greenfodor.ppremotece.core.domain.result.DataError
+import com.greenfodor.ppremotece.core.domain.result.EmptyResult
+import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
@@ -49,11 +54,13 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SlideGridViewModelTest {
     private val item = PlaylistItemKey(PLAYLIST, 6)
     private val otherItem = PlaylistItemKey(PLAYLIST, 7)
+    private val chorusItem = PlaylistItemKey(PLAYLIST, 8)
     private val content = FakeContentRepository()
     private val client = FakeProPresenterClient()
     private val live = MutableStateFlow(LiveState.Initial)
@@ -81,18 +88,23 @@ class SlideGridViewModelTest {
         override fun gridStep(widthClass: WidthClass) = steps.map { it[widthClass] ?: GridStep.Default }
 
         var writes = 0
+        var failWrites = false
 
-        override suspend fun setGridStep(widthClass: WidthClass, step: GridStep) {
+        override suspend fun setGridStep(widthClass: WidthClass, step: GridStep): EmptyResult<DataError.Local> {
             writes++
+            if (failWrites) return Result.Failure(DataError.Local.WRITE_FAILED)
             steps.value += widthClass to step
+            return Result.Success(Unit)
         }
 
         val modes = MutableStateFlow(mapOf<WidthClass, ViewMode>())
 
         override fun viewMode(widthClass: WidthClass) = modes.map { it[widthClass] ?: ViewMode.GRID }
 
-        override suspend fun setViewMode(widthClass: WidthClass, mode: ViewMode) {
+        override suspend fun setViewMode(widthClass: WidthClass, mode: ViewMode): EmptyResult<DataError.Local> {
+            if (failWrites) return Result.Failure(DataError.Local.WRITE_FAILED)
             modes.value += widthClass to mode
+            return Result.Success(Unit)
         }
     }
     private val thumbnailCache = object : ThumbnailCache {
@@ -123,6 +135,12 @@ class SlideGridViewModelTest {
                     name = "Song C",
                     type = PlaylistItemType.PRESENTATION,
                     presentation = PresentationRef(SONG_C, arrangementUuid = "a-b", arrangementName = "B")
+                ),
+                PlaylistItem(
+                    key = chorusItem,
+                    name = "Song C",
+                    type = PlaylistItemType.PRESENTATION,
+                    presentation = PresentationRef(SONG_C, arrangementUuid = "a-c", arrangementName = "Chorus Only")
                 )
             )
         )
@@ -547,11 +565,75 @@ class SlideGridViewModelTest {
         live.value = LiveState(ConnectionStatus.CONNECTED, otherItem, LiveSlide(SONG_C, index = 1, totalCues = 5))
 
         viewModel.state.test {
-            assertThat(expectMostRecentItem().banner).isNotNull()
+            val state = expectMostRecentItem()
+            assertThat(state.banner).isNotNull()
+            assertThat(state.resync).isEqualTo(ResyncTarget.Cue(4))
             viewModel.onAction(SlideGridAction.OnResyncClick)
         }
 
         assertThat(client.triggeredCues).containsExactly(item to 4)
+    }
+
+    @Test
+    fun `re-sync is disabled and sends nothing when the live slide is not in this item's arrangement`() = runTest {
+        val viewModel = viewModel(CueSource.PlaylistItem(chorusItem))
+        live.value = LiveState(ConnectionStatus.CONNECTED, item, LiveSlide(SONG_C, index = 0, totalCues = 8))
+
+        viewModel.state.test {
+            val state = expectMostRecentItem()
+            assertThat(state.banner).isNotNull()
+            assertThat(state.resync).isEqualTo(ResyncTarget.NoMatch(NoMatchReason.NOT_IN_ARRANGEMENT))
+            viewModel.onAction(SlideGridAction.OnResyncClick)
+        }
+
+        assertThat(client.triggeredCues).isEmpty()
+    }
+
+    @Test
+    fun `re-sync is disabled and sends nothing when the live arrangement is unknown`() = runTest {
+        content.pendingPlaylists += PENDING_PLAYLIST
+        val viewModel = viewModel()
+        live.value = LiveState(
+            ConnectionStatus.CONNECTED,
+            PlaylistItemKey(PENDING_PLAYLIST, 0),
+            LiveSlide(SONG_C, index = 1, totalCues = 5)
+        )
+
+        viewModel.state.test {
+            val state = expectMostRecentItem()
+            assertThat(state.banner).isNotNull()
+            assertThat(state.resync).isEqualTo(ResyncTarget.NoMatch(NoMatchReason.LIVE_ARRANGEMENT_UNKNOWN))
+            viewModel.onAction(SlideGridAction.OnResyncClick)
+        }
+
+        assertThat(client.triggeredCues).isEmpty()
+    }
+
+    @Test
+    fun `a view mode that can't be saved shows the setting message`() = runTest {
+        gridPreferences.failWrites = true
+        val viewModel = viewModel()
+        viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
+
+        viewModel.events.test {
+            viewModel.onAction(SlideGridAction.OnViewModeChange(ViewMode.LIST))
+
+            assertThat(awaitItem().messageId()).isEqualTo(DesignR.string.setting_not_saved)
+        }
+    }
+
+    @Test
+    fun `a slide size that can't be saved shows the setting message`() = runTest {
+        gridPreferences.failWrites = true
+        val viewModel = viewModel()
+        viewModel.onAction(SlideGridAction.OnWidthClassChange(WidthClass.COMPACT))
+
+        viewModel.events.test {
+            viewModel.onAction(SlideGridAction.OnGridStepChange(GridStep.SIZE_120))
+            viewModel.onAction(SlideGridAction.OnGridStepChangeFinished)
+
+            assertThat(awaitItem().messageId()).isEqualTo(DesignR.string.setting_not_saved)
+        }
     }
 
     @Test
@@ -576,6 +658,8 @@ class SlideGridViewModelTest {
             assertThat(awaitItem()).isEqualTo(SlideGridEvent.ScrollToCue(5))
         }
     }
+
+    private fun SlideGridEvent.messageId() = ((this as SlideGridEvent.ShowError).message as UiText.StringResource).id
 
     private fun outside(cue: Int, totalCues: Int) =
         LiveState(ConnectionStatus.CONNECTED, item = null, slide = LiveSlide(SONG_C, cue, totalCues))
@@ -615,7 +699,8 @@ class SlideGridViewModelTest {
             groups = listOf(verse, chorus),
             arrangements = listOf(
                 Arrangement("a-a", "A", listOf("g-verse", "g-chorus", "g-verse"), totalCues = 8),
-                Arrangement("a-b", "B", listOf("g-chorus", "g-verse"), totalCues = 5)
+                Arrangement("a-b", "B", listOf("g-chorus", "g-verse"), totalCues = 5),
+                Arrangement("a-c", "Chorus Only", listOf("g-chorus"), totalCues = 2)
             ),
             currentArrangementUuid = "a-a"
         )

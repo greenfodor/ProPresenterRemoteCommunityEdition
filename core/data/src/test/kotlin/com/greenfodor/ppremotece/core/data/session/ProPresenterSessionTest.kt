@@ -2,8 +2,10 @@ package com.greenfodor.ppremotece.core.data.session
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.data.network.FakeProPresenter
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.domain.model.Cue
@@ -83,6 +85,69 @@ class ProPresenterSessionTest {
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
 
         session.disconnect()
+
+        assertThat(session.savedHost()).isEqualTo(host())
+    }
+
+    @Test
+    fun `disconnect asks to stay disconnected and the next connect clears it`() = runBlocking {
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        assertThat(session.stayDisconnected()).isFalse()
+
+        session.disconnect()
+        assertThat(session.stayDisconnected()).isTrue()
+
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        assertThat(session.stayDisconnected()).isFalse()
+    }
+
+    @Test
+    fun `a new session restores the saved host after a disconnect that asked to stay disconnected`() = runBlocking {
+        savedHosts.host = host()
+        savedHosts.stayDisconnected = true
+
+        session.restore()
+
+        assertThat(session.connectedHost.value?.host).isEqualTo(host())
+    }
+
+    @Test
+    fun `a host entered by its address is named after the version name`() = runBlocking {
+        val entered = ProPresenterHost(name = server.hostName, address = server.hostName, port = server.port)
+
+        assertThat(session.connect(entered)).isInstanceOf<Result.Success<*>>()
+
+        assertThat(session.savedHost()).isEqualTo(host())
+        assertThat(session.connectedHost.value?.host).isEqualTo(host())
+    }
+
+    @Test
+    fun `a host entered by its address keeps the address when the version name is blank`() = runBlocking {
+        fake.versionName = " "
+        val entered = ProPresenterHost(name = server.hostName, address = server.hostName, port = server.port)
+
+        assertThat(session.connect(entered)).isInstanceOf<Result.Success<*>>()
+
+        assertThat(session.savedHost()).isEqualTo(entered)
+    }
+
+    @Test
+    fun `a host named after its version name is renamed on each connect`() = runBlocking {
+        val entered = ProPresenterHost(name = server.hostName, address = server.hostName, port = server.port)
+        assertThat(session.connect(entered)).isInstanceOf<Result.Success<*>>()
+        fake.versionName = "Host 02"
+
+        assertThat(session.connect(checkNotNull(session.savedHost()))).isInstanceOf<Result.Success<*>>()
+
+        assertThat(session.savedHost()?.name).isEqualTo("Host 02")
+    }
+
+    @Test
+    fun `a discovered host keeps its name`() = runBlocking {
+        fake.versionName = "Host 02"
+
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
 
         assertThat(session.savedHost()).isEqualTo(host())
     }
@@ -230,11 +295,19 @@ class ProPresenterSessionTest {
 
     private class FakeSavedHosts : SavedHosts {
         var host: ProPresenterHost? = null
+        var namedByVersion = false
+        var stayDisconnected = false
 
-        override suspend fun read(): ProPresenterHost? = host
+        override suspend fun read(): SavedHost? = host?.let { SavedHost(it, namedByVersion, stayDisconnected) }
 
-        override suspend fun save(host: ProPresenterHost) {
+        override suspend fun save(host: ProPresenterHost, namedByVersion: Boolean) {
             this.host = host
+            this.namedByVersion = namedByVersion
+            stayDisconnected = false
+        }
+
+        override suspend fun setStayDisconnected() {
+            stayDisconnected = true
         }
 
         override suspend fun clear() {

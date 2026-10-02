@@ -4,78 +4,55 @@ import androidx.navigation3.runtime.NavKey
 import com.greenfodor.ppremotece.core.domain.layout.ShellTab
 
 /**
- * The shell's back stacks, one per tab, and its selected tab. [displayed] is the Presentation stack,
- * with the selected tab's stack on top while another tab is selected. Selecting the selected tab
- * again trims its stack to its root; back pops the selected stack and, from another tab's root,
- * returns to Presentation. The More stack holds the More list and the destination opened from it.
+ * The shell's back stacks, one per [ShellTab], and its selected tab. [displayed] is the Presentation
+ * stack, with the selected tab's stack on top while another tab is selected. Selecting the selected
+ * tab again trims its stack to its root. The More stack is the More list, a chooser: a More row
+ * selects that destination's own tab, and while the selected tab is listed under More, More is
+ * [highlighted] and back from its root shows the More list. Back pops the selected stack and, from
+ * the root of More or of a tab not under More, returns to Presentation.
  */
 data class TabStacks(
-    val presentation: List<NavKey>,
-    val remote: List<NavKey>,
-    val settings: List<NavKey>,
-    val more: List<NavKey>,
+    val stacks: Map<ShellTab, List<NavKey>>,
     val current: ShellTab
 ) {
     val displayed: List<NavKey>
-        get() = if (current == ShellTab.PRESENTATION) presentation else presentation + stackOf(current)
+        get() = if (current == ShellTab.PRESENTATION) {
+            stack(ShellTab.PRESENTATION)
+        } else {
+            stack(ShellTab.PRESENTATION) + stack(current)
+        }
+
+    fun stack(tab: ShellTab): List<NavKey> = stacks.getValue(tab)
+
+    /** The tab the bar or rail shows as selected while [inMore] are listed under More. */
+    fun highlighted(inMore: Set<ShellTab>): ShellTab = if (current in inMore) ShellTab.MORE else current
 
     fun select(tab: ShellTab): TabStacks =
-        if (tab != current) copy(current = tab) else withStack(tab, stackOf(tab).take(1))
+        if (tab != current) copy(current = tab) else withStack(tab, stack(tab).take(1))
 
-    fun back(): TabStacks {
-        val stack = stackOf(current)
+    /** Back while [inMore] are listed under More. */
+    fun back(inMore: Set<ShellTab>): TabStacks {
+        val stack = stack(current)
         return when {
             stack.size > 1 -> withStack(current, stack.dropLast(1))
-            current != ShellTab.PRESENTATION -> copy(current = ShellTab.PRESENTATION)
-            else -> this
+            current == ShellTab.PRESENTATION -> this
+            current in inMore -> copy(current = ShellTab.MORE)
+            else -> copy(current = ShellTab.PRESENTATION)
         }
     }
 
+    /** Presentation in place of a selected More list once nothing is listed under More; every stack is kept. */
+    fun withoutMore(): TabStacks = if (current == ShellTab.MORE) copy(current = ShellTab.PRESENTATION) else this
+
     /** Shows [key] on the Presentation root in place of any open detail. */
-    fun openDetail(key: NavKey): TabStacks = copy(presentation = presentation.take(1) + key)
+    fun openDetail(key: NavKey): TabStacks =
+        withStack(ShellTab.PRESENTATION, stack(ShellTab.PRESENTATION).take(1) + key)
 
-    /** Shows [key] on the More list. */
-    fun openFromMore(key: NavKey): TabStacks = copy(more = more.take(1) + key)
-
-    /**
-     * Moves Settings under More when [inMore], or out of it otherwise: a selected Settings becomes
-     * More showing its stack, and a selected More showing Settings becomes Settings again. A selected
-     * More at its root returns to Presentation once Settings is out of it.
-     */
-    fun withSettingsInMore(inMore: Boolean): TabStacks =
-        when {
-            inMore && current == ShellTab.SETTINGS -> copy(current = ShellTab.MORE, more = more.take(1) + settings)
-            inMore -> this
-            current == ShellTab.MORE && more.size > 1 ->
-                copy(current = ShellTab.SETTINGS, settings = more.drop(1), more = more.take(1))
-            current == ShellTab.MORE -> copy(current = ShellTab.PRESENTATION)
-            else -> copy(more = more.take(1))
-        }
-
-    private fun stackOf(tab: ShellTab): List<NavKey> =
-        when (tab) {
-            ShellTab.PRESENTATION -> presentation
-            ShellTab.REMOTE -> remote
-            ShellTab.SETTINGS -> settings
-            ShellTab.MORE -> more
-        }
-
-    private fun withStack(tab: ShellTab, stack: List<NavKey>): TabStacks =
-        when (tab) {
-            ShellTab.PRESENTATION -> copy(presentation = stack)
-            ShellTab.REMOTE -> copy(remote = stack)
-            ShellTab.SETTINGS -> copy(settings = stack)
-            ShellTab.MORE -> copy(more = stack)
-        }
+    private fun withStack(tab: ShellTab, stack: List<NavKey>): TabStacks = copy(stacks = stacks + (tab to stack))
 
     companion object {
-        fun initial(presentationRoot: NavKey, remoteRoot: NavKey, settingsRoot: NavKey, moreRoot: NavKey): TabStacks =
-            TabStacks(
-                presentation = listOf(presentationRoot),
-                remote = listOf(remoteRoot),
-                settings = listOf(settingsRoot),
-                more = listOf(moreRoot),
-                current = ShellTab.PRESENTATION
-            )
+        /** Each tab's stack holding its root from [roots], with Presentation selected. */
+        fun initial(roots: Map<ShellTab, NavKey>): TabStacks =
+            TabStacks(stacks = roots.mapValues { (_, root) -> listOf(root) }, current = ShellTab.PRESENTATION)
     }
 }

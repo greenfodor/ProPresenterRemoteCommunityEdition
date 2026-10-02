@@ -5,6 +5,7 @@
     <string name="error_server">ProPresenter reported an error.</string>
     <string name="error_serialization">ProPresenter sent a response the app can\'t read.</string>
     <string name="error_unknown">Something went wrong talking to ProPresenter.</string>
+    <string name="setting_not_saved">Couldn\'t save the setting</string>
     <string name="cue_live">LIVE</string>
     <string name="cue_next">NEXT</string>
     <string name="cue_cued">CUED</string>

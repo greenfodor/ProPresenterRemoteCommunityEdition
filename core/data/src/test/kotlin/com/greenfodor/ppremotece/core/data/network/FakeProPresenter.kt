@@ -93,6 +93,15 @@ class FakeProPresenter(
             }
         )
 
+    /** The `name` `/version` reports instead of the fixture's, when set. */
+    @Volatile
+    var versionName: String? = null
+
+    private fun versionJson(): String {
+        val fixture = Fixtures.text("version.json")
+        return versionName?.let { fixture.replace("\"name\": \"Host 01\"", "\"name\": \"$it\"") } ?: fixture
+    }
+
     fun releaseStalls() {
         stalls.countDown()
     }
@@ -113,7 +122,7 @@ class FakeProPresenter(
 
     private fun dispatchGet(path: String): MockResponse =
         when {
-            path == "/version" -> json(Fixtures.text("version.json"))
+            path == "/version" -> json(versionJson())
             path == "/v1/playlist/active" || path == "/v1/presentation/slide_index" -> dispatchLive(path)
             path == "/v1/playlists" -> json(Fixtures.text(Fixtures.PLAYLIST_TREE))
             path == "/v1/libraries" -> json(Fixtures.text(Fixtures.LIBRARIES))

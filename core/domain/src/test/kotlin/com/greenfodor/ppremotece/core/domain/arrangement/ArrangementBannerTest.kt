@@ -13,6 +13,8 @@ import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.Presentation
+import com.greenfodor.ppremotece.core.domain.model.PresentationRef
 import org.junit.jupiter.api.Test
 
 class ArrangementBannerTest {
@@ -21,6 +23,14 @@ class ArrangementBannerTest {
 
     private fun live(item: PlaylistItemKey?, totalCues: Int, presentation: String = SONG) =
         LiveState(ConnectionStatus.CONNECTED, item, LiveSlide(presentation, index = 2, totalCues = totalCues))
+
+    private fun arrangementBanner(
+        source: CueSource,
+        itemCueList: CueList,
+        live: LiveState,
+        presentation: Presentation,
+        liveItemRef: PresentationRef?
+    ) = arrangementBanner(source, itemCueList, live, presentation, liveCueList(presentation, live, liveItemRef))
 
     @Test
     fun `another item live in another arrangement names it with its cue count`() {

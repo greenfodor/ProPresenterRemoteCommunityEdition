@@ -14,6 +14,7 @@ import com.greenfodor.ppremotece.core.domain.model.ConnectedHost
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
+import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
@@ -47,6 +48,10 @@ class ConnectViewModelTest {
             return this@ConnectViewModelTest.savedHost
         }
 
+        var stayDisconnected = false
+
+        override suspend fun stayDisconnected(): Boolean = stayDisconnected
+
         override suspend fun connect(host: ProPresenterHost): Result<ProPresenterVersion, DataError.Network> {
             attempts += host
             return Result.Failure(DataError.Network.TIMEOUT)
@@ -59,12 +64,13 @@ class ConnectViewModelTest {
 
         override fun keepAwake(): Flow<KeepAwake> = flowOf(KeepAwake.REMOTE_ONLY)
 
-        override suspend fun setKeepAwake(mode: KeepAwake) = Unit
+        override suspend fun setKeepAwake(mode: KeepAwake): EmptyResult<DataError.Local> = Result.Success(Unit)
 
         override fun autoConnect(): Flow<Boolean> = autoConnect
 
-        override suspend fun setAutoConnect(enabled: Boolean) {
+        override suspend fun setAutoConnect(enabled: Boolean): EmptyResult<DataError.Local> {
             autoConnect.value = enabled
+            return Result.Success(Unit)
         }
     }
     private val discovery = object : HostDiscovery {
@@ -110,6 +116,16 @@ class ConnectViewModelTest {
     @Test
     fun `with auto-connect off the launch connect screen shows the saved host without connecting`() = runTest {
         preferences.autoConnect.value = false
+        val viewModel = ConnectViewModel(connections, discovery, preferences)
+
+        viewModel.onAction(ConnectAction.OnStart(permissionGranted = true, autoConnect = true))
+
+        assertSavedHostWaiting(viewModel.state.value)
+    }
+
+    @Test
+    fun `a launch after a disconnect shows the saved host without connecting`() = runTest {
+        connections.stayDisconnected = true
         val viewModel = ConnectViewModel(connections, discovery, preferences)
 
         viewModel.onAction(ConnectAction.OnStart(permissionGranted = true, autoConnect = true))
