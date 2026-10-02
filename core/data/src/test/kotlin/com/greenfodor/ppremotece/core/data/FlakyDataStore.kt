@@ -9,10 +9,11 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import java.io.IOException
 
-/** A preferences [DataStore] whose first [readFailures] reads throw, and whose writes throw while [failWrites]. */
+/** A preferences [DataStore] whose first [readFailures] reads throw [readError], and whose writes throw while [failWrites]. */
 class FlakyDataStore(
     initial: Preferences = emptyPreferences(),
-    var readFailures: Int = 0
+    var readFailures: Int = 0,
+    private val readError: () -> IOException = { IOException("read failed") }
 ) : DataStore<Preferences> {
     val stored = MutableStateFlow(initial)
     var failWrites = false
@@ -20,7 +21,7 @@ class FlakyDataStore(
     override val data: Flow<Preferences> = flow {
         if (readFailures > 0) {
             readFailures--
-            throw IOException("read failed")
+            throw readError()
         }
         emitAll(stored)
     }

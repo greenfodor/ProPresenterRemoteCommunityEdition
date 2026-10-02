@@ -161,4 +161,21 @@ class TabStacksTest {
         assertThat(stacks.current).isEqualTo(ShellTab.MORE)
         assertThat(stacks.displayed).containsExactly(PlaylistsRoute, grid1, MoreRoute)
     }
+
+    @Test
+    fun `the more list returns to presentation once nothing is under more, keeping every stack`() {
+        val moreList = initial.openDetail(grid1).select(ShellTab.REMOTE).select(ShellTab.MORE)
+
+        val fits = moreList.withoutMore()
+
+        assertThat(fits.current).isEqualTo(ShellTab.PRESENTATION)
+        assertThat(fits.stacks).isEqualTo(moreList.stacks)
+    }
+
+    @Test
+    fun `another tab stays selected once nothing is under more`() {
+        val remote = initial.select(ShellTab.MORE).select(ShellTab.REMOTE)
+
+        assertThat(remote.withoutMore()).isEqualTo(remote)
+    }
 }

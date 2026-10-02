@@ -179,6 +179,9 @@ fun AppShell(
         val slots = navigationSlots(layout, availableDp.value.toInt(), ShellDestination.entries)
         val items = slots.shown.map { it.item } + listOfNotNull(MoreItem.takeIf { slots.more.isNotEmpty() })
         val inMore = slots.more.map { it.item.tab }.toSet()
+        LaunchedEffect(inMore.isEmpty()) {
+            if (inMore.isEmpty()) stacks().withoutMore().takeIf { it != stacks() }?.let(update)
+        }
         val onBack = { update(stacks().back(inMore)) }
         val slideGrid = @Composable { source: CueSource ->
             SlideGridRoot(

@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.core.data.layout
 
+import androidx.datastore.core.CorruptionException
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.preferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -82,5 +83,16 @@ class DataStoreGridPreferencesTest {
             .isEqualTo(Result.Failure(DataError.Local.WRITE_FAILED))
         assertThat(preferences.setGridStep(WidthClass.COMPACT, GridStep.SIZE_120))
             .isEqualTo(Result.Failure(DataError.Local.WRITE_FAILED))
+    }
+
+    @Test
+    fun `a corrupt file gives the default without reading again`() = runTest {
+        val dataStore = FlakyDataStore(readFailures = 2, readError = { CorruptionException("corrupt") })
+
+        DataStoreGridPreferences(dataStore).viewMode(WidthClass.COMPACT).test {
+            assertThat(awaitItem()).isEqualTo(ViewMode.GRID)
+            awaitComplete()
+        }
+        assertThat(dataStore.readFailures).isEqualTo(1)
     }
 }

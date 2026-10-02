@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.core.data.settings
 
+import androidx.datastore.core.CorruptionException
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.preferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -86,5 +87,16 @@ class DataStoreAppPreferencesTest {
     @Test
     fun `a saved value is reported as saved`() = runBlocking {
         assertThat(preferences.setAutoConnect(false)).isInstanceOf<Result.Success<Unit>>()
+    }
+
+    @Test
+    fun `a corrupt file gives the default without reading again`() = runTest {
+        val dataStore = FlakyDataStore(readFailures = 2, readError = { CorruptionException("corrupt") })
+
+        DataStoreAppPreferences(dataStore).keepAwake().test {
+            assertThat(awaitItem()).isEqualTo(KeepAwake.REMOTE_ONLY)
+            awaitComplete()
+        }
+        assertThat(dataStore.readFailures).isEqualTo(1)
     }
 }

@@ -41,6 +41,9 @@ data class TabStacks(
         }
     }
 
+    /** Presentation in place of a selected More list once nothing is listed under More; every stack is kept. */
+    fun withoutMore(): TabStacks = if (current == ShellTab.MORE) copy(current = ShellTab.PRESENTATION) else this
+
     /** Shows [key] on the Presentation root in place of any open detail. */
     fun openDetail(key: NavKey): TabStacks =
         withStack(ShellTab.PRESENTATION, stack(ShellTab.PRESENTATION).take(1) + key)
