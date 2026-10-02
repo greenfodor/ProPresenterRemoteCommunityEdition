@@ -86,7 +86,8 @@ fun LooksRoot(
 }
 
 /**
- * The Looks tab: one 64 dp card per look in an adaptive grid of 280 dp cells, a radio group in
+ * The Looks tab under a `theater_comedy` title: one 64 dp card per look in an adaptive grid of
+ * 280 dp cells, a radio group in
  * which the live look is selected and marked, with 88 dp below the last row; a spinner until the
  * looks are loaded, "No looks in ProPresenter" when there are none, and "Not available on this
  * ProPresenter" when the server rejected them.
@@ -107,7 +108,17 @@ fun LooksScreen(
         floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.looks_title)) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painterResource(DesignR.drawable.ic_theater_comedy),
+                            contentDescription = null,
+                            modifier = Modifier.size(IconSize)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(stringResource(R.string.looks_title))
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
@@ -139,8 +150,8 @@ fun LooksScreen(
 }
 
 /**
- * A 64 dp card with 16 dp corners on `surfaceContainerHigh`: the `theater_comedy` icon, the name in
- * `titleMedium` on one line, and a radio, checked for the live look, which also gets the LIVE ring
+ * A 64 dp card with 16 dp corners on `surfaceContainerHigh`: the name in `titleMedium` on one
+ * line and a radio, checked for the live look, which also gets the LIVE ring
  * and badge ([LiveMark]).
  */
 @Composable
@@ -156,13 +167,6 @@ private fun LookCard(look: LookUi, onClick: () -> Unit) {
                 .selectable(selected = look.live, onClick = onClick, role = Role.RadioButton)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = CardPadding)) {
-                Icon(
-                    painterResource(DesignR.drawable.ic_theater_comedy),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(IconSize)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     text = look.name,
                     style = MaterialTheme.typography.titleMedium,
