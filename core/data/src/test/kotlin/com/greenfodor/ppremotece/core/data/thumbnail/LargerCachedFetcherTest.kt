@@ -1,16 +1,17 @@
 package com.greenfodor.ppremotece.core.data.thumbnail
 
+import android.content.ContextWrapper
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
-import assertk.assertions.isTrue
 import coil3.decode.DataSource
 import coil3.disk.DiskCache
 import coil3.fetch.Fetcher
 import coil3.fetch.SourceFetchResult
+import coil3.request.Options
+import coil3.toUri
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
 import kotlinx.coroutines.runBlocking
 import okio.Path.Companion.toOkioPath
@@ -63,12 +64,27 @@ class LargerCachedFetcherTest {
     }
 
     @Test
-    fun `only presentation route thumbnails look for a larger image`() {
-        assertThat(isPresentationThumbnailUrl("http://192.0.2.14:60113/v1/presentation/p-1/thumbnail/3?quality=711"))
-            .isTrue()
-        assertThat(isPresentationThumbnailUrl("http://192.0.2.14:60113/v1/playlist/pl/1/thumbnail/3?quality=400"))
-            .isFalse()
-        assertThat(isPresentationThumbnailUrl("http://192.0.2.14:60113/v1/presentation/p-1")).isFalse()
+    fun `a larger image shorter than its content-length is skipped`() = runBlocking {
+        cache.store("k:q600", "q6".encodeToByteArray(), contentLength = 600)
+        cache.store("k:q800", "q800".encodeToByteArray())
+
+        val result = LargerCachedFetcher(network, cache, ThumbnailKey.largerKeys("k")).fetch()
+
+        assertThat((result as SourceFetchResult).text()).isEqualTo("q800")
+        assertThat(fetches.get()).isEqualTo(0)
+    }
+
+    @Test
+    fun `a playlist route grid request is served from a stored larger image without a fetch`() = runBlocking {
+        store("k:q800", "q800")
+        val options = Options(context = ContextWrapper(null), diskCacheKey = "k")
+        val url = "http://192.0.2.14:60113/v1/playlist/pl/1/thumbnail/3?quality=400".toUri()
+
+        val fetcher = LargerCachedFetcherFactory { _, _, _ -> network }.create(url, options, DiskOnlyImageLoader(cache))
+        val result = checkNotNull(fetcher).fetch()
+
+        assertThat((result as SourceFetchResult).text()).isEqualTo("q800")
+        assertThat(fetches.get()).isEqualTo(0)
     }
 
     private fun store(key: String, content: String) {

@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
+import com.greenfodor.ppremotece.core.designsystem.ui.ThumbnailPrefetch
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
@@ -94,7 +95,7 @@ fun RemoteRoot(
 /**
  * The Remote tab with its cue sidebar: permanent when [sideBySide], else a modal drawer opened from
  * the top bar, closed by back and when the sidebar empties, with its cues composed only while it is
- * open or opening.
+ * open or opening. The thumbnails of [RemoteState.prefetch] are loaded ahead.
  */
 @Composable
 fun RemoteScreen(
@@ -117,6 +118,7 @@ fun RemoteScreen(
             onCueClick = { onAction(RemoteAction.OnSidebarCueClick(it)) }
         )
     }
+    ThumbnailPrefetch(state.prefetch)
     val sidebarEmpty = state.sidebar.isEmpty()
     LaunchedEffect(sideBySide, sidebarEmpty) {
         if (sideBySide) {

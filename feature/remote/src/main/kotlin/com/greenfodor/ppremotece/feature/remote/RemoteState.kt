@@ -9,14 +9,15 @@ import com.greenfodor.ppremotece.core.domain.remote.RemoteStatus
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 
 /**
- * The Remote tab's [display], the thumbnail requests of its current and next boxes, a read
- * [error], and the cue [sidebar] of [sidebarSource] with the position of its live or cued cue in
- * [sidebarFocus].
+ * The Remote tab's [display], the thumbnail requests of its current and next boxes, the thumbnail
+ * requests to load ahead in [prefetch], a read [error], and the cue [sidebar] of [sidebarSource]
+ * with the position of its live or cued cue in [sidebarFocus].
  */
 data class RemoteState(
     val display: RemoteDisplay = RemoteDisplay(status = RemoteStatus.LOADING),
     val currentThumbnail: ThumbnailRequest? = null,
     val nextThumbnail: ThumbnailRequest? = null,
+    val prefetch: List<ThumbnailRequest> = emptyList(),
     val error: UiText? = null,
     val sidebar: List<SidebarCueUi> = emptyList(),
     val sidebarFocus: Int? = null,
