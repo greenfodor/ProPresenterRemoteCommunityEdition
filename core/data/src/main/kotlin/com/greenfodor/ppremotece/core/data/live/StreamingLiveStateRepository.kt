@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.timeout
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.pow
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -109,17 +110,7 @@ class StreamingLiveStateRepository(
     @Volatile
     private var subscriptions = SUBSCRIPTIONS
 
-    @Volatile
-    private var timersRejected = false
-
-    @Volatile
-    private var macrosRejected = false
-
-    @Volatile
-    private var looksRejected = false
-
-    @Volatile
-    private var propsRejected = false
+    private val rejected: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     override val liveState: StateFlow<LiveState> =
         channelFlow {
@@ -150,18 +141,14 @@ class StreamingLiveStateRepository(
                                     }
                                 }
                                 is StatusEvent.Layers -> next = next.copy(layers = event.active)
-                                is StatusEvent.Timers ->
-                                    if (!timersRejected) timerList.value = Loadable.Loaded(event.timers)
+                                is StatusEvent.Timers -> timerList.load(event.timers, "timers", "timers/current")
                                 is StatusEvent.TimerReadings -> timerReadings.value = event.readings
                                 is StatusEvent.MacroCollections ->
-                                    if (!macrosRejected) macroCollections.value = Loadable.Loaded(event.collections)
-                                is StatusEvent.Looks -> if (!looksRejected) {
-                                    lookList.value =
-                                        Loadable.Loaded(event.looks)
-                                }
+                                    macroCollections.load(event.collections, "macro_collections")
+                                is StatusEvent.Looks -> lookList.load(event.looks, "looks")
                                 is StatusEvent.CurrentLook -> liveLook.value = event.look
                                 is StatusEvent.PropCollections ->
-                                    if (!propsRejected) propList.value = Loadable.Loaded(event.collections)
+                                    propList.load(event.collections, "prop_collections")
                                 is StatusEvent.Rejected -> event.messages.forEach(::reject)
                                 else -> Unit
                             }
@@ -209,27 +196,22 @@ class StreamingLiveStateRepository(
      * for the rest of this connection.
      */
     private fun reject(message: String) {
-        if (rejectedUrl(message) !in subscriptions) return
+        val url = rejectedUrl(message) ?: return
+        if (url !in subscriptions) return
         subscriptions = withoutRejected(subscriptions, message)
-        when (rejectedUrl(message)) {
-            "timers", "timers/current" -> {
-                timersRejected = true
-                timerList.value = Loadable.Unavailable
-            }
-            "macro_collections" -> {
-                macrosRejected = true
-                macroCollections.value = Loadable.Unavailable
-            }
-            "looks" -> {
-                looksRejected = true
-                lookList.value = Loadable.Unavailable
-            }
-            "prop_collections" -> {
-                propsRejected = true
-                propList.value = Loadable.Unavailable
-            }
+        rejected += url
+        when (url) {
+            "timers", "timers/current" -> timerList.value = Loadable.Unavailable
+            "macro_collections" -> macroCollections.value = Loadable.Unavailable
+            "looks" -> lookList.value = Loadable.Unavailable
+            "prop_collections" -> propList.value = Loadable.Unavailable
         }
         log(message)
+    }
+
+    /** Sets this list to [value] unless ProPresenter rejected one of the [urls] that feed it. */
+    private fun <T> MutableStateFlow<Loadable<T>>.load(value: T, vararg urls: String) {
+        if (urls.none { it in rejected }) this.value = Loadable.Loaded(value)
     }
 
     @OptIn(FlowPreview::class)

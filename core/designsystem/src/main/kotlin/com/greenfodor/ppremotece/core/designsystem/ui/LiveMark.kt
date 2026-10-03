@@ -12,31 +12,35 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.greenfodor.ppremotece.core.designsystem.R
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 
-private val LiveRingWidth = 2.dp
 private val BadgeInset = 8.dp
 
 /**
- * The LIVE encoding of a card or tile of [shape]: while [live], a 2 dp `tertiary` ring and, when
- * [showBadge], the [LiveBadge] at [badgeAlignment] over [content].
+ * The LIVE encoding of a card, tile, cell or pill of [shape]: while [live], a `tertiary` ring
+ * [ringWidth] wide and, unless [badge] is null, the [LiveBadge] reading [badge] at [badgeAlignment]
+ * over [content].
  */
 @Composable
 fun LiveMark(
     live: Boolean,
     shape: Shape,
     modifier: Modifier = Modifier,
-    showBadge: Boolean = true,
+    ringWidth: Dp = 2.dp,
+    badge: String? = stringResource(R.string.cue_live),
     badgeAlignment: Alignment = Alignment.TopStart,
     content: @Composable BoxScope.() -> Unit
 ) {
     Box(
-        modifier = if (live) modifier.border(LiveRingWidth, MaterialTheme.colorScheme.tertiary, shape) else modifier
+        modifier = if (live) modifier.border(ringWidth, MaterialTheme.colorScheme.tertiary, shape) else modifier
     ) {
         content()
-        if (live && showBadge) LiveBadge(Modifier.align(badgeAlignment).padding(BadgeInset))
+        if (live && badge != null) LiveBadge(Modifier.align(badgeAlignment).padding(BadgeInset), text = badge)
     }
 }
 

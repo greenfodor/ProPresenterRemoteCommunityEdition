@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.feature.looks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.map
@@ -9,11 +10,10 @@ import com.greenfodor.ppremotece.core.domain.live.orEmpty
 import com.greenfodor.ppremotece.core.domain.looks.LooksRepository
 import com.greenfodor.ppremotece.core.domain.looks.liveLook
 import com.greenfodor.ppremotece.core.domain.result.onFailure
-import kotlinx.coroutines.channels.Channel
+import com.greenfodor.ppremotece.core.domain.trigger.InFlightTriggers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -26,12 +26,10 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  */
 class LooksViewModel(
     private val looksRepository: LooksRepository,
-    private val client: ProPresenterClient
+    private val client: ProPresenterClient,
+    private val messages: UiMessages
 ) : ViewModel() {
-    private val inFlight = mutableSetOf<String>()
-
-    private val _events = Channel<LooksEvent>()
-    val events = _events.receiveAsFlow()
+    private val triggers = InFlightTriggers()
 
     val state: StateFlow<LooksState> =
         combine(looksRepository.looks, looksRepository.currentLook) { looks, current ->
@@ -51,17 +49,11 @@ class LooksViewModel(
 
     private fun trigger(uuid: String) {
         val look = looksRepository.looks.value.orEmpty().firstOrNull { it.uuid == uuid } ?: return
-        if (!inFlight.add(uuid)) return
         viewModelScope.launch {
-            val result = try {
-                client.triggerLook(uuid)
-            } finally {
-                inFlight.remove(uuid)
-            }
-            result.onFailure {
-                _events.send(
-                    LooksEvent.ShowError(UiText.StringResource(R.string.looks_error_switch, listOf(look.name)))
-                )
+            triggers.run(uuid) {
+                client.triggerLook(uuid).onFailure {
+                    messages.post(UiText.StringResource(R.string.looks_error_switch, listOf(look.name)))
+                }
             }
         }
     }

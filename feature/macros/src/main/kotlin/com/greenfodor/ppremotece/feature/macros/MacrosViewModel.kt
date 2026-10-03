@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.feature.macros
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.map
@@ -12,14 +13,13 @@ import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.ServerIcon
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
-import kotlinx.coroutines.channels.Channel
+import com.greenfodor.ppremotece.core.domain.trigger.InFlightTriggers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -41,16 +41,14 @@ private const val MAX_ICON_READS = 4
  */
 class MacrosViewModel(
     private val macrosRepository: MacrosRepository,
-    private val client: ProPresenterClient
+    private val client: ProPresenterClient,
+    private val messages: UiMessages
 ) : ViewModel() {
     private val icons = MutableStateFlow<Map<String, ServerIcon>>(emptyMap())
     private val requestedIcons = mutableMapOf<String, IconVersion>()
     private val iconReads = Semaphore(MAX_ICON_READS)
     private val confirmed = MutableStateFlow<Set<String>>(emptySet())
-    private val inFlight = mutableSetOf<String>()
-
-    private val _events = Channel<MacrosEvent>()
-    val events = _events.receiveAsFlow()
+    private val triggers = InFlightTriggers()
 
     val state: StateFlow<MacrosState> =
         combine(
@@ -100,21 +98,17 @@ class MacrosViewModel(
     private fun trigger(uuid: String) {
         val macro = macrosRepository.collections.value.orEmpty().flatMap { it.macros }.firstOrNull { it.uuid == uuid }
             ?: return
-        if (!inFlight.add(uuid)) return
         viewModelScope.launch {
-            val result = try {
-                client.triggerMacro(uuid).onSuccess {
-                    confirmed.update { it + uuid }
-                    delay(CHECK_MILLIS)
-                    confirmed.update { it - uuid }
-                }
-            } finally {
-                inFlight.remove(uuid)
-            }
-            result.onFailure {
-                _events.send(
-                    MacrosEvent.ShowError(UiText.StringResource(R.string.macros_error_run, listOf(macro.name)))
-                )
+            triggers.run(uuid) {
+                client
+                    .triggerMacro(uuid)
+                    .onSuccess {
+                        confirmed.update { it + uuid }
+                        delay(CHECK_MILLIS)
+                        confirmed.update { it - uuid }
+                    }.onFailure {
+                        messages.post(UiText.StringResource(R.string.macros_error_run, listOf(macro.name)))
+                    }
             }
         }
     }

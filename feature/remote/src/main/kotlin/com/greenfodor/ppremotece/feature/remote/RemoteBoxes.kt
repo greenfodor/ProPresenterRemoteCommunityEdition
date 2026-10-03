@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.designsystem.ui.CueCell
 import com.greenfodor.ppremotece.core.designsystem.ui.CueMark
 import com.greenfodor.ppremotece.core.designsystem.ui.CueMarkBadge
+import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
 import com.greenfodor.ppremotece.core.domain.remote.BoxMark
 import com.greenfodor.ppremotece.core.domain.remote.RemoteBox
@@ -112,15 +113,19 @@ private fun TextBox(text: String, modifier: Modifier = Modifier) {
 @Composable
 private fun ItemCard(card: RemoteBox.ItemCard, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(CardCorner)
-    val ring = when (card.mark) {
-        BoxMark.LIVE -> Modifier.border(RingWidthLive, MaterialTheme.colorScheme.tertiary, shape)
-        BoxMark.CUED, BoxMark.NEXT -> Modifier.border(RingWidthOther, MaterialTheme.colorScheme.secondary, shape)
-        BoxMark.NONE -> Modifier
-    }
-    Box(
+    val secondaryRing = card.mark == BoxMark.CUED || card.mark == BoxMark.NEXT
+    LiveMark(
+        live = card.mark == BoxMark.LIVE,
+        shape = shape,
+        ringWidth = RingWidthLive,
         modifier = modifier
-            .then(ring)
-            .clip(shape)
+            .then(
+                if (secondaryRing) {
+                    Modifier.border(RingWidthOther, MaterialTheme.colorScheme.secondary, shape)
+                } else {
+                    Modifier
+                }
+            ).clip(shape)
             .background(Color.Black)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
     ) {
@@ -144,7 +149,9 @@ private fun ItemCard(card: RemoteBox.ItemCard, onClick: (() -> Unit)?, modifier:
                 overflow = TextOverflow.Ellipsis
             )
         }
-        CueMarkBadge(mark = card.mark.toCueMark(), modifier = Modifier.align(Alignment.TopStart).padding(8.dp))
+        if (card.mark != BoxMark.LIVE) {
+            CueMarkBadge(mark = card.mark.toCueMark(), modifier = Modifier.align(Alignment.TopStart).padding(8.dp))
+        }
     }
 }
 

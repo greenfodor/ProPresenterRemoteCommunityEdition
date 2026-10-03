@@ -1,6 +1,5 @@
 package com.greenfodor.ppremotece.feature.macros
 
-import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.ServerIcon
@@ -33,10 +32,4 @@ sealed interface MacrosAction {
     data class OnMacroClick(
         val uuid: String
     ) : MacrosAction
-}
-
-sealed interface MacrosEvent {
-    data class ShowError(
-        val message: UiText
-    ) : MacrosEvent
 }

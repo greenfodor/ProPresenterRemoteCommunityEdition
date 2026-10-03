@@ -56,6 +56,10 @@ features → `domain` + `designsystem`, never `data` and never each other; `:app
 wires Koin modules and navigation. Features own their `@Serializable` `NavKey`s; cross-feature
 navigation goes through callbacks wired in `:app`.
 
+**Navigation 3 entries:** `NavDisplay` rebuilds an entry's content only when the back stack changes,
+so a value `AppShell` passes into an entry is read inside the entry (a `() -> T` or a `State`), never
+captured by value.
+
 `:core:domain` compiles against the JDK 17 API (`-Xjdk-release=17`, javac `--release 17`), and
 animal-sniffer (`animalsnifferMain`, part of `check`) fails the build on any JDK API missing from
 Android API 29 (gummy-bears signatures). Android modules compile against `android.jar`. Convention plugins live in `build-logic/convention`. `ppremotece.lint` (detekt + ktlint) is
@@ -82,7 +86,7 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   "playlist/active", "status/layers", "timers", "timers/current", "macro_collections", "looks",
   "look/current", "prop_collections"]` (one unknown URL
   ends the whole stream); after an error frame `URL: x. Error: …` the reopened stream sends the same list
-  without `x` for the rest of that connection.
+  without `x` for the rest of that connection, and the next connect sends `x` again.
 
 Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content, such as a timer edit) is out of
 bounds, as are `timer/{id}/increment/…`, `timers/{op}` and any `/focus` route.

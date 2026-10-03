@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
@@ -33,6 +34,7 @@ class LooksViewModelTest {
         override val currentLook = MutableStateFlow<Look?>(Look(LIVE_UUID, "Look 02", 1))
     }
     private val client = FakeLookClient()
+    private val messages = UiMessages()
     private val dispatcher = UnconfinedTestDispatcher()
 
     @BeforeEach
@@ -45,7 +47,7 @@ class LooksViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = LooksViewModel(repository, client)
+    private fun viewModel() = LooksViewModel(repository, client, messages)
 
     private val LooksState.loaded: List<LookUi> get() = (looks as Loadable.Loaded).value
 
@@ -98,9 +100,9 @@ class LooksViewModelTest {
         client.result = Result.Failure(DataError.Network.TIMEOUT)
         val viewModel = viewModel()
 
-        viewModel.events.test {
+        messages.messages.test {
             viewModel.onAction(LooksAction.OnLookClick("l-2"))
-            val message = (awaitItem() as LooksEvent.ShowError).message as UiText.StringResource
+            val message = awaitItem() as UiText.StringResource
 
             assertThat(message.id).isEqualTo(R.string.looks_error_switch)
             assertThat(message.args).isEqualTo(listOf<Any>("Look 03"))

@@ -1,6 +1,5 @@
 package com.greenfodor.ppremotece.feature.props
 
-import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequests
 
@@ -33,10 +32,4 @@ sealed interface PropsAction {
     data class OnPropClick(
         val uuid: String
     ) : PropsAction
-}
-
-sealed interface PropsEvent {
-    data class ShowError(
-        val message: UiText
-    ) : PropsEvent
 }
