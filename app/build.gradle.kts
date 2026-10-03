@@ -1,6 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.ppremotece.android.application)
 }
+
+/** The properties in [file], or null when it does not exist. */
+fun propertiesOf(file: File): Properties? =
+    file.takeIf { it.isFile }?.let { Properties().apply { it.inputStream().use(::load) } }
+
+/** The release signing properties named by `release.signing.properties` in `local.properties`, if any. */
+val releaseSigning: Properties? =
+    propertiesOf(rootProject.file("local.properties"))
+        ?.getProperty("release.signing.properties")
+        ?.let { propertiesOf(File(it)) }
 
 android {
     namespace = "com.greenfodor.ppremotece"
@@ -9,6 +21,26 @@ android {
         applicationId = "com.greenfodor.ppremotece"
         versionCode = 1
         versionName = "0.1.0"
+    }
+
+    signingConfigs {
+        releaseSigning?.let { signing ->
+            create("release") {
+                storeFile = file(signing.getProperty("storeFile"))
+                storePassword = signing.getProperty("storePassword")
+                keyAlias = signing.getProperty("keyAlias")
+                keyPassword = signing.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+        }
+        release {
+            signingConfig = signingConfigs.findByName("release")
+        }
     }
 }
 

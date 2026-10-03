@@ -15,6 +15,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CI (`.github/workflows/build.yml`) runs `./gradlew build` on pushes and PRs to `master`.
 
+The debug build is `com.greenfodor.ppremotece.debug` ("ProPresenter Remote CE Debug") and installs next to
+the release build `com.greenfodor.ppremotece`. `assembleRelease` signs the release only when
+`local.properties` has `release.signing.properties=<path>` naming a properties file with `storeFile`,
+`storePassword`, `keyAlias` and `keyPassword`; without it (as on CI) the release APK is unsigned. The
+keystore and that file stay outside the repo.
+
 ## Comments
 
 Comments describe **what** the code does, not **why** a decision was made. Do not record
