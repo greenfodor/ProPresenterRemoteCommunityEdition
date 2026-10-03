@@ -130,6 +130,22 @@ class ProPresenterSessionTest {
     }
 
     @Test
+    fun `no transport is known after a disconnect`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(PRESENTATION_TRANSPORT_FRAME, AUDIO_TRANSPORT_FRAME)))
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        val collector = launch { session.liveState.collect {} }
+        assertThat(withTimeout(5.seconds) { session.presentationTransport.first { it != null } }?.name)
+            .isEqualTo("Media 01")
+        assertThat(withTimeout(5.seconds) { session.audioTransport.first { it != null } }?.name).isEqualTo("Media 03")
+        collector.cancel()
+
+        session.disconnect()
+
+        assertThat(withTimeout(2.seconds) { session.presentationTransport.first { it == null } }).isNull()
+        assertThat(withTimeout(2.seconds) { session.audioTransport.first { it == null } }).isNull()
+    }
+
+    @Test
     fun `the props are not loaded after a disconnect`() = runBlocking {
         fake.enqueueStream(fake.frames(listOf(PROPS_FRAME)))
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
@@ -310,6 +326,10 @@ class ProPresenterSessionTest {
     }
 
     private companion object {
+        const val PRESENTATION_TRANSPORT_FRAME = """{"url":"transport/presentation/current","data":{""" +
+            """"is_playing":true,"uuid":"m-0","name":"Media 01","artist":"","audio_only":false,"duration":20.0}}"""
+        const val AUDIO_TRANSPORT_FRAME = """{"url":"transport/audio/current","data":{"is_playing":true,""" +
+            """"uuid":"a-0","name":"Media 03","artist":"Artist 01","audio_only":true,"duration":183.5}}"""
         const val CURRENT_LOOK_FRAME =
             """{"url":"look/current","data":{"id":{"uuid":"live","name":"Look 01","index":0},"screens":[]}}"""
         const val PROPS_FRAME = """{"url":"prop_collections","data":{"prop_collections":{"collections":[""" +

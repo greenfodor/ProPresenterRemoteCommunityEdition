@@ -18,6 +18,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PropCollection
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
+import com.greenfodor.ppremotece.core.domain.model.Transport
 import com.greenfodor.ppremotece.core.domain.props.PropsRepository
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
@@ -27,6 +28,7 @@ import com.greenfodor.ppremotece.core.domain.status.withoutRejected
 import com.greenfodor.ppremotece.core.domain.timers.LiveTimer
 import com.greenfodor.ppremotece.core.domain.timers.TimersRepository
 import com.greenfodor.ppremotece.core.domain.timers.joinTimers
+import com.greenfodor.ppremotece.core.domain.transport.TransportRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -68,7 +70,8 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * without a playlist item, sets [lastLive], which outlives clears, reconnects and resubscriptions.
  * `timers` and `timers/current` frames set [timers], each timer joined with its latest reading, and
  * `macro_collections` frames set [collections], `looks` frames [looks] and `look/current` frames
- * [currentLook], and `prop_collections` frames [propCollections]; the lists are
+ * [currentLook], and `prop_collections` frames [propCollections], and `transport/presentation/current`
+ * and `transport/audio/current` frames [presentationTransport] and [audioTransport]; the lists are
  * [Loadable.NotLoaded] until their first frame and keep their content across reconnects. An error
  * frame naming a subscribed url ([rejectedUrl]) removes that url from the subscriptions for the
  * reopened streams of this connection ([withoutRejected]), keeps the content it feeds
@@ -85,7 +88,8 @@ class StreamingLiveStateRepository(
     TimersRepository,
     MacrosRepository,
     LooksRepository,
-    PropsRepository {
+    PropsRepository,
+    TransportRepository {
     private val _lastLive = MutableStateFlow<LiveCue?>(null)
     override val lastLive: StateFlow<LiveCue?> = _lastLive.asStateFlow()
 
@@ -106,6 +110,12 @@ class StreamingLiveStateRepository(
 
     private val propList = MutableStateFlow<Loadable<List<PropCollection>>>(Loadable.NotLoaded)
     override val propCollections: StateFlow<Loadable<List<PropCollection>>> = propList.asStateFlow()
+
+    private val presentationLoaded = MutableStateFlow<Transport?>(null)
+    override val presentationTransport: StateFlow<Transport?> = presentationLoaded.asStateFlow()
+
+    private val audioLoaded = MutableStateFlow<Transport?>(null)
+    override val audioTransport: StateFlow<Transport?> = audioLoaded.asStateFlow()
 
     @Volatile
     private var subscriptions = SUBSCRIPTIONS
@@ -149,6 +159,8 @@ class StreamingLiveStateRepository(
                                 is StatusEvent.CurrentLook -> liveLook.value = event.look
                                 is StatusEvent.PropCollections ->
                                     propList.load(event.collections, "prop_collections")
+                                is StatusEvent.PresentationTransport -> presentationLoaded.value = event.transport
+                                is StatusEvent.AudioTransport -> audioLoaded.value = event.transport
                                 is StatusEvent.Rejected -> event.messages.forEach(::reject)
                                 else -> Unit
                             }
@@ -230,7 +242,9 @@ class StreamingLiveStateRepository(
                 "macro_collections",
                 "looks",
                 "look/current",
-                "prop_collections"
+                "prop_collections",
+                "transport/presentation/current",
+                "transport/audio/current"
             )
     }
 }

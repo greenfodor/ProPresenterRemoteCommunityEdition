@@ -12,11 +12,18 @@ data class PlaylistItemKey(
     val index: Int
 )
 
+/**
+ * A playlist item. A header carries its [headerColor] when one is set; a media or audio item
+ * carries the uuid of what it plays as [targetUuid] and its [durationSeconds].
+ */
 data class PlaylistItem(
     val key: PlaylistItemKey,
     val name: String,
     val type: PlaylistItemType,
-    val presentation: PresentationRef?
+    val presentation: PresentationRef?,
+    val headerColor: GroupColor? = null,
+    val targetUuid: String? = null,
+    val durationSeconds: Int? = null
 )
 
 enum class PlaylistItemType {

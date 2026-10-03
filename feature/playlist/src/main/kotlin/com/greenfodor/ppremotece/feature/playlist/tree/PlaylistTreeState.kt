@@ -1,8 +1,6 @@
 package com.greenfodor.ppremotece.feature.playlist.tree
 
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
-import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
-import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 
 /** Which list the Presentation tab's list pane shows. */
 enum class ListMode {
@@ -31,24 +29,7 @@ sealed interface TreeRowUi {
     data class Playlist(
         override val id: String,
         override val depth: Int,
-        val name: String,
-        val expanded: Boolean,
-        val isLoading: Boolean
-    ) : TreeRowUi
-
-    data class Header(
-        override val id: String,
-        override val depth: Int,
         val name: String
-    ) : TreeRowUi
-
-    data class Item(
-        override val id: String,
-        override val depth: Int,
-        val name: String,
-        val key: PlaylistItemKey,
-        val label: ArrangementLabel?,
-        val opensSlides: Boolean
     ) : TreeRowUi
 }
 
@@ -61,18 +42,14 @@ sealed interface PlaylistTreeAction {
         val uuid: String
     ) : PlaylistTreeAction
 
-    data class OnItemClick(
-        val key: PlaylistItemKey
-    ) : PlaylistTreeAction
-
     data object OnRetryClick : PlaylistTreeAction
 
     data object OnRefresh : PlaylistTreeAction
 }
 
 sealed interface PlaylistTreeEvent {
-    data class OpenItem(
-        val key: PlaylistItemKey
+    data class OpenPlaylist(
+        val uuid: String
     ) : PlaylistTreeEvent
 
     data class ShowError(

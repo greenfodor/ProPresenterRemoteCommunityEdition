@@ -36,24 +36,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
-import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
-import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
-import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.R
 import com.greenfodor.ppremotece.feature.playlist.library.LibraryRoot
 import com.greenfodor.ppremotece.feature.playlist.text
@@ -63,22 +58,21 @@ import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val RowHeight = 56.dp
 private val FabClearance = 88.dp
-private val HeaderHeight = 48.dp
 private val DepthIndent = 16.dp
 private val ProgressSize = 20.dp
+private val PlaylistNameInset = 40.dp
 
 /**
- * The Presentation tab's list pane: the playlist tree or, in Library [mode], the library list.
- * [openItem] and [openPresentation] are highlighted.
+ * The Presentation tab's list pane: the playlist tree, whose playlists open through
+ * [onOpenPlaylist], or, in Library [mode], the library list. [openPresentation] is highlighted.
  */
 @Composable
 fun PlaylistTreeRoot(
     mode: ListMode,
     onModeChange: (ListMode) -> Unit,
-    openItem: PlaylistItemKey?,
     openPresentation: String?,
     reconnecting: Boolean,
-    onOpenItem: (PlaylistItemKey) -> Unit,
+    onOpenPlaylist: (String) -> Unit,
     onOpenPresentation: (String) -> Unit,
     modifier: Modifier = Modifier,
     floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
@@ -90,7 +84,7 @@ fun PlaylistTreeRoot(
     val context = LocalContext.current
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
-            is PlaylistTreeEvent.OpenItem -> onOpenItem(event.key)
+            is PlaylistTreeEvent.OpenPlaylist -> onOpenPlaylist(event.uuid)
             is PlaylistTreeEvent.ShowError -> scope.launch {
                 snackbarHostState.showSnackbar(event.message.asString(context))
             }
@@ -101,7 +95,6 @@ fun PlaylistTreeRoot(
         onAction = viewModel::onAction,
         mode = mode,
         onModeChange = onModeChange,
-        openItem = openItem,
         reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
         floatingActionButton = floatingActionButton,
@@ -125,7 +118,6 @@ fun PlaylistTreeScreen(
     mode: ListMode,
     onModeChange: (ListMode) -> Unit,
     modifier: Modifier = Modifier,
-    openItem: PlaylistItemKey? = null,
     reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     floatingActionButton: (@Composable (SnackbarHostState) -> Unit)? = null,
@@ -155,12 +147,7 @@ fun PlaylistTreeScreen(
             ModeSwitch(mode = mode, onModeChange = onModeChange)
             val bottomPadding = if (floatingActionButton != null) FabClearance else 0.dp
             when (mode) {
-                ListMode.PLAYLISTS -> TreeContent(
-                    state = state,
-                    openItem = openItem,
-                    onAction = onAction,
-                    bottomPadding = bottomPadding
-                )
+                ListMode.PLAYLISTS -> TreeContent(state = state, onAction = onAction, bottomPadding = bottomPadding)
                 ListMode.LIBRARY -> libraryContent(bottomPadding)
             }
         }
@@ -169,12 +156,7 @@ fun PlaylistTreeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TreeContent(
-    state: PlaylistTreeState,
-    openItem: PlaylistItemKey?,
-    onAction: (PlaylistTreeAction) -> Unit,
-    bottomPadding: Dp
-) {
+private fun TreeContent(state: PlaylistTreeState, onAction: (PlaylistTreeAction) -> Unit, bottomPadding: Dp) {
     PullToRefreshBox(
         isRefreshing = state.isRefreshing,
         onRefresh = { onAction(PlaylistTreeAction.OnRefresh) },
@@ -188,7 +170,7 @@ private fun TreeContent(
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(state.rows, key = { it.id }) { row ->
-                    TreeRow(row = row, openItem = openItem, onAction = onAction)
+                    TreeRow(row = row, onAction = onAction)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
@@ -244,7 +226,7 @@ internal fun TreeError(error: UiText, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun TreeRow(row: TreeRowUi, openItem: PlaylistItemKey?, onAction: (PlaylistTreeAction) -> Unit) {
+private fun TreeRow(row: TreeRowUi, onAction: (PlaylistTreeAction) -> Unit) {
     when (row) {
         is TreeRowUi.Folder -> ExpandableRow(
             depth = row.depth,
@@ -253,26 +235,37 @@ private fun TreeRow(row: TreeRowUi, openItem: PlaylistItemKey?, onAction: (Playl
             isLoading = false,
             onClick = { onAction(PlaylistTreeAction.OnFolderClick(row.id)) }
         )
-        is TreeRowUi.Playlist -> ExpandableRow(
+        is TreeRowUi.Playlist -> PlaylistRow(
             depth = row.depth,
             name = row.name,
-            expanded = row.expanded,
-            isLoading = row.isLoading,
             onClick = { onAction(PlaylistTreeAction.OnPlaylistClick(row.id)) }
         )
-        is TreeRowUi.Header -> Text(
-            text = row.name,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = HeaderHeight)
-                .padding(start = DepthIndent * row.depth + 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
+    }
+}
+
+/** A playlist row: its name under its folder's name and a trailing chevron; a tap anywhere opens it. */
+@Composable
+private fun PlaylistRow(depth: Int, name: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = RowHeight)
+            .clickable(onClickLabel = stringResource(R.string.playlists_open), onClick = onClick)
+            .padding(start = DepthIndent * depth + PlaylistNameInset, end = 16.dp)
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
         )
-        is TreeRowUi.Item -> ItemRow(
-            row = row,
-            selected = row.key == openItem,
-            onClick = { onAction(PlaylistTreeAction.OnItemClick(row.key)) }
+        Icon(
+            painter = painterResource(DesignR.drawable.ic_chevron_right),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -307,48 +300,19 @@ internal fun ExpandableRow(depth: Int, name: String, expanded: Boolean, isLoadin
     }
 }
 
-@Composable
-private fun ItemRow(row: TreeRowUi.Item, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = RowHeight)
-            .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-            .semantics { this.selected = selected }
-            .clickable(enabled = row.opensSlides, onClick = onClick)
-            .padding(start = DepthIndent * row.depth + 16.dp, end = 16.dp)
-    ) {
-        Text(
-            text = row.name,
-            style = MaterialTheme.typography.bodyLarge,
-            color = when {
-                selected -> MaterialTheme.colorScheme.onSecondaryContainer
-                row.opensSlides -> MaterialTheme.colorScheme.onSurface
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        row.label?.let { ArrangementChip(text = it.text()) }
-    }
-}
-
 @Preview
 @Composable
 private fun PlaylistTreeScreenPreview() {
-    val key = PlaylistItemKey("pl-1", 0)
     PPRemoteTheme {
         PlaylistTreeScreen(
             state = PlaylistTreeState(
                 isLoading = false,
                 rows = listOf(
                     TreeRowUi.Folder("f-1", 0, "Folder A", expanded = true),
-                    TreeRowUi.Playlist("pl-1", 1, "Arrangement Test", expanded = true, isLoading = false),
-                    TreeRowUi.Item("pl-1/0", 2, "Song A", key, ArrangementLabel.Named("Full"), opensSlides = true),
-                    TreeRowUi.Item("pl-1/1", 2, "Song A", key, label = null, opensSlides = true)
+                    TreeRowUi.Playlist("pl-1", 1, "Arrangement Test"),
+                    TreeRowUi.Playlist("pl-2", 1, "Service Playlist"),
+                    TreeRowUi.Folder("f-2", 0, "Folder 01", expanded = false),
+                    TreeRowUi.Playlist("pl-3", 0, "Playlist 01")
                 )
             ),
             onAction = {},
