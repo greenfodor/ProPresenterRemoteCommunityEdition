@@ -5,6 +5,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,10 +23,13 @@ import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.ServerIcon
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * An icon served by ProPresenter at [size]: vector paths drawn in [tint], or a PNG or JPEG image
- * decoded once per image at that size. Nothing is drawn when the icon can't be read.
+ * decoded once per image at that size, off the main thread. Nothing is drawn while an image is
+ * decoded or when the icon can't be read.
  */
 @Composable
 fun ServerIconImage(icon: ServerIcon, tint: Color, size: Dp, modifier: Modifier = Modifier) {
@@ -34,8 +39,10 @@ fun ServerIconImage(icon: ServerIcon, tint: Color, size: Dp, modifier: Modifier 
         }
         is ServerIcon.Image -> {
             val sizePx = with(LocalDensity.current) { size.roundToPx() }
-            remember(icon.bytes, sizePx) { decodeSampled(icon.bytes, sizePx) }
-                ?.let { Image(it, contentDescription = null, modifier = modifier.size(size)) }
+            val image by produceState<ImageBitmap?>(initialValue = null, icon.bytes, sizePx) {
+                value = withContext(Dispatchers.Default) { decodeSampled(icon.bytes, sizePx) }
+            }
+            image?.let { Image(it, contentDescription = null, modifier = modifier.size(size)) }
         }
     }
 }

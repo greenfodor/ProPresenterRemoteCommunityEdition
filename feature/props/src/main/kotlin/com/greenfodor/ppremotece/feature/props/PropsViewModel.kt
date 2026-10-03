@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.feature.props
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
@@ -15,12 +16,11 @@ import com.greenfodor.ppremotece.core.domain.props.PropsRepository
 import com.greenfodor.ppremotece.core.domain.props.propTap
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
-import kotlinx.coroutines.channels.Channel
+import com.greenfodor.ppremotece.core.domain.trigger.InFlightTriggers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -39,12 +39,10 @@ private const val STATE_WAIT_MILLIS = 2_000L
 class PropsViewModel(
     private val propsRepository: PropsRepository,
     thumbnailSource: PropThumbnailSource,
-    private val client: ProPresenterClient
+    private val client: ProPresenterClient,
+    private val messages: UiMessages
 ) : ViewModel() {
-    private val inFlight = mutableSetOf<String>()
-
-    private val _events = Channel<PropsEvent>()
-    val events = _events.receiveAsFlow()
+    private val triggers = InFlightTriggers()
 
     val state: StateFlow<PropsState> =
         combine(propsRepository.propCollections, thumbnailSource.propThumbnailRequests) { collections, thumbnails ->
@@ -70,20 +68,16 @@ class PropsViewModel(
 
     private fun toggle(uuid: String) {
         val prop = prop(uuid, propsRepository.propCollections.value) ?: return
-        if (!inFlight.add(uuid)) return
         val tap = propTap(prop)
         viewModelScope.launch {
-            val result = try {
+            triggers.run(uuid) {
                 when (tap) {
                     PropTap.TRIGGER -> client.triggerProp(uuid)
                     PropTap.CLEAR -> client.clearProp(uuid)
-                }.onSuccess { awaitStateChange(prop) }
-            } finally {
-                inFlight.remove(uuid)
-            }
-            result.onFailure {
-                val message = if (tap == PropTap.TRIGGER) R.string.props_error_show else R.string.props_error_clear
-                _events.send(PropsEvent.ShowError(UiText.StringResource(message, listOf(prop.name))))
+                }.onSuccess { awaitStateChange(prop) }.onFailure {
+                    val message = if (tap == PropTap.TRIGGER) R.string.props_error_show else R.string.props_error_clear
+                    messages.post(UiText.StringResource(message, listOf(prop.name)))
+                }
             }
         }
     }

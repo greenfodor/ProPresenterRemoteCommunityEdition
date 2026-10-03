@@ -26,12 +26,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -42,7 +40,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
 import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
-import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.PropThumbnail
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.SyntheticThumbnails
@@ -50,7 +47,6 @@ import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequests
-import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
 private val GridPadding = 8.dp
@@ -69,13 +65,6 @@ fun PropsRoot(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    ObserveAsEvents(viewModel.events) { event ->
-        when (event) {
-            is PropsEvent.ShowError -> scope.launch { snackbarHostState.showSnackbar(event.message.asString(context)) }
-        }
-    }
     PropsScreen(
         state = state,
         onAction = viewModel::onAction,

@@ -28,10 +28,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -45,10 +43,8 @@ import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
 import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
-import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.domain.live.Loadable
-import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
@@ -69,13 +65,6 @@ fun LooksRoot(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    ObserveAsEvents(viewModel.events) { event ->
-        when (event) {
-            is LooksEvent.ShowError -> scope.launch { snackbarHostState.showSnackbar(event.message.asString(context)) }
-        }
-    }
     LooksScreen(
         state = state,
         onAction = viewModel::onAction,
@@ -158,7 +147,7 @@ fun LooksScreen(
 @Composable
 private fun LookCard(look: LookUi, onClick: () -> Unit) {
     val shape = MaterialTheme.shapes.large
-    LiveMark(live = look.live, shape = shape, showBadge = false) {
+    LiveMark(live = look.live, shape = shape, badge = null) {
         Surface(
             selected = look.live,
             onClick = onClick,

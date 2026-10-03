@@ -1,6 +1,5 @@
 package com.greenfodor.ppremotece.feature.looks
 
-import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 
 /** The looks, not loaded until the stream's first `looks` frame. */
@@ -19,10 +18,4 @@ sealed interface LooksAction {
     data class OnLookClick(
         val uuid: String
     ) : LooksAction
-}
-
-sealed interface LooksEvent {
-    data class ShowError(
-        val message: UiText
-    ) : LooksEvent
 }

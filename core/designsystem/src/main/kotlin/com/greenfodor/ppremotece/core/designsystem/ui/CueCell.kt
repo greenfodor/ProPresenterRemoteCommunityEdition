@@ -165,11 +165,11 @@ fun CueMarkBadge(mark: CueMark, modifier: Modifier = Modifier) {
     }
 }
 
-/** The `LIVE` badge: `onTertiary` text on `tertiary`. */
+/** The `LIVE` badge, reading [text]: `onTertiary` text on `tertiary`. */
 @Composable
-fun LiveBadge(modifier: Modifier = Modifier) {
+fun LiveBadge(modifier: Modifier = Modifier, text: String = stringResource(R.string.cue_live)) {
     Badge(
-        text = stringResource(R.string.cue_live),
+        text = text,
         container = MaterialTheme.colorScheme.tertiary,
         content = MaterialTheme.colorScheme.onTertiary,
         modifier = modifier

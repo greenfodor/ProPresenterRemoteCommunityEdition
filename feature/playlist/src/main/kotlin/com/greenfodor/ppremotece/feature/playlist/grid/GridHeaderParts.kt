@@ -1,6 +1,5 @@
 package com.greenfodor.ppremotece.feature.playlist.grid
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.designsystem.theme.LocalGroupColors
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
 import com.greenfodor.ppremotece.core.designsystem.ui.toColor
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementBanner
 import com.greenfodor.ppremotece.core.domain.arrangement.GroupPill
@@ -51,7 +51,6 @@ import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val PillHeight = 32.dp
 private val PillTouchHeight = 48.dp
-private val LiveRingWidth = 2.dp
 
 /**
  * One 32 dp pill in a 48 dp tall slot per group occurrence of [sequence], filled with the group colour; the live pill has
@@ -102,11 +101,15 @@ private fun GroupPillChip(pill: GroupPill, live: Boolean, onClick: () -> Unit) {
         shape = CircleShape,
         color = fill,
         contentColor = LocalGroupColors.current.labelOn(fill),
-        border = if (live) BorderStroke(LiveRingWidth, MaterialTheme.colorScheme.tertiary) else null,
         modifier = Modifier.height(PillHeight).semantics { selected = live }
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp)) {
-            Text(text = pill.name, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        LiveMark(live = live, shape = CircleShape, badge = null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.align(Alignment.Center).padding(horizontal = 12.dp)
+            ) {
+                Text(text = pill.name, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+            }
         }
     }
 }

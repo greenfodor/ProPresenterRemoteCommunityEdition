@@ -6,6 +6,7 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
@@ -47,6 +48,7 @@ class PropsViewModelTest {
         )
     }
     private val client = FakePropClient()
+    private val messages = UiMessages()
     private val dispatcher = UnconfinedTestDispatcher()
 
     @BeforeEach
@@ -59,7 +61,7 @@ class PropsViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = PropsViewModel(repository, thumbnails, client)
+    private fun viewModel() = PropsViewModel(repository, thumbnails, client, messages)
 
     private val PropsState.loaded: List<PropSectionUi> get() = (sections as Loadable.Loaded).value
 
@@ -163,11 +165,11 @@ class PropsViewModelTest {
         client.result = Result.Failure(DataError.Network.TIMEOUT)
         val viewModel = viewModel()
 
-        viewModel.events.test {
+        messages.messages.test {
             viewModel.onAction(PropsAction.OnPropClick("p-0"))
-            val show = (awaitItem() as PropsEvent.ShowError).message as UiText.StringResource
+            val show = awaitItem() as UiText.StringResource
             viewModel.onAction(PropsAction.OnPropClick("p-1"))
-            val clear = (awaitItem() as PropsEvent.ShowError).message as UiText.StringResource
+            val clear = awaitItem() as UiText.StringResource
 
             assertThat(show.id to show.args).isEqualTo(R.string.props_error_show to listOf<Any>("Prop 01"))
             assertThat(clear.id to clear.args).isEqualTo(R.string.props_error_clear to listOf<Any>("Prop 02"))

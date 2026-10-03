@@ -73,7 +73,6 @@ IPV4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 USER_DIRS = ("Users", "home")
 USER_PATH = re.compile(r"(?:[A-Za-z]:[\\/]+|/)(?:" + "|".join(USER_DIRS) + r")[\\/].*", re.IGNORECASE)
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
-GENERATED_NAME = re.compile(r"^(Look|Prop|Transition|Collection|Macro|Timer) \d{2}$")
 VERBATIM_ALLOWED = {
     "presentation", "header", "media", "playlist", "group", "standard", "win", "v1", "all",
     "ProPresenter 21.4.2", "10.0.26200",
@@ -463,7 +462,7 @@ def is_allowed_verbatim(sanitizer, value, path):
     ) or (
         value.strip() == ""
         or UUID.match(value) is not None
-        or GENERATED_NAME.match(value) is not None
+        or value in sanitizer.generated_names.values()
         or GROUP_WHITELIST.match(value) is not None
         or value in sanitizer.kept_names
         or value in VERBATIM_ALLOWED

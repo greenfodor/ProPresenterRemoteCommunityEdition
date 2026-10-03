@@ -8,6 +8,7 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
@@ -49,6 +50,7 @@ class MacrosViewModelTest {
         override val collections = MutableStateFlow<Loadable<List<MacroCollection>>>(Loadable.Loaded(listOf(first)))
     }
     private val client = FakeMacroClient()
+    private val messages = UiMessages()
     private val dispatcher = UnconfinedTestDispatcher()
 
     @BeforeEach
@@ -61,7 +63,7 @@ class MacrosViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = MacrosViewModel(repository, client)
+    private fun viewModel() = MacrosViewModel(repository, client, messages)
 
     @Test
     fun `a single collection is one section without a header`() = runTest(dispatcher) {
@@ -160,9 +162,9 @@ class MacrosViewModelTest {
         client.result = Result.Failure(DataError.Network.TIMEOUT)
         val viewModel = viewModel()
 
-        viewModel.events.test {
+        messages.messages.test {
             viewModel.onAction(MacrosAction.OnMacroClick("m-1"))
-            val message = (awaitItem() as MacrosEvent.ShowError).message as UiText.StringResource
+            val message = awaitItem() as UiText.StringResource
 
             assertThat(message.id).isEqualTo(R.string.macros_error_run)
             assertThat(message.args).isEqualTo(listOf<Any>("Macro 02"))

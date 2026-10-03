@@ -2,32 +2,15 @@ package com.greenfodor.ppremotece.navigation
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
@@ -40,20 +23,20 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -61,7 +44,8 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowSizeClass
 import com.greenfodor.ppremotece.R
-import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.domain.layout.NavigationLayout
 import com.greenfodor.ppremotece.core.domain.layout.RAIL_SLOT_DP
 import com.greenfodor.ppremotece.core.domain.layout.ShellTab
@@ -74,8 +58,6 @@ import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.settings.keepScreenOn
 import com.greenfodor.ppremotece.feature.clear.ClearFab
-import com.greenfodor.ppremotece.feature.clear.ClearRailButton
-import com.greenfodor.ppremotece.feature.clear.ClearRailItem
 import com.greenfodor.ppremotece.feature.looks.LooksRoot
 import com.greenfodor.ppremotece.feature.looks.LooksRoute
 import com.greenfodor.ppremotece.feature.macros.MacrosRoot
@@ -98,20 +80,22 @@ import com.greenfodor.ppremotece.feature.settings.SettingsRoot
 import com.greenfodor.ppremotece.feature.settings.SettingsRoute
 import com.greenfodor.ppremotece.feature.timers.TimersRoot
 import com.greenfodor.ppremotece.feature.timers.TimersRoute
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val ListPaneWidth = 360.dp
 
 /** A bar or rail item: the tab it selects, its icon and its label. */
-private data class ShellItem(
+internal data class ShellItem(
     val tab: ShellTab,
     @param:DrawableRes val icon: Int,
     @param:StringRes val label: Int
 )
 
 /** The shell's destinations in priority order. */
-private enum class ShellDestination(
+internal enum class ShellDestination(
     val item: ShellItem,
     val route: NavKey
 ) {
@@ -127,7 +111,7 @@ private enum class ShellDestination(
     SETTINGS(ShellItem(ShellTab.SETTINGS, DesignR.drawable.ic_settings, R.string.shell_settings), SettingsRoute)
 }
 
-private val MoreItem = ShellItem(ShellTab.MORE, DesignR.drawable.ic_more_horiz, R.string.shell_more)
+internal val MoreItem = ShellItem(ShellTab.MORE, DesignR.drawable.ic_more_horiz, R.string.shell_more)
 
 /** The tabs that show the Clear FAB with the bar layout. */
 private val ClearFabTabs =
@@ -147,8 +131,6 @@ private val TabRoots: Map<ShellTab, NavKey> =
 /** The rail's own vertical padding: 4 dp above, 4 dp below and 4 dp between its destinations and the footer. */
 private const val RAIL_PADDING_DP = 12
 
-private val RailItemSpacing = 4.dp
-
 /**
  * The connected app: its destinations in a bottom bar below 600 dp and a rail from 600 dp, over one
  * [NavDisplay] of the tabs' [TabStacks]. Destinations that do not fit ([navigationSlots]) are listed
@@ -160,7 +142,8 @@ private val RailItemSpacing = 4.dp
 fun AppShell(
     onDisconnected: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ShellViewModel = koinViewModel()
+    viewModel: ShellViewModel = koinViewModel(),
+    messages: UiMessages = koinInject()
 ) {
     val reconnectingState = viewModel.reconnecting.collectAsStateWithLifecycle()
     val reconnecting: () -> Boolean = remember(reconnectingState) { { reconnectingState.value } }
@@ -173,6 +156,7 @@ fun AppShell(
     KeepScreenOn(keepScreenOn(keepAwake, tab))
     var listMode by rememberSaveable { mutableStateOf(ListMode.PLAYLISTS) }
     val shellSnackbars = remember { SnackbarHostState() }
+    ShellMessages(messages, shellSnackbars)
     var clearOpen by rememberSaveable { mutableStateOf(false) }
 
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
@@ -180,29 +164,29 @@ fun AppShell(
     val directive = calculatePaneScaffoldDirective(adaptiveInfo)
         .copy(maxHorizontalPartitions = paneCount(windowSizeClass.minWidthDp), horizontalPartitionSpacerSize = 0.dp)
     val widthClass = widthClassOf(windowSizeClass.minWidthDp)
-    val compactHeight = !windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
     val layout = navigationLayout(windowSizeClass.minWidthDp)
     val clearShown = layout == NavigationLayout.RAIL || tab in ClearFabTabs
     LaunchedEffect(clearShown) { if (!clearShown) clearOpen = false }
-    val fab: (@Composable (SnackbarHostState) -> Unit)? = if (layout == NavigationLayout.BAR) {
-        { snackbars -> ClearFab(snackbarHostState = snackbars, open = clearOpen, onOpenChange = { clearOpen = it }) }
-    } else {
-        null
-    }
+    val fab = clearFab(layout, clearOpen) { clearOpen = it }
     val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)
+    val currentListMode by rememberUpdatedState(listMode)
+    val currentWidthClass by rememberUpdatedState(widthClass)
+    val currentCompactHeight by rememberUpdatedState(
+        !windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
+    )
+    val currentClosesPane by rememberUpdatedState(paneCount(windowSizeClass.minWidthDp) == 2)
+    val currentFab by rememberUpdatedState(fab)
     val onSelect = { selected: ShellTab -> update(stacks().select(selected)) }
+    val onOpenFromMore = { route: NavKey -> onSelect(ShellDestination.entries.first { it.route == route }.item.tab) }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val insets = WindowInsets.safeDrawing.asPaddingValues()
-        val availableDp = when (layout) {
-            NavigationLayout.BAR -> maxWidth
-            NavigationLayout.RAIL ->
-                maxHeight - insets.calculateTopPadding() - insets.calculateBottomPadding() -
-                    RAIL_SLOT_DP.dp - RAIL_PADDING_DP.dp
-        }
+        val availableDp = navigationSpace(layout, maxWidth, maxHeight, WindowInsets.safeDrawing.asPaddingValues())
         val slots = navigationSlots(layout, availableDp.value.toInt(), ShellDestination.entries)
         val items = slots.shown.map { it.item } + listOfNotNull(MoreItem.takeIf { slots.more.isNotEmpty() })
         val inMore = slots.more.map { it.item.tab }.toSet()
+        val currentMoreEntries by rememberUpdatedState(
+            slots.more.map { MoreEntry(it.item.icon, it.item.label, it.route) }
+        )
         LaunchedEffect(inMore.isEmpty()) {
             if (inMore.isEmpty()) stacks().withoutMore().takeIf { it != stacks() }?.let(update)
         }
@@ -210,12 +194,12 @@ fun AppShell(
         val slideGrid = @Composable { source: CueSource ->
             SlideGridRoot(
                 source = source,
-                widthClass = widthClass,
-                headerScrollsWithGrid = compactHeight,
+                widthClass = currentWidthClass,
+                headerScrollsWithGrid = currentCompactHeight,
                 reconnecting = reconnecting(),
                 onBack = onBack,
-                closesPane = paneCount(windowSizeClass.minWidthDp) == 2,
-                floatingActionButton = fab ?: {}
+                closesPane = currentClosesPane,
+                floatingActionButton = currentFab ?: {}
             )
         }
 
@@ -232,35 +216,66 @@ fun AppShell(
                 backStack = stacks().displayed,
                 modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
                 onBack = onBack,
-                entryDecorators = listOf(
-                    rememberSaveableStateHolderNavEntryDecorator(),
-                    rememberViewModelStoreNavEntryDecorator()
-                ),
+                entryDecorators = rememberShellEntryDecorators(),
                 sceneStrategies = listOf(listDetailStrategy),
                 entryProvider = entryProvider {
                     presentationEntries(
-                        listMode = listMode,
+                        listMode = { currentListMode },
                         onModeChange = { listMode = it },
-                        detail = presentation.getOrNull(1),
+                        detail = { presentation.getOrNull(1) },
                         reconnecting = reconnecting,
-                        fab = fab,
+                        fab = { currentFab },
                         onOpenDetail = { key -> update(stacks().openDetail(key)) },
                         slideGrid = slideGrid
                     )
                     tabEntries(
-                        widthClass = widthClass,
+                        widthClass = { currentWidthClass },
                         reconnecting = reconnecting,
-                        fab = fab,
-                        moreEntries = slots.more.map { MoreEntry(it.item.icon, it.item.label, it.route) },
+                        fab = { currentFab },
+                        moreEntries = { currentMoreEntries },
                         onBack = onBack,
-                        onOpenFromMore = { route ->
-                            update(stacks().select(ShellDestination.entries.first { it.route == route }.item.tab))
-                        },
+                        onOpenFromMore = onOpenFromMore,
                         onDisconnected = onDisconnected
                     )
                 }
             )
         }
+    }
+}
+
+/** The Clear FAB the screens show with the bar [layout]; none with the rail. */
+private fun clearFab(
+    layout: NavigationLayout,
+    open: Boolean,
+    onOpenChange: (Boolean) -> Unit
+): (@Composable (SnackbarHostState) -> Unit)? =
+    if (layout == NavigationLayout.BAR) {
+        { snackbars -> ClearFab(snackbarHostState = snackbars, open = open, onOpenChange = onOpenChange) }
+    } else {
+        null
+    }
+
+/** The space the destinations share: the bar's width, or the rail's height above its Clear footer. */
+private fun navigationSpace(layout: NavigationLayout, maxWidth: Dp, maxHeight: Dp, insets: PaddingValues): Dp =
+    when (layout) {
+        NavigationLayout.BAR -> maxWidth
+        NavigationLayout.RAIL ->
+            maxHeight - insets.calculateTopPadding() - insets.calculateBottomPadding() -
+                RAIL_SLOT_DP.dp - RAIL_PADDING_DP.dp
+    }
+
+/** The entry decorators that keep each entry's saved state and ViewModels. */
+@Composable
+private fun rememberShellEntryDecorators(): List<NavEntryDecorator<NavKey>> =
+    listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator())
+
+/** Shows each of the app's failure [messages] in [snackbars]. */
+@Composable
+private fun ShellMessages(messages: UiMessages, snackbars: SnackbarHostState) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    ObserveAsEvents(messages.messages) { message ->
+        scope.launch { snackbars.showSnackbar(message.asString(context)) }
     }
 }
 
@@ -288,34 +303,38 @@ private fun rememberShellStacks(): ShellStacks {
     return remember(backStacks, tab) { ShellStacks(backStacks, tab) }
 }
 
-/** The playlist tree or library list, and the slide grid opened from it. */
+/**
+ * The playlist tree or library list, and the slide grid opened from it. [listMode], [detail],
+ * [reconnecting] and [fab] are read while an entry composes.
+ */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Suppress("LongParameterList")
 private fun EntryProviderScope<NavKey>.presentationEntries(
-    listMode: ListMode,
+    listMode: () -> ListMode,
     onModeChange: (ListMode) -> Unit,
-    detail: NavKey?,
+    detail: () -> NavKey?,
     reconnecting: () -> Boolean,
-    fab: (@Composable (SnackbarHostState) -> Unit)?,
+    fab: () -> (@Composable (SnackbarHostState) -> Unit)?,
     onOpenDetail: (NavKey) -> Unit,
     slideGrid: @Composable (CueSource) -> Unit
 ) {
     entry<PlaylistsRoute>(
-        metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder(listMode) }) +
+        metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder(listMode()) }) +
             ListDetailSceneStrategy.preferredPaneSize(ListPaneWidth)
     ) {
-        val openGrid = detail as? SlideGridRoute
+        val open = detail()
+        val openGrid = open as? SlideGridRoute
         PlaylistTreeRoot(
-            mode = listMode,
+            mode = listMode(),
             onModeChange = onModeChange,
             openItem = openGrid?.let { PlaylistItemKey(playlistUuid = it.playlistUuid, index = it.itemIndex) },
-            openPresentation = (detail as? LibraryGridRoute)?.presentationUuid,
+            openPresentation = (open as? LibraryGridRoute)?.presentationUuid,
             reconnecting = reconnecting(),
             onOpenItem = { item ->
                 onOpenDetail(SlideGridRoute(playlistUuid = item.playlistUuid, itemIndex = item.index))
             },
             onOpenPresentation = { uuid -> onOpenDetail(LibraryGridRoute(uuid)) },
-            floatingActionButton = fab.takeIf { detail == null }
+            floatingActionButton = fab().takeIf { open == null }
         )
     }
     entry<LibraryGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
@@ -326,128 +345,40 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
     }
 }
 
-/** The Remote, Macros, Timers, Looks, Props, Settings and More entries. */
+/**
+ * The Remote, Macros, Timers, Looks, Props, Settings and More entries. [widthClass], [reconnecting],
+ * [fab] and [moreEntries] are read while an entry composes.
+ */
 @Suppress("LongParameterList")
 private fun EntryProviderScope<NavKey>.tabEntries(
-    widthClass: WidthClass,
+    widthClass: () -> WidthClass,
     reconnecting: () -> Boolean,
-    fab: (@Composable (SnackbarHostState) -> Unit)?,
-    moreEntries: List<MoreEntry>,
+    fab: () -> (@Composable (SnackbarHostState) -> Unit)?,
+    moreEntries: () -> List<MoreEntry>,
     onBack: () -> Unit,
     onOpenFromMore: (NavKey) -> Unit,
     onDisconnected: () -> Unit
 ) {
     entry<RemoteRoute> {
-        RemoteRoot(widthClass = widthClass, reconnecting = reconnecting(), floatingActionButton = fab)
+        RemoteRoot(widthClass = widthClass(), reconnecting = reconnecting(), floatingActionButton = fab())
     }
     entry<MacrosRoute> {
-        MacrosRoot(widthClass = widthClass, reconnecting = reconnecting(), floatingActionButton = fab)
+        MacrosRoot(widthClass = widthClass(), reconnecting = reconnecting(), floatingActionButton = fab())
     }
     entry<TimersRoute> {
-        TimersRoot(widthClass = widthClass, reconnecting = reconnecting(), floatingActionButton = fab)
+        TimersRoot(widthClass = widthClass(), reconnecting = reconnecting(), floatingActionButton = fab())
     }
     entry<LooksRoute> {
-        LooksRoot(reconnecting = reconnecting(), floatingActionButton = fab)
+        LooksRoot(reconnecting = reconnecting(), floatingActionButton = fab())
     }
     entry<PropsRoute> {
-        PropsRoot(widthClass = widthClass, reconnecting = reconnecting(), floatingActionButton = fab)
+        PropsRoot(widthClass = widthClass(), reconnecting = reconnecting(), floatingActionButton = fab())
     }
     entry<SettingsRoute> {
         SettingsRoot(onBack = onBack, onDisconnected = onDisconnected)
     }
     entry<MoreRoute> {
-        MoreScreen(entries = moreEntries, onOpen = onOpenFromMore)
-    }
-}
-
-/** The bar or rail of [items] around [content]; the rail ends with the Clear button. */
-@Composable
-private fun ShellFrame(
-    layout: NavigationLayout,
-    items: List<ShellItem>,
-    current: ShellTab,
-    onSelect: (ShellTab) -> Unit,
-    snackbars: SnackbarHostState,
-    clearOpen: Boolean,
-    onClearOpenChange: (Boolean) -> Unit,
-    content: @Composable (PaddingValues) -> Unit
-) {
-    Row(modifier = Modifier.fillMaxSize()) {
-        if (layout == NavigationLayout.RAIL) {
-            ShellRail(items = items, current = current, onSelect = onSelect) {
-                ClearRailButton(snackbarHostState = snackbars, open = clearOpen, onOpenChange = onClearOpenChange)
-            }
-        }
-        Scaffold(
-            contentWindowInsets = WindowInsets(0),
-            snackbarHost = {
-                if (layout == NavigationLayout.RAIL) {
-                    SnackbarHost(
-                        snackbars,
-                        modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-                    )
-                }
-            },
-            bottomBar = {
-                if (layout == NavigationLayout.BAR) ShellBar(items = items, current = current, onSelect = onSelect)
-            },
-            modifier = Modifier
-                .weight(1f)
-                .then(
-                    if (layout == NavigationLayout.RAIL) {
-                        Modifier.consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Start))
-                    } else {
-                        Modifier
-                    }
-                ),
-            content = content
-        )
-    }
-}
-
-/** The rail: [items] in the height left above a pinned 64 dp footer holding [clearButton]. */
-@Composable
-private fun ShellRail(
-    items: List<ShellItem>,
-    current: ShellTab,
-    onSelect: (ShellTab) -> Unit,
-    clearButton: @Composable () -> Unit
-) {
-    NavigationRail(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-        windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.Start)
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(RailItemSpacing),
-            modifier = Modifier.weight(1f).clipToBounds()
-        ) {
-            items.forEach { item ->
-                NavigationRailItem(
-                    selected = current == item.tab,
-                    onClick = { onSelect(item.tab) },
-                    icon = { Icon(painterResource(item.icon), contentDescription = null) },
-                    label = { Text(stringResource(item.label)) }
-                )
-            }
-        }
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.height(RAIL_SLOT_DP.dp)) {
-            clearButton()
-        }
-    }
-}
-
-@Composable
-private fun ShellBar(items: List<ShellItem>, current: ShellTab, onSelect: (ShellTab) -> Unit) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest) {
-        items.forEach { item ->
-            NavigationBarItem(
-                selected = current == item.tab,
-                onClick = { onSelect(item.tab) },
-                icon = { Icon(painterResource(item.icon), contentDescription = null) },
-                label = { Text(stringResource(item.label)) }
-            )
-        }
+        MoreScreen(entries = moreEntries(), onOpen = onOpenFromMore)
     }
 }
 
@@ -465,29 +396,5 @@ private fun KeepScreenOn(on: Boolean) {
     DisposableEffect(view, on) {
         view.keepScreenOn = on
         onDispose { view.keepScreenOn = false }
-    }
-}
-
-@Preview(heightDp = 400)
-@Composable
-private fun ShellRailPreview() {
-    PPRemoteTheme {
-        ShellRail(
-            items = ShellDestination.entries.map { it.item },
-            current = ShellTab.PRESENTATION,
-            onSelect = {}
-        ) { ClearRailItem(onClick = {}) }
-    }
-}
-
-@Preview(heightDp = 240)
-@Composable
-private fun ShellRailMoreHighlightedPreview() {
-    PPRemoteTheme {
-        ShellRail(
-            items = listOf(ShellDestination.PRESENTATION.item, MoreItem),
-            current = ShellTab.MORE,
-            onSelect = {}
-        ) { ClearRailItem(onClick = {}) }
     }
 }
