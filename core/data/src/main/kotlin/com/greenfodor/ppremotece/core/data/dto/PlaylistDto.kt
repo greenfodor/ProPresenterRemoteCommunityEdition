@@ -20,7 +20,10 @@ data class PlaylistDto(
 data class PlaylistItemDto(
     val id: IdDto,
     val type: String,
-    @SerialName("presentation_info") val presentationInfo: PresentationInfoDto? = null
+    @SerialName("presentation_info") val presentationInfo: PresentationInfoDto? = null,
+    @SerialName("header_color") val headerColor: ColorDto? = null,
+    @SerialName("target_uuid") val targetUuid: String? = null,
+    val duration: Double? = null
 )
 
 @Serializable

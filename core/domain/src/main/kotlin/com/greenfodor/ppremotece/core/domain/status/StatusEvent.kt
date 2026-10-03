@@ -9,6 +9,7 @@ import com.greenfodor.ppremotece.core.domain.model.PropCollection
 import com.greenfodor.ppremotece.core.domain.model.SlideText
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
+import com.greenfodor.ppremotece.core.domain.model.Transport
 
 /** A decoded `status/updates` frame. */
 sealed interface StatusEvent {
@@ -68,6 +69,16 @@ sealed interface StatusEvent {
     /** The prop collections, from a `prop_collections` frame. */
     data class PropCollections(
         val collections: List<PropCollection>
+    ) : StatusEvent
+
+    /** What the presentation layer's transport has loaded, from a `transport/presentation/current` frame. */
+    data class PresentationTransport(
+        val transport: Transport
+    ) : StatusEvent
+
+    /** What the audio layer's transport has loaded, from a `transport/audio/current` frame. */
+    data class AudioTransport(
+        val transport: Transport
     ) : StatusEvent
 
     data class Heartbeat(

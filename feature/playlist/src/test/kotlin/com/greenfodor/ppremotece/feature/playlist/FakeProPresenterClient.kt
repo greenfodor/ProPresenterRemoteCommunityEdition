@@ -17,12 +17,16 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
+import kotlinx.coroutines.CompletableDeferred
 
-/** Records triggers; reads are not served. */
+/** Records triggers, an item trigger answering [itemResult] once [itemGate] opens; reads are not served. */
 class FakeProPresenterClient : ProPresenterClient {
     val triggeredCues = mutableListOf<Pair<PlaylistItemKey, Int>>()
     val triggeredPresentationCues = mutableListOf<Pair<String, Int>>()
     val steps = mutableListOf<String>()
+    val triggeredItems = mutableListOf<PlaylistItemKey>()
+    var itemGate = CompletableDeferred(Unit)
+    var itemResult: EmptyResult<DataError.Network> = Result.Success(Unit)
 
     override suspend fun version(): Result<ProPresenterVersion, DataError.Network> = notServed()
 
@@ -41,7 +45,11 @@ class FakeProPresenterClient : ProPresenterClient {
         return Result.Success(Unit)
     }
 
-    override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> = notServed()
+    override suspend fun triggerItem(item: PlaylistItemKey): EmptyResult<DataError.Network> {
+        triggeredItems += item
+        itemGate.await()
+        return itemResult
+    }
 
     override suspend fun triggerPresentationCue(
         presentationUuid: String,

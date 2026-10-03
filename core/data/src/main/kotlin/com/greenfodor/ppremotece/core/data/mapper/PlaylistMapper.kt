@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.core.data.mapper
 import com.greenfodor.ppremotece.core.data.dto.PlaylistDto
 import com.greenfodor.ppremotece.core.data.dto.PlaylistItemDto
 import com.greenfodor.ppremotece.core.data.dto.PlaylistTreeNodeDto
+import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistFolder
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
@@ -47,5 +48,8 @@ private fun PlaylistItemDto.toDomain(playlistUuid: String): PlaylistItem =
                 arrangementUuid = it.arrangementUuid,
                 arrangementName = it.arrangementName
             )
-        }
+        },
+        headerColor = headerColor?.takeIf { it.alpha > 0f }?.let { GroupColor(it.red, it.green, it.blue, it.alpha) },
+        targetUuid = targetUuid?.takeIf { it.isNotEmpty() },
+        durationSeconds = duration?.toInt()
     )

@@ -26,6 +26,7 @@ import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import com.greenfodor.ppremotece.core.domain.timers.TimersRepository
+import com.greenfodor.ppremotece.core.domain.transport.TransportRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,6 +45,7 @@ val coreDataModule = module {
             MacrosRepository::class,
             LooksRepository::class,
             PropsRepository::class,
+            TransportRepository::class,
             PropThumbnailSource::class,
             ThumbnailSource::class
         )

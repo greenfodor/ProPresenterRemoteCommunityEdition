@@ -39,6 +39,7 @@ MACRO_COLLECTIONS_STAGE9 = "../stage9/_v1_macro_collections-2.json"
 LOOKS = "../stage9/_v1_looks.json"
 LOOK_CURRENT = "../stage9/_v1_look_current.json"
 PROP_COLLECTIONS = "../stage9/_v1_prop_collections.json"
+PLAYLIST_STAGE10 = "../stage10/_v1_playlist_test.json"
 LOOK_SCREEN_STRINGS = ("presentation", "mask")
 TIMER_TYPES = {"countdown", "count_down_to_time", "elapsed"}
 TIMER_STATES = {"stopped", "running", "complete", "overrunning", "overran", "overrun"}
@@ -64,7 +65,13 @@ STREAMS = [
     "../stage8/streams/stage8-timers",
     "../stage9/streams/stage9-overrun",
     "../stage9/streams/stage9-looks-props",
+    "../stage10/items-stream",
 ]
+STREAM_OUT_NAMES = {"items-stream": "stage10-items"}
+UNSUBSCRIBED_URLS = {"transport/presentation/time", "audio/playlist/focused"}
+STREAM_DROPPED_URLS = {"items-stream": {"transport/audio/time", "audio/playlists", "audio/playlist/active"}}
+TRANSPORT_URLS = {"transport/presentation/current", "transport/audio/current"}
+HEADER_COLOR_KEYS = {"red", "green", "blue", "alpha"}
 
 FRAME_SEPARATOR = b"\r\n\r\n"
 PLACEHOLDER_IP = "192.0.2.14"
@@ -79,7 +86,7 @@ VERBATIM_ALLOWED = {
     "ProPresenter 21.4.2", "10.0.26200",
     "status/slide", "presentation/active", "presentation/slide_index", "playlist/active", "timer/system_time",
     "status/layers", "timers", "timers/current", "macro_collections", "looks", "look/current", "props",
-    "prop_collections",
+    "prop_collections", "transport/presentation/current", "transport/audio/current", "audio",
 }
 CHUNK_LINE = re.compile(r"^# \+(?P<time>[\d.]+)s chunk (?P<n>\d+) \((?P<size>\d+) B\) tail=.*$")
 TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
@@ -87,6 +94,7 @@ PLACEHOLDER_WORDS = {
     "presentation", "playlist", "folder", "arrangement", "group", "header", "media", "label",
     "text", "notes", "item", "host", "song", "full", "chorus", "only", "short", "bridge",
     "service", "test", "total", "start", "macro", "collection", "timer", "look", "prop", "transition", "fade", "+", "·",
+    "artist",
 }
 TEST_RESOURCES = Path(__file__).resolve().parent.parent / "core" / "data" / "src" / "test" / "resources"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bin"}
@@ -208,6 +216,16 @@ class Sanitizer:
             replacement = self.generate("Item", item_id["uuid"])
         self.item_names[item_id["uuid"]] = replacement
         item_id["name"] = self.replaced(original, replacement)
+        color = item.get("header_color")
+        if color is not None and not (
+            set(color) == HEADER_COLOR_KEYS and all(isinstance(value, (int, float)) for value in color.values())
+        ):
+            raise ValueError(f"no sanitising rule for header colour {color!r}")
+        target = item.get("target_uuid")
+        if target not in (None, "") and UUID.match(target) is None:
+            raise ValueError(f"no sanitising rule for target uuid {target!r}")
+        if not isinstance(item.get("duration", 0), (int, float)):
+            raise ValueError(f"no sanitising rule for duration {item['duration']!r}")
 
     def playlist(self, playlist):
         self.playlist_name(playlist["id"])
@@ -305,6 +323,14 @@ class Sanitizer:
             for prop in collection["props"]:
                 self.prop(prop)
 
+    def transport(self, data):
+        if data["name"]:
+            data["name"] = self.replaced(data["name"], self.generate("Media", data["uuid"]))
+        if data["artist"]:
+            data["artist"] = self.replaced(data["artist"], self.generate("Artist", data["artist"]))
+        if data["uuid"] and UUID.match(data["uuid"]) is None:
+            raise ValueError(f"no sanitising rule for transport uuid {data['uuid']!r}")
+
     def frame(self, frame):
         url = frame["url"]
         data = frame["data"]
@@ -355,6 +381,8 @@ class Sanitizer:
                 self.prop(prop)
         elif url == "prop_collections":
             self.prop_collections(data)
+        elif url in TRANSPORT_URLS:
+            self.transport(data)
         elif url != "timer/system_time":
             raise ValueError(f"no sanitising rule for stream url {url}")
         return frame
@@ -399,10 +427,14 @@ def sanitize_stream(sanitizer, source, out_dir):
     raw = source.with_name(f"{name}.raw").read_bytes()
     meta_lines = source.with_name(f"{name}.meta").read_text(encoding="utf-8").splitlines()
     frames = [part for part in raw.split(FRAME_SEPARATOR) if part.strip()]
-    sanitized = [
-        dump(sanitizer.frame(sanitizer.remember(json.loads(part))), pretty=False).encode("utf-8") + FRAME_SEPARATOR
-        for part in frames
-    ]
+    dropped = UNSUBSCRIBED_URLS | STREAM_DROPPED_URLS.get(name, set())
+    sanitized = []
+    for part in frames:
+        frame = sanitizer.remember(json.loads(part))
+        if isinstance(frame, dict) and frame.get("url") in dropped:
+            sanitized.append(b"")
+        else:
+            sanitized.append(dump(sanitizer.frame(frame), pretty=False).encode("utf-8") + FRAME_SEPARATOR)
     original_sizes = [len(part) + len(FRAME_SEPARATOR) for part in frames]
 
     out_raw = b""
@@ -420,6 +452,8 @@ def sanitize_stream(sanitizer, source, out_dir):
                 frame_index += 1
             if remaining != 0:
                 raise ValueError(f"{name}: chunk {chunk['n']} does not end on a frame boundary")
+            if not chunk_bytes:
+                continue
             out_raw += chunk_bytes
             out_meta.append(
                 f"# +{chunk['time']}s chunk {chunk['n']} ({len(chunk_bytes)} B) tail={chunk_bytes[-6:]!r}"
@@ -435,8 +469,9 @@ def sanitize_stream(sanitizer, source, out_dir):
 
     streams_dir = out_dir / "streams"
     streams_dir.mkdir(parents=True, exist_ok=True)
-    (streams_dir / f"{name}.raw").write_bytes(out_raw)
-    (streams_dir / f"{name}.meta").write_text("\n".join(out_meta) + "\n", encoding="utf-8")
+    out_name = STREAM_OUT_NAMES.get(name, name)
+    (streams_dir / f"{out_name}.raw").write_bytes(out_raw)
+    (streams_dir / f"{out_name}.meta").write_text("\n".join(out_meta) + "\n", encoding="utf-8")
 
 
 def json_strings(value):
@@ -603,6 +638,10 @@ def main():
     prop_collections = load(PROP_COLLECTIONS)
     sanitizer.prop_collections(prop_collections)
     write_json(out_dir / "prop-collections.json", prop_collections)
+
+    playlist_stage10 = load(PLAYLIST_STAGE10)
+    sanitizer.playlist(playlist_stage10)
+    write_json(out_dir / "playlist-stage10.json", playlist_stage10)
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)
