@@ -167,7 +167,7 @@ fun AppShell(
     val layout = navigationLayout(windowSizeClass.minWidthDp)
     val clearShown = layout == NavigationLayout.RAIL || tab in ClearFabTabs
     LaunchedEffect(clearShown) { if (!clearShown) clearOpen = false }
-    val fab = clearFab(layout, clearOpen) { clearOpen = it }
+    val fab = remember(layout, clearOpen) { clearFab(layout, clearOpen) { clearOpen = it } }
     val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)
     val currentListMode by rememberUpdatedState(listMode)
     val currentWidthClass by rememberUpdatedState(widthClass)
@@ -190,7 +190,8 @@ fun AppShell(
         LaunchedEffect(inMore.isEmpty()) {
             if (inMore.isEmpty()) stacks().withoutMore().takeIf { it != stacks() }?.let(update)
         }
-        val onBack = { update(stacks().back(inMore)) }
+        val currentInMore by rememberUpdatedState(inMore)
+        val onBack = { update(stacks().back(currentInMore)) }
         val slideGrid = @Composable { source: CueSource ->
             SlideGridRoot(
                 source = source,

@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.core.designsystem.ui
 
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -28,8 +29,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * An icon served by ProPresenter at [size]: vector paths drawn in [tint], or a PNG or JPEG image
- * decoded once per image at that size, off the main thread. Nothing is drawn while an image is
- * decoded or when the icon can't be read.
+ * decoded once per image at that size, off the main thread. An image keeps its [size] while it is
+ * decoded; nothing is drawn when the icon can't be read.
  */
 @Composable
 fun ServerIconImage(icon: ServerIcon, tint: Color, size: Dp, modifier: Modifier = Modifier) {
@@ -42,7 +43,9 @@ fun ServerIconImage(icon: ServerIcon, tint: Color, size: Dp, modifier: Modifier 
             val image by produceState<ImageBitmap?>(initialValue = null, icon.bytes, sizePx) {
                 value = withContext(Dispatchers.Default) { decodeSampled(icon.bytes, sizePx) }
             }
-            image?.let { Image(it, contentDescription = null, modifier = modifier.size(size)) }
+            Box(modifier = modifier.size(size)) {
+                image?.let { Image(it, contentDescription = null, modifier = Modifier.matchParentSize()) }
+            }
         }
     }
 }

@@ -73,6 +73,7 @@ IPV4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 USER_DIRS = ("Users", "home")
 USER_PATH = re.compile(r"(?:[A-Za-z]:[\\/]+|/)(?:" + "|".join(USER_DIRS) + r")[\\/].*", re.IGNORECASE)
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+VERBATIM_GENERATED_KINDS = {"Look", "Prop", "Transition", "Collection", "Macro", "Timer"}
 VERBATIM_ALLOWED = {
     "presentation", "header", "media", "playlist", "group", "standard", "win", "v1", "all",
     "ProPresenter 21.4.2", "10.0.26200",
@@ -125,6 +126,9 @@ class Sanitizer:
             width = PRESENTATION_NUMBER_WIDTH if kind == "Presentation" else 2
             self.generated_names[(kind, key)] = f"{kind} {self.counters[kind]:0{width}d}"
         return self.generated_names[(kind, key)]
+
+    def generated_placeholders(self):
+        return {name for (kind, _), name in self.generated_names.items() if kind in VERBATIM_GENERATED_KINDS}
 
     def replaced(self, original, replacement):
         if original and original != replacement:
@@ -456,13 +460,13 @@ def output_strings(path):
         yield from json_strings(json.loads(content))
 
 
-def is_allowed_verbatim(sanitizer, value, path):
+def is_allowed_verbatim(sanitizer, value, path, placeholders):
     return (
         path.name == CLEAR_GROUPS_OUT and value in CLEAR_GROUP_LAYERS | CLEAR_GROUP_ICONS | DEFAULT_CLEAR_GROUP_NAMES
     ) or (
         value.strip() == ""
         or UUID.match(value) is not None
-        or value in sanitizer.generated_names.values()
+        or value in placeholders
         or GROUP_WHITELIST.match(value) is not None
         or value in sanitizer.kept_names
         or value in VERBATIM_ALLOWED
@@ -481,6 +485,7 @@ def leak_check(sanitizer, out_dir):
         name for name in sanitizer.leaked_names
         if len(name) >= MIN_NAME_SUBSTRING and not is_placeholder_vocabulary(name)
     ]
+    placeholders = sanitizer.generated_placeholders()
     files = sorted(path for path in out_dir.rglob("*") if path.is_file())
     for path in files:
         content = path.read_text(encoding="utf-8")
@@ -488,7 +493,7 @@ def leak_check(sanitizer, out_dir):
         for value in output_strings(path):
             if value in sanitizer.leaked_names:
                 leaks.append(f"{path}: original name as a value")
-            elif value in sanitizer.input_strings and not is_allowed_verbatim(sanitizer, value, path):
+            elif value in sanitizer.input_strings and not is_allowed_verbatim(sanitizer, value, path, placeholders):
                 leaks.append(f"{path}: input value copied unchanged: {value!r}")
         for name in substring_names:
             if name.lower() in lowered:
