@@ -4,15 +4,30 @@ plugins {
     alias(libs.plugins.ppremotece.android.application)
 }
 
-/** The properties in [file], or null when it does not exist. */
-fun propertiesOf(file: File): Properties? =
-    file.takeIf { it.isFile }?.let { Properties().apply { it.inputStream().use(::load) } }
+/** The properties in [file]. */
+fun propertiesOf(file: File): Properties = Properties().apply { file.inputStream().use(::load) }
 
-/** The release signing properties named by `release.signing.properties` in `local.properties`, if any. */
-val releaseSigning: Properties? =
-    propertiesOf(rootProject.file("local.properties"))
+/**
+ * The file `release.signing.properties` in `local.properties` names (relative to the project
+ * root), or null when `local.properties` or that entry is missing; a named file that does not
+ * exist fails the build.
+ */
+val releaseSigningFile: File? =
+    rootProject.file("local.properties").takeIf { it.isFile }
+        ?.let(::propertiesOf)
         ?.getProperty("release.signing.properties")
-        ?.let { propertiesOf(File(it)) }
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?.let { path ->
+            rootProject.file(path).also {
+                if (!it.isFile) throw GradleException("release.signing.properties names a missing file: $it")
+            }
+        }
+
+/** The trimmed value of [key] in the release signing file; a missing or blank value fails the build. */
+fun Properties.signingValue(key: String): String =
+    getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: throw GradleException("$releaseSigningFile has no value for $key")
 
 android {
     namespace = "com.greenfodor.ppremotece"
@@ -24,12 +39,13 @@ android {
     }
 
     signingConfigs {
-        releaseSigning?.let { signing ->
+        releaseSigningFile?.let { signingFile ->
+            val signing = propertiesOf(signingFile)
             create("release") {
-                storeFile = file(signing.getProperty("storeFile"))
-                storePassword = signing.getProperty("storePassword")
-                keyAlias = signing.getProperty("keyAlias")
-                keyPassword = signing.getProperty("keyPassword")
+                storeFile = signingFile.parentFile.resolve(signing.signingValue("storeFile"))
+                storePassword = signing.signingValue("storePassword")
+                keyAlias = signing.signingValue("keyAlias")
+                keyPassword = signing.signingValue("keyPassword")
             }
         }
     }
