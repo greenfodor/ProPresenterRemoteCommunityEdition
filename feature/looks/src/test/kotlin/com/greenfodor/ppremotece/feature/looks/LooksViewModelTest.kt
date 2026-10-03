@@ -108,6 +108,15 @@ class LooksViewModelTest {
     }
 
     @Test
+    fun `looks that repeat a uuid are shown once`() = runTest(dispatcher) {
+        repository.looks.value = Loadable.Loaded(looks + looks[0])
+
+        viewModel().state.test {
+            assertThat(expectMostRecentItem().loaded.map { it.uuid }).containsExactly("l-0", "l-1", "l-2")
+        }
+    }
+
+    @Test
     fun `looks not loaded or unavailable pass through`() = runTest(dispatcher) {
         repository.looks.value = Loadable.NotLoaded
 

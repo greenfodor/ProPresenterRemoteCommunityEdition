@@ -184,6 +184,18 @@ class MacrosViewModelTest {
     }
 
     @Test
+    fun `collections and macros that repeat a uuid are shown once`() = runTest(dispatcher) {
+        repository.collections.value =
+            Loadable.Loaded(listOf(first.copy(macros = first.macros + first.macros[0]), first))
+
+        viewModel().state.test {
+            val state = expectMostRecentItem()
+            assertThat(state.loaded.map { it.uuid }).containsExactly("c-0")
+            assertThat(state.loaded.single().macros.map { it.uuid }).containsExactly("m-0", "m-1")
+        }
+    }
+
+    @Test
     fun `collections without macros are hidden`() = runTest(dispatcher) {
         repository.collections.value =
             Loadable.Loaded(listOf(first, MacroCollection("c-2", "Collection 03", 2, emptyList())))

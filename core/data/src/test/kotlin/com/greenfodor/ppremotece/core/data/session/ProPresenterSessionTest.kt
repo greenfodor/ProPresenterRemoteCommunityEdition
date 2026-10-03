@@ -4,6 +4,7 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
+import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.data.network.FakeProPresenter
@@ -141,6 +142,19 @@ class ProPresenterSessionTest {
 
         assertThat(withTimeout(2.seconds) { session.propCollections.first { it == Loadable.NotLoaded } })
             .isEqualTo(Loadable.NotLoaded)
+    }
+
+    @Test
+    fun `prop thumbnail requests wait for the thumbnail cache to be cleared`() = runBlocking<Unit> {
+        cache.gate = CompletableDeferred()
+
+        assertThat(withTimeout(2.seconds) { session.connect(host()) }).isInstanceOf<Result.Success<*>>()
+        withTimeout(2.seconds) { while (cache.clears.get() < 1) delay(10.milliseconds) }
+        assertThat(session.propThumbnailRequests.first()).isNull()
+
+        cache.gate.complete(Unit)
+
+        assertThat(withTimeout(2.seconds) { session.propThumbnailRequests.filterNotNull().first() }).isNotNull()
     }
 
     @Test

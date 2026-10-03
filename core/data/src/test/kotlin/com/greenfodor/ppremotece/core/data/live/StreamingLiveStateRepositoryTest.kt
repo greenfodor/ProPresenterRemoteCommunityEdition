@@ -545,11 +545,7 @@ class StreamingLiveStateRepositoryTest {
         fake.enqueueStream(fake.frames(listOf(ONE_TIMER_FRAME, ONE_MACRO_FRAME), end = StreamEnd.EOF))
         fake.enqueueStream(fake.frames(listOf(FakeProPresenter.HEARTBEAT_FRAME)))
 
-        repository.liveState.test(timeout = 5.seconds) {
-            awaitUntil { it.connection == ConnectionStatus.RECONNECTING }
-            awaitUntil { it.connection == ConnectionStatus.CONNECTED }
-            cancelAndIgnoreRemainingEvents()
-        }
+        awaitReconnected()
 
         assertThat(repository.timers.loaded { true }.single().timer.name).isEqualTo("Timer 01")
         assertThat(repository.collections.loaded { true }.single().name).isEqualTo("Collection 01")
@@ -589,11 +585,7 @@ class StreamingLiveStateRepositoryTest {
         fake.enqueueStream(fake.frames(listOf(TWO_REJECTED_FRAME), end = StreamEnd.EOF))
         fake.enqueueStream(fake.frames(listOf(FakeProPresenter.HEARTBEAT_FRAME)))
 
-        repository.liveState.test(timeout = 5.seconds) {
-            awaitUntil { it.connection == ConnectionStatus.RECONNECTING }
-            awaitUntil { it.connection == ConnectionStatus.CONNECTED }
-            cancelAndIgnoreRemainingEvents()
-        }
+        awaitReconnected()
 
         assertThat(server.recordedStreamBodies()[1]).isEqualTo(
             """["status/slide","timer/system_time","playlist/active","status/layers","timers",""" +
@@ -744,6 +736,15 @@ class StreamingLiveStateRepositoryTest {
         while (!predicate(state)) state = awaitItem()
         return state
     }
+
+    /** Collects the live state until a second stream was requested and its first chunk arrived. */
+    private suspend fun awaitReconnected() =
+        coroutineScope {
+            val collector = launch { repository.liveState.collect {} }
+            awaitCondition { fake.count("POST", "/v1/status/updates") >= 2 }
+            withTimeout(5.seconds) { repository.liveState.first { it.connection == ConnectionStatus.CONNECTED } }
+            collector.cancel()
+        }
 
     private suspend fun awaitCondition(condition: () -> Boolean) {
         withTimeout(5.seconds) {

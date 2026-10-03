@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -109,6 +110,39 @@ class PropsViewModelTest {
     }
 
     @Test
+    fun `taps on a prop are ignored until its state changes after a successful tap`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.onAction(PropsAction.OnPropClick("p-0"))
+        viewModel.onAction(PropsAction.OnPropClick("p-0"))
+
+        assertThat(client.calls).containsExactly("trigger p-0")
+    }
+
+    @Test
+    fun `a prop takes taps again when no frame follows a successful tap within two seconds`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+
+            viewModel.onAction(PropsAction.OnPropClick("p-0"))
+            advanceTimeBy(2_001)
+            viewModel.onAction(PropsAction.OnPropClick("p-0"))
+
+            assertThat(client.calls).containsExactly("trigger p-0", "trigger p-0")
+        }
+
+    @Test
+    fun `collections and props that repeat a uuid are shown once`() = runTest(dispatcher) {
+        repository.propCollections.value = Loadable.Loaded(listOf(first.copy(props = listOf(off, off, on)), first))
+
+        viewModel().state.test {
+            val state = expectMostRecentItem()
+            assertThat(state.loaded.map { it.uuid }).containsExactly("c-0")
+            assertThat(state.loaded.single().props.map { it.uuid }).containsExactly("p-0", "p-1")
+        }
+    }
+
+    @Test
     fun `taps on a prop are ignored while its request is in flight`() = runTest(dispatcher) {
         client.gate = CompletableDeferred()
         val viewModel = viewModel()
@@ -117,9 +151,11 @@ class PropsViewModelTest {
         viewModel.onAction(PropsAction.OnPropClick("p-0"))
         viewModel.onAction(PropsAction.OnPropClick("p-1"))
         client.gate.complete(Unit)
+        repository.propCollections.value =
+            Loadable.Loaded(listOf(first.copy(props = listOf(off.copy(isActive = true), on.copy(isActive = false)))))
         viewModel.onAction(PropsAction.OnPropClick("p-0"))
 
-        assertThat(client.calls).containsExactly("trigger p-0", "clear p-1", "trigger p-0")
+        assertThat(client.calls).containsExactly("trigger p-0", "clear p-1", "clear p-0")
     }
 
     @Test

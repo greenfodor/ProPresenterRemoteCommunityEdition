@@ -89,9 +89,10 @@ fun PropsRoot(
 
 /**
  * The Props tab: one section per collection in a grid of tiles (two columns on compact width,
- * adaptive 200 / 240 dp cells on medium / expanded width), each section under a 48 dp header while there are several, with 88 dp below the
- * last row; a spinner until the props are loaded, "No props in ProPresenter" when there are none,
- * and "Not available on this ProPresenter" when the server rejected them.
+ * adaptive 200 / 240 dp cells on medium / expanded width), each section under a 48 dp header while
+ * there are several, with 88 dp below the last row; a spinner until the props are loaded, "No props
+ * in ProPresenter" when there are none, and "Not available on this ProPresenter" when the server
+ * rejected them.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

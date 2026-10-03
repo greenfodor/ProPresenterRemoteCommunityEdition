@@ -59,11 +59,11 @@ class MacrosViewModel(
             confirmed
         ) { collections, icons, confirmed ->
             val sections = collections.map { all ->
-                all.filter { it.macros.isNotEmpty() }.map { collection ->
+                all.distinctBy { it.uuid }.filter { it.macros.isNotEmpty() }.map { collection ->
                     MacroSectionUi(
                         uuid = collection.uuid,
                         name = collection.name,
-                        macros = collection.macros.map {
+                        macros = collection.macros.distinctBy { it.uuid }.map {
                             MacroUi(it.uuid, it.name, it.color, icons[it.uuid], confirmed = it.uuid in confirmed)
                         }
                     )

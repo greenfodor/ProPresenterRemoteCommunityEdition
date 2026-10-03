@@ -55,7 +55,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -74,7 +73,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * [thumbnailRequests] are null until that clear has finished. [timers] and [collections] are the connection's
  * timers and macro collections, and [looks] and [currentLook] its looks and live look,
  * [Loadable.NotLoaded] and null while disconnected; [propCollections] its prop collections and
- * [propThumbnailRequests] its prop thumbnail requests, keyed by the host's name.
+ * [propThumbnailRequests] its prop thumbnail requests, keyed by the host's name and null until the
+ * thumbnail cache is cleared.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
@@ -92,7 +92,7 @@ class ProPresenterSession(
         val client: KtorProPresenterClient,
         val live: StreamingLiveStateRepository,
         val thumbnails: StateFlow<ThumbnailRequests?>,
-        val propThumbnails: PropThumbnailRequests,
+        val propThumbnails: StateFlow<PropThumbnailRequests?>,
         val scope: CoroutineScope
     )
 
@@ -151,7 +151,9 @@ class ProPresenterSession(
     override val thumbnailRequests: Flow<ThumbnailRequests?> =
         connection.flatMapLatest { it?.thumbnails ?: flowOf(null) }
 
-    override val propThumbnailRequests: Flow<PropThumbnailRequests?> = connection.map { it?.propThumbnails }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val propThumbnailRequests: Flow<PropThumbnailRequests?> =
+        connection.flatMapLatest { it?.propThumbnails ?: flowOf(null) }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val propCollections: StateFlow<Loadable<List<PropCollection>>> =
@@ -176,7 +178,7 @@ class ProPresenterSession(
             val scope = CoroutineScope(sessionScope.coroutineContext + SupervisorJob(sessionScope.coroutineContext.job))
             val live = StreamingLiveStateRepository(client, scope, onReconnected = { _streamReconnects.tryEmit(Unit) })
             val thumbnails = MutableStateFlow<ThumbnailRequests?>(null)
-            val propThumbnails = propThumbnailRequests(baseUrl, version.name)
+            val propThumbnails = MutableStateFlow<PropThumbnailRequests?>(null)
             connection.getAndUpdate { Connection(client, live, thumbnails, propThumbnails, scope) }?.scope?.cancel()
             _sessionKey.value = "${connectCount.incrementAndGet()}@${host.address}:${host.port}"
             _connectedHost.value = ConnectedHost(named, version)
@@ -184,6 +186,7 @@ class ProPresenterSession(
             scope.launch {
                 thumbnailCache.clear()
                 thumbnails.value = thumbnailRequests(baseUrl, version.name)
+                propThumbnails.value = propThumbnailRequests(baseUrl, version.name)
             }
             try {
                 savedHostStore.save(named, namedByVersion)

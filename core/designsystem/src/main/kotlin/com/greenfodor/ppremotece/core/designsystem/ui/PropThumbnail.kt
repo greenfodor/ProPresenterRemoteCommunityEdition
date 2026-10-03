@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -24,27 +25,52 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import java.util.concurrent.ConcurrentHashMap
 
 private const val DEFAULT_ASPECT = 16f / 9f
 
+/** The [version] each prop thumbnail key was last loaded with. */
+internal class PropThumbnailVersions {
+    private val loaded = ConcurrentHashMap<String, String>()
+
+    /** Whether [key] was loaded with another version than [version]; false before its first load. */
+    fun needsRefresh(key: String, version: String): Boolean = loaded[key]?.let { it != version } ?: false
+
+    fun loaded(key: String, version: String) {
+        loaded[key] = version
+    }
+}
+
+private val Versions = PropThumbnailVersions()
+
+@Volatile
+private var lastAspect: Float? = null
+
 /**
- * A prop's image over black, in a box of the image's own aspect (16:9 until it is loaded) and
- * never cropped. [url] is loaded into the memory cache under [cacheKey] and never stored on disk.
- * It is read again each time [version] changes after the first composition; nothing but black
- * shows while it loads, when it fails and when [url] is null.
+ * A prop's image over black, in a box of the image's own aspect and never cropped; until it is
+ * loaded the box has the aspect of the prop image loaded last (16:9 before any). [url] is loaded
+ * into the memory cache under [cacheKey] and never stored on disk. It is read again when
+ * [cacheKey] was last loaded with another [version]; nothing but black shows while it loads, when
+ * it fails and when [url] is null.
  */
 @Composable
-fun PropThumbnail(url: String?, cacheKey: String?, version: Any?, modifier: Modifier = Modifier) {
+fun PropThumbnail(url: String?, cacheKey: String?, version: String, modifier: Modifier = Modifier) {
     val context = LocalPlatformContext.current
-    val firstVersion = remember(url, cacheKey) { version }
     val request = remember(context, url, cacheKey, version) {
-        propThumbnailImageRequest(context, url, cacheKey, refresh = version != firstVersion)
+        val refresh = cacheKey != null && Versions.needsRefresh(cacheKey, version)
+        propThumbnailImageRequest(context, url, cacheKey, refresh)
     }
     val painter = rememberAsyncImagePainter(request)
     val state by painter.state.collectAsStateWithLifecycle()
     val size = (state as? AsyncImagePainter.State.Success)?.painter?.intrinsicSize
     val aspect = size?.takeIf { it.isSpecified && it.width > 0f && it.height > 0f }?.let { it.width / it.height }
-    Box(modifier = modifier.aspectRatio(aspect ?: DEFAULT_ASPECT).background(Color.Black)) {
+    if (aspect != null && cacheKey != null) {
+        SideEffect {
+            Versions.loaded(cacheKey, version)
+            lastAspect = aspect
+        }
+    }
+    Box(modifier = modifier.aspectRatio(aspect ?: lastAspect ?: DEFAULT_ASPECT).background(Color.Black)) {
         Image(
             painter = painter,
             contentDescription = null,
@@ -81,7 +107,7 @@ private fun PropThumbnailPreview() {
             PropThumbnail(
                 url = "http://192.0.2.14:60113/v1/prop/p-0/thumbnail?quality=400",
                 cacheKey = "prop:preview:p-0:w400",
-                version = null,
+                version = "Prop 01",
                 modifier = Modifier.width(200.dp)
             )
         }

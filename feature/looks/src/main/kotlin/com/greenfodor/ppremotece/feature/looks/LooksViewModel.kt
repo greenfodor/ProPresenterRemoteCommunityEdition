@@ -38,7 +38,7 @@ class LooksViewModel(
             LooksState(
                 looks = looks.map { list ->
                     val live = liveLook(list, current)
-                    list.map { LookUi(it.uuid, it.name, live = it == live) }
+                    list.distinctBy { it.uuid }.map { LookUi(it.uuid, it.name, live = it == live) }
                 }
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), LooksState())
