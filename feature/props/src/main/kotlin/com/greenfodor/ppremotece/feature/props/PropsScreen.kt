@@ -57,6 +57,7 @@ private val GridPadding = 8.dp
 private val GridGap = 8.dp
 private val BottomClearance = 88.dp
 private val HeaderHeight = 48.dp
+private const val COMPACT_COLUMNS = 2
 
 @Composable
 fun PropsRoot(
@@ -87,8 +88,8 @@ fun PropsRoot(
 }
 
 /**
- * The Props tab: one section per collection in an adaptive grid of tiles (160 / 200 / 240 dp cells
- * by width class), each section under a 48 dp header while there are several, with 88 dp below the
+ * The Props tab: one section per collection in a grid of tiles (two columns on compact width,
+ * adaptive 200 / 240 dp cells on medium / expanded width), each section under a 48 dp header while there are several, with 88 dp below the
  * last row; a spinner until the props are loaded, "No props in ProPresenter" when there are none,
  * and "Not available on this ProPresenter" when the server rejected them.
  */
@@ -140,7 +141,7 @@ private fun PropGrid(
     onAction: (PropsAction) -> Unit
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minCellWidth(widthClass)),
+        columns = columnsOf(widthClass),
         contentPadding = PaddingValues(
             start = GridPadding,
             top = GridPadding,
@@ -176,11 +177,11 @@ private fun PropGrid(
     }
 }
 
-private fun minCellWidth(widthClass: WidthClass) =
+private fun columnsOf(widthClass: WidthClass): GridCells =
     when (widthClass) {
-        WidthClass.COMPACT -> 160.dp
-        WidthClass.MEDIUM -> 200.dp
-        WidthClass.EXPANDED -> 240.dp
+        WidthClass.COMPACT -> GridCells.Fixed(COMPACT_COLUMNS)
+        WidthClass.MEDIUM -> GridCells.Adaptive(200.dp)
+        WidthClass.EXPANDED -> GridCells.Adaptive(240.dp)
     }
 
 /**
