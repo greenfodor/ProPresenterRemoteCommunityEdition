@@ -1,0 +1,53 @@
+{
+  "prop_collections": {
+    "collections": [
+      {
+        "id": {
+          "uuid": "57a953ef-9d03-40ef-8646-20d451d7b4a7",
+          "name": "Collection 04",
+          "index": 0
+        },
+        "props": [
+          {
+            "id": {
+              "uuid": "7ea25ab8-756d-4bbc-b3ec-1547077cd202",
+              "name": "Prop 01",
+              "index": 0
+            },
+            "is_active": false,
+            "auto_clear_enabled": false,
+            "auto_clear_duration": 0.0,
+            "transition": null
+          },
+          {
+            "id": {
+              "uuid": "024e76e0-4497-4f3f-9150-3e1cf9281a15",
+              "name": "Prop 02",
+              "index": 1
+            },
+            "is_active": false,
+            "auto_clear_enabled": false,
+            "auto_clear_duration": 0.0,
+            "transition": {
+              "uuid": "99BDD1C3-EE98-4E80-A8DE-3699CE9F338E",
+              "name": "Transition 01",
+              "duration": 0.9698795
+            }
+          },
+          {
+            "id": {
+              "uuid": "333ac948-f287-42f2-9e3e-d16a315a120a",
+              "name": "Prop 03",
+              "index": 2
+            },
+            "is_active": false,
+            "auto_clear_enabled": false,
+            "auto_clear_duration": 0.0,
+            "transition": null
+          }
+        ],
+        "single_prop_enabled": false
+      }
+    ]
+  }
+}

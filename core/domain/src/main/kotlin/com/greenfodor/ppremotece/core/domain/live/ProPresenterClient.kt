@@ -62,6 +62,12 @@ interface ProPresenterClient {
     /** Triggers look [uuid] as the live audience look. */
     suspend fun triggerLook(uuid: String): EmptyResult<DataError.Network>
 
+    /** Shows prop [uuid]; an active prop stays on. */
+    suspend fun triggerProp(uuid: String): EmptyResult<DataError.Network>
+
+    /** Clears prop [uuid]. */
+    suspend fun clearProp(uuid: String): EmptyResult<DataError.Network>
+
     /** Starts, stops or resets timer [uuid]. */
     suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network>
 

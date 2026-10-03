@@ -79,6 +79,9 @@ class StatusFrameParser {
                 StatusEvent.MacroCollections(collections.mapNotNull { it.toMacroCollection() })
             url == "looks" && list != null -> StatusEvent.Looks(list.mapNotNull { it.toLook() })
             url == "look/current" -> data.toLook()?.let(StatusEvent::CurrentLook)
+            url == "prop_collections" ->
+                (data.child("prop_collections").child("collections") as? JsonArray)
+                    ?.let { all -> StatusEvent.PropCollections(all.mapNotNull { it.toPropCollection() }) }
             else -> null
         }
     }

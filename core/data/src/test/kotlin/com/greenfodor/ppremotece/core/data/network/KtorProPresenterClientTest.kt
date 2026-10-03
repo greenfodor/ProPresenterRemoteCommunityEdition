@@ -236,11 +236,13 @@ class KtorProPresenterClientTest {
         client.triggerMacro(MACRO_UUID)
         client.macroIcon(MACRO_UUID)
         client.triggerLook(LOOK_UUID)
+        client.triggerProp(PROP_UUID)
+        client.clearProp(PROP_UUID)
         client.triggerNext()
         client.triggerPrevious()
         client.statusUpdates(listOf("status/slide")).first()
 
-        assertThat(fake.requests.size).isEqualTo(24)
+        assertThat(fake.requests.size).isEqualTo(26)
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
     }
 
@@ -262,6 +264,15 @@ class KtorProPresenterClientTest {
         assertThat(client.triggerLook(LOOK_UUID)).isEqualTo(Result.Success(Unit))
         assertThat(fake.requests.single().method).isEqualTo("GET")
         assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/look/$LOOK_UUID/trigger")
+    }
+
+    @Test
+    fun `a prop is shown and cleared on its trigger and clear routes`() = runBlocking {
+        assertThat(client.triggerProp(PROP_UUID)).isEqualTo(Result.Success(Unit))
+        assertThat(client.clearProp(PROP_UUID)).isEqualTo(Result.Success(Unit))
+
+        assertThat(fake.requests.map { "${it.method} ${it.url.encodedPath}" })
+            .containsExactly("GET /v1/prop/$PROP_UUID/trigger", "GET /v1/prop/$PROP_UUID/clear")
     }
 
     @Test
@@ -302,6 +313,7 @@ class KtorProPresenterClientTest {
     private companion object {
         const val MACRO_UUID = "701c977b-f340-428d-b397-a52d4f29437b"
         const val LOOK_UUID = "0c12bf85-6a1e-4f8e-9c2d-3b4a5d6e7f80"
+        const val PROP_UUID = "4b1e3d2c-7a6f-4e5d-8c9b-0a1f2e3d4c5b"
         const val TIMER_UUID = "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
         const val CLEAR_GROUP_UUID = "5da095db-20ef-4246-b3d5-3b741312386b"
     }

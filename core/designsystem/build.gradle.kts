@@ -11,4 +11,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.coil.bom))
     implementation(libs.coil.compose)
+
+    testImplementation(libs.assertk)
 }

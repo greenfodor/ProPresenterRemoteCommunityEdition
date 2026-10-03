@@ -14,3 +14,7 @@ fun thumbnailUrl(baseUrl: String, item: PlaylistItemKey, cueIndex: Int, boxQuali
 fun presentationThumbnailUrl(baseUrl: String, presentationUuid: String, cueIndex: Int, boxQuality: Int?): String =
     "${baseUrl.trimEnd('/')}/v1/presentation/${presentationUuid.encodeURLPathPart()}/thumbnail/$cueIndex" +
         "?quality=${ThumbnailRoute.PRESENTATION.query(boxQuality)}"
+
+/** `GET {baseUrl}/v1/prop/{uuid}/thumbnail?quality={width}`: the prop's image [width] px wide. */
+fun propThumbnailUrl(baseUrl: String, propUuid: String, width: Int): String =
+    "${baseUrl.trimEnd('/')}/v1/prop/${propUuid.encodeURLPathPart()}/thumbnail?quality=$width"
