@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.core.data.session
 import com.greenfodor.ppremotece.core.data.live.StreamingLiveStateRepository
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.data.thumbnail.presentationThumbnailUrl
+import com.greenfodor.ppremotece.core.data.thumbnail.propThumbnailUrl
 import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailUrl
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
@@ -18,6 +19,13 @@ import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
+import com.greenfodor.ppremotece.core.domain.model.PropCollection
+import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequest
+import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequests
+import com.greenfodor.ppremotece.core.domain.props.PropThumbnailSource
+import com.greenfodor.ppremotece.core.domain.props.PropsRepository
+import com.greenfodor.ppremotece.core.domain.props.propThumbnailKey
+import com.greenfodor.ppremotece.core.domain.props.propThumbnailWidth
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
@@ -47,6 +55,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -64,7 +73,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * successful connect clears the [ThumbnailCache] in the background; the connection's
  * [thumbnailRequests] are null until that clear has finished. [timers] and [collections] are the connection's
  * timers and macro collections, and [looks] and [currentLook] its looks and live look,
- * [Loadable.NotLoaded] and null while disconnected.
+ * [Loadable.NotLoaded] and null while disconnected; [propCollections] its prop collections and
+ * [propThumbnailRequests] its prop thumbnail requests, keyed by the host's name.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
@@ -75,11 +85,14 @@ class ProPresenterSession(
     TimersRepository,
     MacrosRepository,
     LooksRepository,
+    PropsRepository,
+    PropThumbnailSource,
     ThumbnailSource {
     private class Connection(
         val client: KtorProPresenterClient,
         val live: StreamingLiveStateRepository,
         val thumbnails: StateFlow<ThumbnailRequests?>,
+        val propThumbnails: PropThumbnailRequests,
         val scope: CoroutineScope
     )
 
@@ -138,6 +151,14 @@ class ProPresenterSession(
     override val thumbnailRequests: Flow<ThumbnailRequests?> =
         connection.flatMapLatest { it?.thumbnails ?: flowOf(null) }
 
+    override val propThumbnailRequests: Flow<PropThumbnailRequests?> = connection.map { it?.propThumbnails }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val propCollections: StateFlow<Loadable<List<PropCollection>>> =
+        connection
+            .flatMapLatest { it?.live?.propCollections ?: flowOf(Loadable.NotLoaded) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
+
     override suspend fun savedHost(): ProPresenterHost? = readSavedHost()?.host
 
     override suspend fun stayDisconnected(): Boolean = readSavedHost()?.stayDisconnected == true
@@ -155,7 +176,8 @@ class ProPresenterSession(
             val scope = CoroutineScope(sessionScope.coroutineContext + SupervisorJob(sessionScope.coroutineContext.job))
             val live = StreamingLiveStateRepository(client, scope, onReconnected = { _streamReconnects.tryEmit(Unit) })
             val thumbnails = MutableStateFlow<ThumbnailRequests?>(null)
-            connection.getAndUpdate { Connection(client, live, thumbnails, scope) }?.scope?.cancel()
+            val propThumbnails = propThumbnailRequests(baseUrl, version.name)
+            connection.getAndUpdate { Connection(client, live, thumbnails, propThumbnails, scope) }?.scope?.cancel()
             _sessionKey.value = "${connectCount.incrementAndGet()}@${host.address}:${host.port}"
             _connectedHost.value = ConnectedHost(named, version)
             restoreAllowed = true
@@ -187,6 +209,12 @@ class ProPresenterSession(
             // The saved host stays as it was.
         }
     }
+
+    private fun propThumbnailRequests(baseUrl: String, instanceName: String) =
+        PropThumbnailRequests { uuid, px ->
+            val width = propThumbnailWidth(px)
+            PropThumbnailRequest(propThumbnailUrl(baseUrl, uuid, width), propThumbnailKey(instanceName, uuid, width))
+        }
 
     private fun thumbnailRequests(baseUrl: String, instanceName: String) =
         ThumbnailRequests { source, presentationUuid, cue, quality ->

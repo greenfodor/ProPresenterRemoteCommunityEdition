@@ -129,6 +129,12 @@ class KtorProPresenterClient(
     override suspend fun triggerLook(uuid: String): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/look/${uuid.encodeURLPathPart()}/trigger") }
 
+    override suspend fun triggerProp(uuid: String): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/v1/prop/${uuid.encodeURLPathPart()}/trigger") }
+
+    override suspend fun clearProp(uuid: String): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/v1/prop/${uuid.encodeURLPathPart()}/clear") }
+
     override suspend fun macroIcon(uuid: String, refresh: Boolean): Result<ServerIcon, DataError.Network> =
         icon("v1/macro/${uuid.encodeURLPathPart()}/icon", refresh)
 

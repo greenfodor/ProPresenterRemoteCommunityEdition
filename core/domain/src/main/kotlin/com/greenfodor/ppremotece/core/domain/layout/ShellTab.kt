@@ -7,6 +7,7 @@ enum class ShellTab {
     MACROS,
     TIMERS,
     LOOKS,
+    PROPS,
     SETTINGS,
     MORE
 }

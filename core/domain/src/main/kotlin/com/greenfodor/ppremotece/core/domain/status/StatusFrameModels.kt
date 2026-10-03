@@ -5,6 +5,8 @@ import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.Macro
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
+import com.greenfodor.ppremotece.core.domain.model.Prop
+import com.greenfodor.ppremotece.core.domain.model.PropCollection
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
 import com.greenfodor.ppremotece.core.domain.model.TimerState
@@ -50,6 +52,31 @@ internal fun JsonElement?.toLook(): Look? {
         Look(uuid = uuid, name = id.child("name").stringOrNull().orEmpty(), index = index)
     } else {
         null
+    }
+}
+
+internal fun JsonElement?.toPropCollection(): PropCollection? {
+    val id = child("id")
+    return id.child("uuid").stringOrNull()?.let { uuid ->
+        PropCollection(
+            uuid = uuid,
+            name = id.child("name").stringOrNull().orEmpty(),
+            index = id.child("index").intOrNull() ?: 0,
+            props = (child("props") as? JsonArray).orEmpty().mapNotNull { it.toProp() }
+        )
+    }
+}
+
+private fun JsonElement?.toProp(): Prop? {
+    val id = child("id")
+    return id.child("uuid").stringOrNull()?.let { uuid ->
+        Prop(
+            uuid = uuid,
+            name = id.child("name").stringOrNull().orEmpty(),
+            index = id.child("index").intOrNull() ?: 0,
+            isActive = (child("is_active") as? JsonPrimitive)?.booleanOrNull ?: false,
+            transitionName = child("transition").child("name").stringOrNull()
+        )
     }
 }
 

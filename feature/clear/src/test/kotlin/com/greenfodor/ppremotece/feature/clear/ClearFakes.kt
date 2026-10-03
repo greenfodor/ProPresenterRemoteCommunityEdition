@@ -81,6 +81,10 @@ class FakeClearClient : ProPresenterClient {
 
     override suspend fun triggerLook(uuid: String): EmptyResult<DataError.Network> = notServed()
 
+    override suspend fun triggerProp(uuid: String): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun clearProp(uuid: String): EmptyResult<DataError.Network> = notServed()
+
     override suspend fun macroIcon(uuid: String, refresh: Boolean): Result<ServerIcon, DataError.Network> =
         notServed()
 

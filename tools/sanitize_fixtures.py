@@ -38,6 +38,7 @@ TIMERS_STAGE9 = "../stage9/_v1_timers.json"
 MACRO_COLLECTIONS_STAGE9 = "../stage9/_v1_macro_collections-2.json"
 LOOKS = "../stage9/_v1_looks.json"
 LOOK_CURRENT = "../stage9/_v1_look_current.json"
+PROP_COLLECTIONS = "../stage9/_v1_prop_collections.json"
 LOOK_SCREEN_STRINGS = ("presentation", "mask")
 TIMER_TYPES = {"countdown", "count_down_to_time", "elapsed"}
 TIMER_STATES = {"stopped", "running", "complete", "overrunning", "overran", "overrun"}
@@ -594,6 +595,10 @@ def main():
     look_current = load(LOOK_CURRENT)
     sanitizer.look(look_current)
     write_json(out_dir / "look-current.json", look_current)
+
+    prop_collections = load(PROP_COLLECTIONS)
+    sanitizer.prop_collections(prop_collections)
+    write_json(out_dir / "prop-collections.json", prop_collections)
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)

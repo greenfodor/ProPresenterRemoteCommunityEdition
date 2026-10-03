@@ -25,6 +25,7 @@ import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.PropCollection
 import com.greenfodor.ppremotece.core.domain.model.SlideText
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
 import com.greenfodor.ppremotece.core.domain.model.TimerState
@@ -595,7 +596,9 @@ class StreamingLiveStateRepositoryTest {
         }
 
         assertThat(server.recordedStreamBodies()[1]).isEqualTo(
-            """["status/slide","timer/system_time","playlist/active","status/layers","timers","looks","look/current"]"""
+            """["status/slide","timer/system_time","playlist/active","status/layers","timers",""" +
+                """"looks","look/current",""" +
+                """"prop_collections"]"""
         )
         assertThat(repository.collections.value).isEqualTo(Loadable.Unavailable)
     }
@@ -661,6 +664,50 @@ class StreamingLiveStateRepositoryTest {
         assertThat(repository.currentLook.value).isNull()
     }
 
+    @Test
+    fun `the stage 9 capture shows each prop toggle with its active state`() = runBlocking {
+        val expected = mapOf(
+            PROPS_READ_CHUNK to listOf(false, false, false),
+            22 to listOf(true, false, false),
+            28 to listOf(true, true, false),
+            32 to listOf(true, true, true),
+            37 to listOf(false, true, true),
+            41 to listOf(false, false, true),
+            45 to listOf(false, false, false)
+        )
+
+        expected.forEach { (chunk, active) ->
+            val collections = propsAfterChunk(chunk) { it.single().props.map { prop -> prop.isActive } == active }
+            assertThat(collections.single().props.map { it.isActive }).isEqualTo(active)
+        }
+    }
+
+    @Test
+    fun `the stage 9 capture lists the props with their names and transition`() = runBlocking {
+        val collection = propsAfterChunk(PROPS_READ_CHUNK) { true }.single()
+
+        assertThat(collection.name).isEqualTo("Collection 04")
+        assertThat(collection.props.map { it.name to it.transitionName }).containsExactly(
+            "Prop 01" to null,
+            "Prop 02" to "Transition 01",
+            "Prop 03" to null
+        )
+    }
+
+    /** Replays the stage 9 looks and props capture through [chunk] on a new repository. */
+    private suspend fun propsAfterChunk(
+        chunk: Int,
+        settled: (List<PropCollection>) -> Boolean
+    ): List<PropCollection> =
+        coroutineScope {
+            val fresh = repositoryWithWatchdog(RELAXED_WATCHDOG)
+            fake.enqueueStream(fake.stream(STAGE_9_LOOKS, StreamEnd.STALL, timeScale = 0.0, chunkLimit = chunk))
+            val collector = launch { fresh.liveState.collect {} }
+            val collections = withTimeout(5.seconds) { fresh.propCollections.loaded(settled) }
+            collector.cancel()
+            collections
+        }
+
     /** Replays [capture] through [chunk] and returns the loaded timers once they match [settled]. */
     private suspend fun timersAfterChunk(
         chunk: Int,
@@ -717,7 +764,7 @@ class StreamingLiveStateRepositoryTest {
         const val PRESENTATION_ROUTE_SLIDE_INDEX_CHUNK = 16
         const val SAME_ITEM_SLIDE_INDEX_CHUNK = 28
         const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active","status/layers",""" +
-            """"timers","timers/current","macro_collections","looks","look/current"]"""
+            """"timers","timers/current","macro_collections","looks","look/current","prop_collections"]"""
         const val STAGE_8_TIMERS = "stage8-timers"
         const val TIMER_0 = "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
         const val TIMERS_READ_CHUNK = 7
@@ -731,9 +778,10 @@ class StreamingLiveStateRepositoryTest {
         const val OVERRAN_CHUNK = 16
         const val SUBSCRIPTIONS_WITHOUT_MACROS_BODY =
             """["status/slide","timer/system_time","playlist/active","status/layers","timers","timers/current",""" +
-                """"looks","look/current"]"""
+                """"looks","look/current","prop_collections"]"""
         const val STAGE_9_LOOKS = "stage9-looks-props"
         const val LOOKS_READ_CHUNK = 11
+        const val PROPS_READ_CHUNK = 10
         const val ONE_FRAME_TRIGGER_CHUNK = 14
         const val OWN_UUID_FRAME_CHUNK = 16
         const val TWO_FRAME_TRIGGER_CHUNK = 18

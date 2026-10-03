@@ -129,7 +129,7 @@ class FakeProPresenter(
             path == "/v1/libraries" -> json(Fixtures.text(Fixtures.LIBRARIES))
             path.startsWith("/v1/library/") -> fixture("library", path.removePrefix("/v1/library/"))
             path.startsWith("/v1/clear/") -> dispatchClear(path)
-            path.startsWith("/v1/timer/") || path.startsWith("/v1/macro/") -> dispatchTimerOrMacro(path)
+            TIMER_MACRO_OR_PROP.containsMatchIn(path) -> dispatchTimerMacroOrProp(path)
             path.endsWith("/trigger") -> dispatchTrigger(path)
             path.startsWith("/v1/playlist/") -> fixture("playlist", path.removePrefix("/v1/playlist/"))
             path.startsWith("/v1/presentation/") -> fixture("presentation", path.removePrefix("/v1/presentation/"))
@@ -153,9 +153,10 @@ class FakeProPresenter(
             }
         }
 
-    private fun dispatchTimerOrMacro(path: String): MockResponse =
+    private fun dispatchTimerMacroOrProp(path: String): MockResponse =
         when {
             TIMER_OPERATION.matches(path) || MACRO_TRIGGER.matches(path) -> status(204)
+            PROP_TRIGGER_OR_CLEAR.matches(path) -> status(204)
             MACRO_ICON.matches(path) ->
                 MockResponse.Builder().addHeader("Content-Type", "image/svg+xml").body(iconBody).build()
             else -> status(404)
@@ -214,6 +215,8 @@ class FakeProPresenter(
         private val MACRO_TRIGGER = Regex("^/v1/macro/[0-9a-f-]+/trigger$")
         private val MACRO_ICON = Regex("^/v1/macro/[0-9a-f-]+/icon$")
         private val LOOK_TRIGGER = Regex("^/v1/look/[0-9a-f-]+/trigger$")
+        private val TIMER_MACRO_OR_PROP = Regex("^/v1/(timer|macro|prop)/")
+        private val PROP_TRIGGER_OR_CLEAR = Regex("^/v1/prop/[0-9a-f-]+/(trigger|clear)$")
         const val ICON_SVG = """<svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">""" +
             """<path d="M1,1 L17,17" fill="#FFFFFF"/></svg>"""
         const val NO_SLIDE_INDEX = """{"presentation_index":null}"""
@@ -258,6 +261,7 @@ class FakeProPresenter(
             "GET" to Regex("^/v1/timer/[0-9a-f-]+/(start|stop|reset)$"),
             "GET" to Regex("^/v1/macro/[0-9a-f-]+/(trigger|icon)$"),
             "GET" to Regex("^/v1/look/[0-9a-f-]+/trigger$"),
+            "GET" to Regex("^/v1/prop/[0-9a-f-]+/(trigger|clear)$"),
             "POST" to Regex("^/v1/status/updates$")
         )
 

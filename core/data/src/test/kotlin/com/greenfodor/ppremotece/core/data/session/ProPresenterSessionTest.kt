@@ -129,6 +129,36 @@ class ProPresenterSessionTest {
     }
 
     @Test
+    fun `the props are not loaded after a disconnect`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(PROPS_FRAME)))
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        val collector = launch { session.liveState.collect {} }
+        val loaded = withTimeout(5.seconds) { session.propCollections.first { it is Loadable.Loaded } }
+        assertThat((loaded as Loadable.Loaded).value.single().props.single().name).isEqualTo("Prop 01")
+        collector.cancel()
+
+        session.disconnect()
+
+        assertThat(withTimeout(2.seconds) { session.propCollections.first { it == Loadable.NotLoaded } })
+            .isEqualTo(Loadable.NotLoaded)
+    }
+
+    @Test
+    fun `prop thumbnail requests read the prop route and key the thumbnail by host, prop and width`() =
+        runBlocking {
+            val host = host()
+            assertThat(session.connect(host)).isInstanceOf<Result.Success<*>>()
+
+            val requests = withTimeout(2.seconds) { session.propThumbnailRequests.filterNotNull().first() }
+            val request = requests.request("p-0", px = 350)
+
+            assertThat(
+                request.url
+            ).isEqualTo("http://${server.hostName}:${server.port}/v1/prop/p-0/thumbnail?quality=400")
+            assertThat(request.cacheKey).isEqualTo("prop:Host 01:p-0:w400")
+        }
+
+    @Test
     fun `disconnect keeps the saved host`() = runBlocking {
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
 
@@ -268,6 +298,9 @@ class ProPresenterSessionTest {
     private companion object {
         const val CURRENT_LOOK_FRAME =
             """{"url":"look/current","data":{"id":{"uuid":"live","name":"Look 01","index":0},"screens":[]}}"""
+        const val PROPS_FRAME = """{"url":"prop_collections","data":{"prop_collections":{"collections":[""" +
+            """{"id":{"uuid":"c-0","name":"Collection 01","index":0},"props":[""" +
+            """{"id":{"uuid":"p-0","name":"Prop 01","index":0},"is_active":false,"transition":null}]}]}}}"""
         const val LOOKS_FRAME =
             """{"url":"looks","data":[{"id":{"uuid":"l-0","name":"Look 01","index":0},"screens":[]}]}"""
         const val MACROS_FRAME = """{"url":"macro_collections","data":{"collections":[""" +

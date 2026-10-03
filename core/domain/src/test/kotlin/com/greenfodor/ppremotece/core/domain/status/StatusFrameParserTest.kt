@@ -12,6 +12,8 @@ import com.greenfodor.ppremotece.core.domain.model.Macro
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.Prop
+import com.greenfodor.ppremotece.core.domain.model.PropCollection
 import com.greenfodor.ppremotece.core.domain.model.SlideText
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
@@ -254,6 +256,39 @@ class StatusFrameParserTest {
     @Test
     fun `looks without a list decode to unknown`() {
         assertThat(parser.decode("""{"url":"looks","data":{}}""")).isEqualTo(StatusEvent.Unknown("looks"))
+    }
+
+    @Test
+    fun `prop collections decode each collection with its props, active state and transition`() {
+        val frame = """{"url":"prop_collections","data":{"prop_collections":{"collections":[""" +
+            """{"id":{"uuid":"c-0","name":"Collection 01","index":0},"props":[""" +
+            """{"id":{"uuid":"p-0","name":"Prop 01","index":0},"is_active":true,"auto_clear_enabled":false,""" +
+            """"auto_clear_duration":5,"transition":null},""" +
+            """{"id":{"uuid":"p-1","name":"Prop 02","index":1},"is_active":false,""" +
+            """"transition":{"uuid":"t-0","name":"Transition 01","duration":1.0}}""" +
+            """],"single_prop_enabled":false}]}}}"""
+
+        assertThat(parser.decode(frame)).isEqualTo(
+            StatusEvent.PropCollections(
+                listOf(
+                    PropCollection(
+                        uuid = "c-0",
+                        name = "Collection 01",
+                        index = 0,
+                        props = listOf(
+                            Prop("p-0", "Prop 01", 0, isActive = true, transitionName = null),
+                            Prop("p-1", "Prop 02", 1, isActive = false, transitionName = "Transition 01")
+                        )
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `prop collections without a list decode to unknown`() {
+        assertThat(parser.decode("""{"url":"prop_collections","data":{}}"""))
+            .isEqualTo(StatusEvent.Unknown("prop_collections"))
     }
 
     @Test

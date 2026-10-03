@@ -1,0 +1,6 @@
+<resources>
+    <string name="props_title">Props</string>
+    <string name="props_empty">No props in ProPresenter</string>
+    <string name="props_error_show">Couldn\'t show %1$s</string>
+    <string name="props_error_clear">Couldn\'t clear %1$s</string>
+</resources>

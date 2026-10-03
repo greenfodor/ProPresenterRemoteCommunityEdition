@@ -87,6 +87,8 @@ import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
 import com.greenfodor.ppremotece.feature.playlist.grid.SlideGridRoot
 import com.greenfodor.ppremotece.feature.playlist.tree.ListMode
 import com.greenfodor.ppremotece.feature.playlist.tree.PlaylistTreeRoot
+import com.greenfodor.ppremotece.feature.props.PropsRoot
+import com.greenfodor.ppremotece.feature.props.PropsRoute
 import com.greenfodor.ppremotece.feature.remote.RemoteRoot
 import com.greenfodor.ppremotece.feature.remote.RemoteRoute
 import com.greenfodor.ppremotece.feature.settings.MoreEntry
@@ -121,6 +123,7 @@ private enum class ShellDestination(
     MACROS(ShellItem(ShellTab.MACROS, DesignR.drawable.ic_bolt, R.string.shell_macros), MacrosRoute),
     TIMERS(ShellItem(ShellTab.TIMERS, DesignR.drawable.ic_timer, R.string.shell_timers), TimersRoute),
     LOOKS(ShellItem(ShellTab.LOOKS, DesignR.drawable.ic_theater_comedy, R.string.shell_looks), LooksRoute),
+    PROPS(ShellItem(ShellTab.PROPS, DesignR.drawable.ic_layers, R.string.shell_props), PropsRoute),
     SETTINGS(ShellItem(ShellTab.SETTINGS, DesignR.drawable.ic_settings, R.string.shell_settings), SettingsRoute)
 }
 
@@ -128,7 +131,14 @@ private val MoreItem = ShellItem(ShellTab.MORE, DesignR.drawable.ic_more_horiz, 
 
 /** The tabs that show the Clear FAB with the bar layout. */
 private val ClearFabTabs =
-    setOf(ShellTab.PRESENTATION, ShellTab.REMOTE, ShellTab.MACROS, ShellTab.TIMERS, ShellTab.LOOKS)
+    setOf(
+        ShellTab.PRESENTATION,
+        ShellTab.REMOTE,
+        ShellTab.MACROS,
+        ShellTab.TIMERS,
+        ShellTab.LOOKS,
+        ShellTab.PROPS
+    )
 
 /** Each tab's root route. */
 private val TabRoots: Map<ShellTab, NavKey> =
@@ -316,7 +326,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
     }
 }
 
-/** The Remote, Macros, Timers, Looks, Settings and More entries. */
+/** The Remote, Macros, Timers, Looks, Props, Settings and More entries. */
 @Suppress("LongParameterList")
 private fun EntryProviderScope<NavKey>.tabEntries(
     widthClass: WidthClass,
@@ -338,6 +348,9 @@ private fun EntryProviderScope<NavKey>.tabEntries(
     }
     entry<LooksRoute> {
         LooksRoot(reconnecting = reconnecting(), floatingActionButton = fab)
+    }
+    entry<PropsRoute> {
+        PropsRoot(widthClass = widthClass, reconnecting = reconnecting(), floatingActionButton = fab)
     }
     entry<SettingsRoute> {
         SettingsRoot(onBack = onBack, onDisconnected = onDisconnected)

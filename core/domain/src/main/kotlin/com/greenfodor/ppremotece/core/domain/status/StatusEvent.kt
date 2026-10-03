@@ -5,6 +5,7 @@ import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.PropCollection
 import com.greenfodor.ppremotece.core.domain.model.SlideText
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
@@ -62,6 +63,11 @@ sealed interface StatusEvent {
     /** The live look, from a `look/current` frame. */
     data class CurrentLook(
         val look: Look
+    ) : StatusEvent
+
+    /** The prop collections, from a `prop_collections` frame. */
+    data class PropCollections(
+        val collections: List<PropCollection>
     ) : StatusEvent
 
     data class Heartbeat(

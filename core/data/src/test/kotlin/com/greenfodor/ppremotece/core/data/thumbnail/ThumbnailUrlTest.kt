@@ -17,6 +17,12 @@ class ThumbnailUrlTest {
     }
 
     @Test
+    fun `a prop thumbnail url asks for its width as the quality`() {
+        assertThat(propThumbnailUrl("http://192.0.2.14:60113/", "p-0", width = 400))
+            .isEqualTo("http://192.0.2.14:60113/v1/prop/p-0/thumbnail?quality=400")
+    }
+
+    @Test
     fun `a box quality replaces 400`() {
         assertThat(thumbnailUrl("http://192.0.2.14:60113", item, cueIndex = 3, boxQuality = 800))
             .isEqualTo(

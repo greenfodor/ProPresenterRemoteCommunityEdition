@@ -15,8 +15,10 @@ import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
+import com.greenfodor.ppremotece.core.domain.model.PropCollection
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
+import com.greenfodor.ppremotece.core.domain.props.PropsRepository
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import com.greenfodor.ppremotece.core.domain.status.StatusFrameParser
@@ -65,10 +67,11 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * without a playlist item, sets [lastLive], which outlives clears, reconnects and resubscriptions.
  * `timers` and `timers/current` frames set [timers], each timer joined with its latest reading, and
  * `macro_collections` frames set [collections], `looks` frames [looks] and `look/current` frames
- * [currentLook]; the lists are [Loadable.NotLoaded] until their first frame and keep their content
- * across reconnects. An error frame naming a subscribed url ([rejectedUrl])
- * removes that url from the subscriptions for the reopened streams of this connection
- * ([withoutRejected]), keeps the content it feeds [Loadable.Unavailable] and is passed to [log] once.
+ * [currentLook], and `prop_collections` frames [propCollections]; the lists are
+ * [Loadable.NotLoaded] until their first frame and keep their content across reconnects. An error
+ * frame naming a subscribed url ([rejectedUrl]) removes that url from the subscriptions for the
+ * reopened streams of this connection ([withoutRejected]), keeps the content it feeds
+ * [Loadable.Unavailable] and is passed to [log] once.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
@@ -80,7 +83,8 @@ class StreamingLiveStateRepository(
 ) : LiveStateRepository,
     TimersRepository,
     MacrosRepository,
-    LooksRepository {
+    LooksRepository,
+    PropsRepository {
     private val _lastLive = MutableStateFlow<LiveCue?>(null)
     override val lastLive: StateFlow<LiveCue?> = _lastLive.asStateFlow()
 
@@ -99,6 +103,9 @@ class StreamingLiveStateRepository(
     private val liveLook = MutableStateFlow<Look?>(null)
     override val currentLook: StateFlow<Look?> = liveLook.asStateFlow()
 
+    private val propList = MutableStateFlow<Loadable<List<PropCollection>>>(Loadable.NotLoaded)
+    override val propCollections: StateFlow<Loadable<List<PropCollection>>> = propList.asStateFlow()
+
     @Volatile
     private var subscriptions = SUBSCRIPTIONS
 
@@ -110,6 +117,9 @@ class StreamingLiveStateRepository(
 
     @Volatile
     private var looksRejected = false
+
+    @Volatile
+    private var propsRejected = false
 
     override val liveState: StateFlow<LiveState> =
         channelFlow {
@@ -150,6 +160,8 @@ class StreamingLiveStateRepository(
                                         Loadable.Loaded(event.looks)
                                 }
                                 is StatusEvent.CurrentLook -> liveLook.value = event.look
+                                is StatusEvent.PropCollections ->
+                                    if (!propsRejected) propList.value = Loadable.Loaded(event.collections)
                                 is StatusEvent.Rejected -> event.messages.forEach(::reject)
                                 else -> Unit
                             }
@@ -212,6 +224,10 @@ class StreamingLiveStateRepository(
                 looksRejected = true
                 lookList.value = Loadable.Unavailable
             }
+            "prop_collections" -> {
+                propsRejected = true
+                propList.value = Loadable.Unavailable
+            }
         }
         log(message)
     }
@@ -231,7 +247,8 @@ class StreamingLiveStateRepository(
                 "timers/current",
                 "macro_collections",
                 "looks",
-                "look/current"
+                "look/current",
+                "prop_collections"
             )
     }
 }

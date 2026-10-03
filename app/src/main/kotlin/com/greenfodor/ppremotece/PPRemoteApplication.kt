@@ -10,6 +10,7 @@ import com.greenfodor.ppremotece.feature.connect.connectModule
 import com.greenfodor.ppremotece.feature.looks.looksModule
 import com.greenfodor.ppremotece.feature.macros.macrosModule
 import com.greenfodor.ppremotece.feature.playlist.playlistModule
+import com.greenfodor.ppremotece.feature.props.propsModule
 import com.greenfodor.ppremotece.feature.remote.remoteModule
 import com.greenfodor.ppremotece.feature.settings.settingsModule
 import com.greenfodor.ppremotece.feature.timers.timersModule
@@ -34,7 +35,8 @@ class PPRemoteApplication :
                 settingsModule,
                 timersModule,
                 macrosModule,
-                looksModule
+                looksModule,
+                propsModule
             )
         }
     }
