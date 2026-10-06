@@ -1,16 +1,12 @@
 package com.greenfodor.ppremotece.feature.playlist.grid
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,7 +23,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -85,7 +80,6 @@ private const val PREVIEW_LIBRARY_CUES = 15
 private val GridPadding = 8.dp
 private val GridBottomPadding = 88.dp
 private const val HEADER_KEY = "header"
-private val StepButtonHeight = 64.dp
 
 @OptIn(ExperimentalFoundationApi::class)
 private object NoPrefetch : LazyGridPrefetchStrategy {
@@ -128,6 +122,7 @@ fun SlideGridRoot(
         onAction = viewModel::onAction,
         onBack = onBack,
         closesPane = closesPane,
+        wideSteps = widthClass == WidthClass.EXPANDED,
         headerScrollsWithGrid = headerScrollsWithGrid,
         reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
@@ -146,6 +141,7 @@ fun SlideGridScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     closesPane: Boolean = false,
+    wideSteps: Boolean = false,
     headerScrollsWithGrid: Boolean = false,
     reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -182,7 +178,7 @@ fun SlideGridScreen(
                 )
             )
         },
-        bottomBar = { StepButtons(enabled = state.stepsEnabled, onAction = onAction) }
+        bottomBar = { StepButtons(enabled = state.stepsEnabled, wide = wideSteps, onAction = onAction) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
@@ -402,34 +398,6 @@ private fun CountMismatchLine() {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
         )
-    }
-}
-
-@Composable
-private fun StepButtons(enabled: Boolean, onAction: (SlideGridAction) -> Unit) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-            .navigationBarsPadding()
-            .padding(12.dp)
-    ) {
-        FilledTonalButton(
-            onClick = { onAction(SlideGridAction.OnPreviousClick) },
-            enabled = enabled,
-            modifier = Modifier.weight(1f).height(StepButtonHeight)
-        ) {
-            Icon(painterResource(DesignR.drawable.ic_skip_previous), contentDescription = null)
-            Text(stringResource(R.string.grid_previous), modifier = Modifier.padding(start = 8.dp))
-        }
-        Button(
-            onClick = { onAction(SlideGridAction.OnNextClick) },
-            enabled = enabled,
-            modifier = Modifier.weight(1f).height(StepButtonHeight)
-        ) {
-            Text(stringResource(R.string.grid_next), modifier = Modifier.padding(end = 8.dp))
-            Icon(painterResource(DesignR.drawable.ic_skip_next), contentDescription = null)
-        }
     }
 }
 
