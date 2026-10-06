@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -143,6 +144,7 @@ fun PlaylistScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
+            val bottomPadding = if (floatingActionButton != null) FabClearance else 0.dp
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = { onAction(PlaylistAction.OnRefresh) },
@@ -152,15 +154,7 @@ fun PlaylistScreen(
                     state.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     state.error != null -> TreeError(state.error, onRetry = { onAction(PlaylistAction.OnRetryClick) })
                     else -> LazyColumn(
-                        contentPadding = PaddingValues(
-                            bottom = if (floatingActionButton !=
-                                null
-                            ) {
-                                FabClearance
-                            } else {
-                                0.dp
-                            }
-                        ),
+                        contentPadding = PaddingValues(bottom = bottomPadding),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(state.rows, key = { it.id }) { row ->
@@ -184,7 +178,8 @@ fun PlaylistScreen(
 /** A 48 dp header filled with its colour, or `surfaceContainerHigh` without one, its text black or white by contrast. */
 @Composable
 private fun HeaderRow(row: PlaylistRowUi.Header) {
-    val fill = row.color?.toColor() ?: MaterialTheme.colorScheme.surfaceContainerHigh
+    val fill = row.color?.toColor()?.compositeOver(MaterialTheme.colorScheme.surfaceContainerLow)
+        ?: MaterialTheme.colorScheme.surfaceContainerHigh
     Box(
         contentAlignment = Alignment.CenterStart,
         modifier = Modifier

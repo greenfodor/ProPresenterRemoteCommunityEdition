@@ -14,7 +14,7 @@ data class PlaylistItemKey(
 
 /**
  * A playlist item. A header carries its [headerColor] when one is set; a media or audio item
- * carries the uuid of what it plays as [targetUuid] and its [durationSeconds].
+ * carries the uuid of what it plays as [targetUuid] and its [durationSeconds], null without one.
  */
 data class PlaylistItem(
     val key: PlaylistItemKey,

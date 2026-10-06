@@ -51,5 +51,5 @@ private fun PlaylistItemDto.toDomain(playlistUuid: String): PlaylistItem =
         },
         headerColor = headerColor?.takeIf { it.alpha > 0f }?.let { GroupColor(it.red, it.green, it.blue, it.alpha) },
         targetUuid = targetUuid?.takeIf { it.isNotEmpty() },
-        durationSeconds = duration?.toInt()
+        durationSeconds = duration?.takeIf { it > 0 }?.toInt()
     )

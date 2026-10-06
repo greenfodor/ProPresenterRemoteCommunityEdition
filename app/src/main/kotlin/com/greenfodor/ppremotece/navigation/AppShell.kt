@@ -212,7 +212,7 @@ fun AppShell(
                 sceneStrategies = listOf(listDetailStrategy),
                 entryProvider = entryProvider {
                     presentationEntries(
-                        values = { PresentationValues(currentListMode, stacks().openDetail, currentFab) },
+                        values = { PresentationValues(currentListMode, shellStacks.detail, currentFab) },
                         detailValues = { DetailValues(currentWidthClass, currentCompactHeight, currentClosesPane) },
                         reconnecting = reconnecting,
                         onModeChange = { listMode = it },
@@ -277,6 +277,9 @@ private class ShellStacks(
     private val tab: MutableState<ShellTab>
 ) {
     val current: ShellTab get() = tab.value
+
+    /** The detail open on the Presentation stack ([detailOf]). */
+    val detail: NavKey? get() = detailOf(backStacks.getValue(ShellTab.PRESENTATION))
 
     fun stacks(): TabStacks = TabStacks(backStacks.mapValues { (_, stack) -> stack.toList() }, tab.value)
 

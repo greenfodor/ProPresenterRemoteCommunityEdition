@@ -67,7 +67,7 @@ class TabStacksTest {
         val stacks = initial.openPlaylist(playlist).openDetail(grid1)
 
         assertThat(stacks.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute, playlist, grid1)
-        assertThat(stacks.openDetail).isEqualTo(grid1)
+        assertThat(stacks.detail).isEqualTo(grid1)
     }
 
     @Test
@@ -87,7 +87,7 @@ class TabStacksTest {
         val onTree = onPlaylist.back(noneInMore)
 
         assertThat(onPlaylist.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute, playlist)
-        assertThat(onPlaylist.openDetail).isEqualTo(null)
+        assertThat(onPlaylist.detail).isEqualTo(null)
         assertThat(onTree.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute)
         assertThat(onTree.back(noneInMore)).isEqualTo(onTree)
     }
@@ -101,9 +101,9 @@ class TabStacksTest {
 
     @Test
     fun `no detail is open on the tree or on a playlist screen`() {
-        assertThat(initial.openDetail).isEqualTo(null)
-        assertThat(initial.openPlaylist(playlist).openDetail).isEqualTo(null)
-        assertThat(initial.openDetail(library).openDetail).isEqualTo(library)
+        assertThat(initial.detail).isEqualTo(null)
+        assertThat(initial.openPlaylist(playlist).detail).isEqualTo(null)
+        assertThat(initial.openDetail(library).detail).isEqualTo(library)
     }
 
     @Test

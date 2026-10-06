@@ -15,6 +15,9 @@ data class PlaylistState(
     val error: UiText? = null
 )
 
+/** The item types that open the item screen. */
+internal val ItemScreenTypes = setOf(PlaylistItemType.MEDIA, PlaylistItemType.AUDIO, PlaylistItemType.LIVE_VIDEO)
+
 /** What a tap on an item row opens. */
 enum class RowTarget {
     SLIDES,

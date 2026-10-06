@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -162,6 +163,43 @@ class PlaylistItemViewModelTest {
     }
 
     @Test
+    fun `an item that is no longer a media, audio or live-video item is not shown and cannot be triggered`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel(MEDIA)
+
+            viewModel.state.test {
+                assertThat(expectMostRecentItem().type).isEqualTo(PlaylistItemType.MEDIA)
+                content.playlists[PLAYLIST] = Playlist(
+                    uuid = PLAYLIST,
+                    name = "Arrangement Test",
+                    items = listOf(PlaylistItem(MEDIA, "Header 01", PlaylistItemType.HEADER, null))
+                )
+                content.refreshPlaylist(PLAYLIST)
+                val state = awaitItem()
+                assertThat(state.type).isNull()
+                assertThat(state.error).isNotNull()
+                viewModel.onAction(PlaylistItemAction.OnCardClick)
+            }
+
+            assertThat(client.triggeredItems).isEqualTo(emptyList())
+        }
+
+    @Test
+    fun `the card is still shown when the screen is collected again after a pause`() = runTest(dispatcher) {
+        val viewModel = viewModel(AUDIO)
+        viewModel.state.test { assertThat(expectMostRecentItem().name).isEqualTo("Track 01") }
+        advanceTimeBy(STOP_TIMEOUT_MILLIS + 1_000)
+        content.pendingPlaylists += PLAYLIST
+
+        viewModel.state.test {
+            val state = awaitItem()
+            assertThat(state.name).isEqualTo("Track 01")
+            assertThat(state.isLoading).isFalse()
+            expectNoEvents()
+        }
+    }
+
+    @Test
     fun `an item that cannot be read shows its error`() = runTest(dispatcher) {
         content.failWith = DataError.Network.TIMEOUT
 
@@ -174,6 +212,7 @@ class PlaylistItemViewModelTest {
 
     private companion object {
         const val PLAYLIST = "pl-1"
+        const val STOP_TIMEOUT_MILLIS = 5_000L
         val MEDIA = PlaylistItemKey(PLAYLIST, 0)
         val AUDIO = PlaylistItemKey(PLAYLIST, 1)
         val LIVE_VIDEO = PlaylistItemKey(PLAYLIST, 2)

@@ -6,6 +6,8 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import com.greenfodor.ppremotece.core.data.Fixtures
+import com.greenfodor.ppremotece.core.data.dto.PlaylistDto
+import com.greenfodor.ppremotece.core.data.network.ProPresenterJson
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
 import org.junit.jupiter.api.Test
@@ -47,6 +49,16 @@ class PlaylistItemFieldsTest {
         assertThat(items[4].durationSeconds).isEqualTo(20)
         assertThat(items[5].targetUuid).isEqualTo("28bee335-2a94-4751-b0fd-26592d6dd209")
         assertThat(items[5].durationSeconds).isEqualTo(183)
+    }
+
+    @Test
+    fun `a zero duration is no duration`() {
+        val playlist: PlaylistDto = ProPresenterJson.decodeFromString(
+            """{"id":{"uuid":"pl","name":"Playlist 01","index":0},"items":[{"id":{"uuid":"i","name":"Media 01",""" +
+                """"index":0},"type":"media","target_uuid":"m-0","duration":0}]}"""
+        )
+
+        assertThat(playlist.toDomain().items.single().durationSeconds).isNull()
     }
 
     @Test

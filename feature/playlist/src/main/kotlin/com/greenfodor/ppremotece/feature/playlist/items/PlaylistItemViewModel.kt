@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -31,7 +31,9 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
 
 /**
  * The card of the playlist item [key]: its name, type and duration, read through the
- * [ContentRepository], and whether a transport of the [TransportRepository] plays it ([itemLive]).
+ * [ContentRepository] and kept while a later read fails, and whether a transport of the
+ * [TransportRepository] plays it ([itemLive]). An item that is not a media, audio or live-video
+ * item is shown as no longer in the playlist.
  * A tap triggers the item; taps are ignored while its request is in flight, and a failure posts
  * "Couldn't start {item}".
  */
@@ -51,14 +53,21 @@ class PlaylistItemViewModel(
         val error: UiText? = null
     )
 
+    @Volatile
+    private var lastRead = Read()
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private val read = reads.flatMapLatest {
-        contentRepository.playlist(key.playlistUuid).scan(Read()) { last, result ->
+        contentRepository.playlist(key.playlistUuid).map { result ->
+            val last = lastRead
             when (result) {
-                is Result.Success -> result.data.items.firstOrNull { it.key == key }?.let { Read(item = it) }
-                    ?: Read(error = UiText.StringResource(R.string.playlist_item_not_found))
+                is Result.Success ->
+                    result.data.items.firstOrNull {
+                        it.key == key && it.type in ItemScreenTypes
+                    }?.let { Read(item = it) }
+                        ?: Read(error = UiText.StringResource(R.string.playlist_item_not_found))
                 is Result.Failure -> if (last.item != null) last else Read(error = result.error.toUiText())
-            }
+            }.also { lastRead = it }
         }
     }
 

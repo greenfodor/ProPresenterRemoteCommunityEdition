@@ -65,7 +65,11 @@ class PlaylistViewModel(
                 when (result) {
                     is Result.Success -> {
                         playlist = result.data
-                        result.data.presentationUuids().forEach(::observePresentation)
+                        val shown = result.data.presentationUuids()
+                        presentationJobs.keys.filterNot {
+                            it in shown
+                        }.forEach { presentationJobs.remove(it)?.cancel() }
+                        shown.forEach(::observePresentation)
                         publish()
                     }
                     is Result.Failure -> if (playlist == null) {
@@ -137,10 +141,6 @@ class PlaylistViewModel(
         item.presentation?.let { ref ->
             presentations[ref.presentationUuid]?.let { ArrangementExpander.expand(it, ref).choice.toArrangementLabel() }
         }
-
-    private companion object {
-        val ItemScreenTypes = setOf(PlaylistItemType.MEDIA, PlaylistItemType.AUDIO, PlaylistItemType.LIVE_VIDEO)
-    }
 }
 
 private fun Playlist.presentationUuids(): List<String> = items.mapNotNull {
