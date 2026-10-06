@@ -48,6 +48,7 @@ MVI presentation (State / Action / Event, `XxxRoot` / `XxxScreen`, `UiText`).
 | `:feature:settings`  | `ppremotece.android.feature`         | More list and Settings screen                                                    |
 | `:feature:timers`    | `ppremotece.android.feature`         | Timers tab: one card per timer with Start/Stop and Reset                         |
 | `:feature:macros`    | `ppremotece.android.feature`         | Macros tab: one section per collection, a tile per macro that triggers it        |
+| `:feature:audio`     | `ppremotece.android.feature`         | Audio tab: an audio playlist's tracks and the now-playing bar                    |
 | `:feature:looks`     | `ppremotece.android.feature`         | Looks tab: a radio card per look; a tap makes it the live look                   |
 | `:feature:props`     | `ppremotece.android.feature`         | Props tab: one section per collection, a thumbnail tile per prop; a tap toggles  |
 
@@ -80,19 +81,24 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   `GET /v1/timer/{uuid}/start`, `GET /v1/timer/{uuid}/stop` and `GET /v1/timer/{uuid}/reset`, and the
   macro trigger `GET /v1/macro/{uuid}/trigger`, the look trigger `GET /v1/look/{uuid}/trigger`, the prop
   trigger and clear `GET /v1/prop/{uuid}/trigger` and `GET /v1/prop/{uuid}/clear`, and the prop thumbnail
-  `GET /v1/prop/{uuid}/thumbnail?quality=200|400|600` (kept in memory only);
+  `GET /v1/prop/{uuid}/thumbnail?quality=200|400|600` (kept in memory only), and the audio calls
+  `GET /v1/audio/playlist/{uuid}` (a playlist's tracks), `GET /v1/audio/playlist/{uuid}/{index}/trigger`,
+  `GET /v1/audio/playlist/active/next/trigger`, `GET /v1/audio/playlist/active/previous/trigger`,
+  `GET /v1/transport/audio/play` and `GET /v1/transport/audio/pause`;
 - the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode and
   when a presentation is live outside a playlist (or remembered from one after a clear);
 - one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
   "playlist/active", "status/layers", "timers", "timers/current", "macro_collections", "looks",
-  "look/current", "prop_collections", "transport/presentation/current", "transport/audio/current"]`
-  (one unknown URL
+  "look/current", "prop_collections", "transport/presentation/current", "transport/audio/current",
+  "transport/audio/time", "audio/playlists", "audio/playlist/active"]` (one unknown URL
   ends the whole stream); after an error frame `URL: x. Error: …` the reopened stream sends the same list
   without `x` for the rest of that connection, and the next connect sends `x` again.
 
 Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content, such as a timer edit) is out of
 bounds, as are `timer/{id}/increment/…`, `timers/{op}`, any `/focus` route, `PUT /v1/transport/{layer}/time`,
-`transport/{layer}/skip_backward|skip_forward|go_to_end`, any `/v1/media/…` route and a thumbnail request
+`transport/{layer}/skip_backward|skip_forward|go_to_end`, play or pause on the `presentation` or
+`announcement` layer, `audio/playlist/focused/…`, `trigger/audio/…`, `trigger/media/…`, the stream URLs
+`transport/presentation/time` and `audio/playlist/focused`, any `/v1/media/…` route and a thumbnail request
 for a media or audio playlist item (neither thumbnail route serves one).
 Inside a playlist, trigger by `(playlist uuid, item index, cue index)`, or by
 `(playlist uuid, item index)` for the item trigger, only;

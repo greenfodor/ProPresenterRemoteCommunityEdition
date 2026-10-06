@@ -40,6 +40,8 @@ LOOKS = "../stage9/_v1_looks.json"
 LOOK_CURRENT = "../stage9/_v1_look_current.json"
 PROP_COLLECTIONS = "../stage9/_v1_prop_collections.json"
 PLAYLIST_STAGE10 = "../stage10/_v1_playlist_test.json"
+AUDIO_PLAYLISTS = "../stage10/_v1_audio_playlists.json"
+AUDIO_PLAYLIST = "../stage10/_v1_audio_playlist_3.json"
 LOOK_SCREEN_STRINGS = ("presentation", "mask")
 TIMER_TYPES = {"countdown", "count_down_to_time", "elapsed"}
 TIMER_STATES = {"stopped", "running", "complete", "overrunning", "overran", "overrun"}
@@ -66,8 +68,9 @@ STREAMS = [
     "../stage9/streams/stage9-overrun",
     "../stage9/streams/stage9-looks-props",
     "../stage10/items-stream",
+    "../stage10/audio-stream",
 ]
-STREAM_OUT_NAMES = {"items-stream": "stage10-items"}
+STREAM_OUT_NAMES = {"items-stream": "stage10-items", "audio-stream": "stage10-audio"}
 UNSUBSCRIBED_URLS = {"transport/presentation/time", "audio/playlist/focused"}
 STREAM_DROPPED_URLS = {"items-stream": {"transport/audio/time", "audio/playlists", "audio/playlist/active"}}
 TRANSPORT_URLS = {"transport/presentation/current", "transport/audio/current"}
@@ -87,6 +90,7 @@ VERBATIM_ALLOWED = {
     "status/slide", "presentation/active", "presentation/slide_index", "playlist/active", "timer/system_time",
     "status/layers", "timers", "timers/current", "macro_collections", "looks", "look/current", "props",
     "prop_collections", "transport/presentation/current", "transport/audio/current", "audio",
+    "transport/audio/time", "audio/playlists", "audio/playlist/active",
 }
 CHUNK_LINE = re.compile(r"^# \+(?P<time>[\d.]+)s chunk (?P<n>\d+) \((?P<size>\d+) B\) tail=.*$")
 TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
@@ -94,7 +98,7 @@ PLACEHOLDER_WORDS = {
     "presentation", "playlist", "folder", "arrangement", "group", "header", "media", "label",
     "text", "notes", "item", "host", "song", "full", "chorus", "only", "short", "bridge",
     "service", "test", "total", "start", "macro", "collection", "timer", "look", "prop", "transition", "fade", "+", "·",
-    "artist",
+    "artist", "audio", "track",
 }
 TEST_RESOURCES = Path(__file__).resolve().parent.parent / "core" / "data" / "src" / "test" / "resources"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bin"}
@@ -323,6 +327,28 @@ class Sanitizer:
             for prop in collection["props"]:
                 self.prop(prop)
 
+    def audio_playlist_id(self, playlist_id):
+        playlist_id["name"] = self.replaced(playlist_id["name"], self.generate("Audio Playlist", playlist_id["uuid"]))
+
+    def audio_playlist_node(self, node):
+        self.audio_playlist_id(node["id"])
+        if node["type"] not in ("playlist", "group"):
+            raise ValueError(f"no sanitising rule for audio playlist node type {node['type']!r}")
+        for child in node.get("children") or []:
+            self.audio_playlist_node(child)
+
+    def audio_track_id(self, track_id):
+        track_id["name"] = self.replaced(track_id["name"], self.generate("Track", track_id["uuid"]))
+
+    def audio_playlist(self, playlist):
+        self.audio_playlist_id(playlist["id"])
+        for item in playlist.get("items") or []:
+            self.audio_track_id(item["id"])
+            if item["artist"]:
+                item["artist"] = self.replaced(item["artist"], self.generate("Artist", item["artist"]))
+            if item["type"] != "audio" or not isinstance(item["duration"], (int, float)):
+                raise ValueError(f"no sanitising rule for audio item type {item['type']!r} or its duration")
+
     def transport(self, data):
         if data["name"]:
             data["name"] = self.replaced(data["name"], self.generate("Media", data["uuid"]))
@@ -383,6 +409,17 @@ class Sanitizer:
             self.prop_collections(data)
         elif url in TRANSPORT_URLS:
             self.transport(data)
+        elif url == "transport/audio/time":
+            if not isinstance(data, (int, float)):
+                raise ValueError("transport/audio/time frame without a number")
+        elif url == "audio/playlists":
+            for node in data:
+                self.audio_playlist_node(node)
+        elif url == "audio/playlist/active":
+            if data.get("playlist"):
+                self.audio_playlist_id(data["playlist"])
+            if data.get("item"):
+                self.audio_track_id(data["item"])
         elif url != "timer/system_time":
             raise ValueError(f"no sanitising rule for stream url {url}")
         return frame
@@ -645,6 +682,15 @@ def main():
 
     for relative in STREAMS:
         sanitize_stream(sanitizer, source_dir / relative, out_dir)
+
+    audio_playlists = load(AUDIO_PLAYLISTS)
+    for node in audio_playlists:
+        sanitizer.audio_playlist_node(node)
+    write_json(out_dir / "audio-playlists.json", audio_playlists)
+
+    audio_playlist = load(AUDIO_PLAYLIST)
+    sanitizer.audio_playlist(audio_playlist)
+    write_json(out_dir / f"audio-playlist-{audio_playlist['id']['uuid'][:8]}.json", audio_playlist)
 
     return 0 if leak_check(sanitizer, out_dir) else 1
 

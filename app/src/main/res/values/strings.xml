@@ -4,6 +4,7 @@
     <string name="shell_remote">Remote</string>
     <string name="shell_macros">Macros</string>
     <string name="shell_timers">Timers</string>
+    <string name="shell_audio">Audio</string>
     <string name="shell_looks">Looks</string>
     <string name="shell_props">Props</string>
     <string name="shell_settings">Settings</string>

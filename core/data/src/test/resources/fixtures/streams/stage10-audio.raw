@@ -1,0 +1,200 @@
+{"url":"timer/system_time","data":1791050948}
+
+{"url":"status/slide","data":{"current":{"text":"","notes":"","uuid":"e2503372-dcaa-4a9b-8c04-e187e997a17c"},"next":{"text":"Text 05","notes":"Verse 1 · 1 notes","uuid":"138e93bb-cf7a-4f10-85ae-9bcd581d573b"}}}
+
+{"url":"playlist/active","data":{"presentation":{"playlist":{"uuid":"6f760dbf-04b9-46f2-9bb3-33eeea6a6d90","name":"Arrangement Test","index":7},"item":{"uuid":"68ab1ee1-427f-4bb2-b9b8-2f77451011a4","name":"Song A","index":0},"playlist_item":{"id":{"uuid":"68ab1ee1-427f-4bb2-b9b8-2f77451011a4","name":"Song A","index":0},"type":"presentation","is_hidden":false,"is_pco":false,"presentation_info":{"presentation_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","arrangement_name":"Full","arrangement_uuid":"4adc3b58-27f1-42a5-8ff0-80dfd1afa8a5"},"target_uuid":"08672906-49df-4947-8d4c-bed596d6fbf3","destination":"presentation"}},"announcements":{"playlist":null,"item":null,"playlist_item":null}}}
+
+{"url":"transport/audio/time","data":0.0}
+
+{"url":"status/layers","data":{"video_input":false,"media":true,"slide":true,"announcements":false,"props":false,"messages":false,"audio":false}}
+
+{"url":"timers","data":[{"id":{"name":"Timer 01","index":0,"uuid":"2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"},"allows_overrun":true,"count_down_to_time":{"time_of_day":30600,"period":"pm"}},{"id":{"name":"Timer 02","index":1,"uuid":"c5fcf5b0-ee31-4143-9d54-6514d922b2bb"},"allows_overrun":true,"count_down_to_time":{"time_of_day":42600,"period":"is_24_hour"}},{"id":{"name":"Timer 03","index":2,"uuid":"9bf671d2-475a-4716-af17-2ab73589734d"},"allows_overrun":false,"elapsed":{"start_time":0}}]}
+
+{"url":"looks","data":[{"id":{"uuid":"0a012a78-5737-47c4-9c98-0a44ef78b767","name":"Look 01","index":0},"screens":[{"video_input":true,"media":true,"slide":true,"announcements":true,"props":true,"messages":true,"presentation":"","mask":""}]},{"id":{"uuid":"0c12bf85-8ad9-4842-bef4-c5614b9c43f4","name":"Look 02","index":1},"screens":[{"video_input":true,"media":true,"slide":true,"announcements":true,"props":true,"messages":true,"presentation":"","mask":""}]},{"id":{"uuid":"f3c01753-b38b-4935-af99-f29bf25fa7de","name":"Look 03","index":2},"screens":[{"video_input":true,"media":true,"slide":true,"announcements":true,"props":true,"messages":true,"presentation":"","mask":""}]},{"id":{"uuid":"c9676ae2-57a2-4cd7-a00c-b5a27d86b521","name":"Look 04","index":3},"screens":[{"video_input":true,"media":true,"slide":true,"announcements":true,"props":true,"messages":true,"presentation":"","mask":""}]},{"id":{"uuid":"2f73c603-8413-4ef2-8930-02ef51fbbcd6","name":"Look 05","index":4},"screens":[{"video_input":true,"media":true,"slide":true,"announcements":true,"props":true,"messages":true,"presentation":"","mask":""}]}]}
+
+{"url":"transport/audio/current","data":{"is_playing":false,"uuid":"","name":"","artist":"","audio_only":false,"duration":0.0}}
+
+{"url":"prop_collections","data":{"prop_collections":{"collections":[{"id":{"uuid":"57a953ef-9d03-40ef-8646-20d451d7b4a7","name":"Collection 04","index":0},"props":[{"id":{"uuid":"7ea25ab8-756d-4bbc-b3ec-1547077cd202","name":"Prop 01","index":0},"is_active":false,"auto_clear_enabled":false,"auto_clear_duration":0.0,"transition":null},{"id":{"uuid":"024e76e0-4497-4f3f-9150-3e1cf9281a15","name":"Prop 02","index":1},"is_active":false,"auto_clear_enabled":false,"auto_clear_duration":0.0,"transition":{"uuid":"99BDD1C3-EE98-4E80-A8DE-3699CE9F338E","name":"Transition 01","duration":0.9698795}},{"id":{"uuid":"333ac948-f287-42f2-9e3e-d16a315a120a","name":"Prop 03","index":2},"is_active":false,"auto_clear_enabled":false,"auto_clear_duration":0.0,"transition":null}],"single_prop_enabled":false}]}}}
+
+{"url":"look/current","data":{"id":{"uuid":"ea5f4b4d-f5b8-4bb0-b78a-e8a1b28e3783","name":"Look 02","index":1},"screens":[{"video_input":true,"media":true,"slide":true,"announcements":true,"props":true,"messages":true,"presentation":"","mask":""}]}}
+
+{"url":"audio/playlists","data":[{"id":{"uuid":"457403fd-5651-4822-a9b5-c6f5ec24b393","name":"Audio Playlist 01","index":0},"type":"playlist","children":[]},{"id":{"uuid":"4660ea7b-3fae-46fe-82cf-3ba20078f8ec","name":"Audio Playlist 02","index":1},"type":"playlist","children":[]},{"id":{"uuid":"53c9b04d-fa4f-4c96-b0bd-889addce4817","name":"Audio Playlist 03","index":2},"type":"playlist","children":[]},{"id":{"uuid":"ccbdef39-ab33-42fa-89b4-7f000ee94ae1","name":"Audio Playlist 04","index":3},"type":"playlist","children":[]},{"id":{"uuid":"5e71ea5a-f71b-4b8b-a308-0e487ad3e877","name":"Audio Playlist 05","index":4},"type":"playlist","children":[]},{"id":{"uuid":"f3432665-8b83-425f-bfd4-0d0e7898df59","name":"Audio Playlist 06","index":5},"type":"playlist","children":[]}]}
+
+{"url":"macro_collections","data":{"collections":[{"id":{"uuid":"7fb00f81-8507-4e5e-871d-b2459fe9aa9a","name":"Collection 01","index":0},"macros":[{"id":{"uuid":"701c977b-f340-428d-b397-a52d4f29437b","name":"Macro 01","index":0},"color":{"red":0.09019608050584793,"green":0.49803921580314636,"blue":1.0,"alpha":1.0},"image_type":"Timer","actions":[{"type":"stage_layout"},{"type":"timer"},{"type":"audience_look"}]},{"id":{"uuid":"5a415969-77b5-485a-a056-43d177e51998","name":"Macro 02","index":1},"color":{"red":1.0,"green":0.0,"blue":0.0,"alpha":1.0},"image_type":"Default","actions":[{"type":"stage_layout"},{"type":"timer"},{"type":"audience_look"},{"type":"clear"}]},{"id":{"uuid":"c6faa767-5d80-46b9-b72a-ca626fda1c4e","name":"Macro 03","index":2},"color":{"red":0.06666667014360428,"green":0.3137255012989044,"blue":0.23137255012989044,"alpha":1.0},"image_type":"Default","actions":[{"type":"stage_layout"}]},{"id":{"uuid":"29aa3f87-55f0-434f-bb36-610e12bbceb1","name":"Macro 04","index":3},"color":{"red":0.5058823823928833,"green":0.0784313753247261,"blue":0.0784313753247261,"alpha":1.0},"image_type":"Timer","actions":[{"type":"stage_layout"},{"type":"timer"}]},{"id":{"uuid":"1e61c207-2dd1-4242-881e-931c341ad85b","name":"Macro 05","index":4},"color":{"red":0.23529411852359772,"green":0.7019608020782471,"blue":0.4431372582912445,"alpha":1.0},"image_type":"Timer","actions":[{"type":"stage_layout"},{"type":"timer"},{"type":"audience_look"}]}]},{"id":{"uuid":"61c2afd1-4444-4a64-8f53-a5f0d485a4c5","name":"Collection 02","index":1},"macros":[{"id":{"uuid":"3b52fed0-8b4f-4b2c-92bc-23281c85ccd8","name":"Macro 06","index":0},"color":{"red":0.2078431397676468,"green":0.48627451062202454,"blue":0.6392157077789307,"alpha":1.0},"image_type":"Default","actions":[]},{"id":{"uuid":"9be8fb37-9364-4b52-bc6e-620697d22a62","name":"Macro 07","index":1},"color":{"red":0.32549020648002625,"green":0.1921568661928177,"blue":0.7333333492279053,"alpha":1.0},"image_type":"Custom","actions":[]}]},{"id":{"uuid":"95242aa3-4eb1-4aac-9a1c-32d8af97847b","name":"Collection 03","index":2},"macros":[]}]}}
+
+{"url":"timers/current","data":[{"id":{"uuid":"2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf","name":"Timer 01","index":0},"time":"-00:29:39","state":"stopped"},{"id":{"uuid":"c5fcf5b0-ee31-4143-9d54-6514d922b2bb","name":"Timer 02","index":1},"time":"11:50:00","state":"stopped"},{"id":{"uuid":"9bf671d2-475a-4716-af17-2ab73589734d","name":"Timer 03","index":2},"time":"00:00:00","state":"stopped"}]}
+
+{"url":"audio/playlist/active","data":{"playlist":null,"item":null}}
+
+{"url":"timer/system_time","data":1791050948}
+
+{"url":"timer/system_time","data":1791050949}
+
+{"url":"transport/audio/current","data":{"is_playing":true,"uuid":"76a9ba97-3d3c-4ec5-821c-8ca5dd643df2","name":"Media 04","artist":"Artist 02","audio_only":true,"duration":215.9519958}}
+
+{"url":"status/layers","data":{"video_input":false,"media":true,"slide":true,"announcements":false,"props":false,"messages":false,"audio":true}}
+
+{"url":"audio/playlist/active","data":{"playlist":{"uuid":"ccbdef39-ab33-42fa-89b4-7f000ee94ae1","name":"Audio Playlist 04","index":3},"item":{"uuid":"0ff5ae8f-74ff-437e-bf1b-f3e6e4492ccf","name":"Track 01","index":2}}}
+
+{"url":"transport/audio/time","data":0.3601755666608612}
+
+{"url":"timer/system_time","data":1791050950}
+
+{"url":"transport/audio/time","data":1.3351802332544078}
+
+{"url":"timer/system_time","data":1791050951}
+
+{"url":"transport/audio/time","data":2.351334500093944}
+
+{"url":"timer/system_time","data":1791050952}
+
+{"url":"transport/audio/time","data":3.3677129666615895}
+
+{"url":"timer/system_time","data":1791050953}
+
+{"url":"transport/audio/time","data":4.305506499963813}
+
+{"url":"timer/system_time","data":1791050954}
+
+{"url":"transport/audio/current","data":{"is_playing":false,"uuid":"76a9ba97-3d3c-4ec5-821c-8ca5dd643df2","name":"Media 04","artist":"Artist 02","audio_only":true,"duration":215.9519958}}
+
+{"url":"transport/audio/time","data":5.354855300011113}
+
+{"url":"timer/system_time","data":1791050955}
+
+{"url":"transport/audio/time","data":5.373020833333333}
+
+{"url":"timer/system_time","data":1791050956}
+
+{"url":"timer/system_time","data":1791050957}
+
+{"url":"timer/system_time","data":1791050958}
+
+{"url":"timer/system_time","data":1791050959}
+
+{"url":"transport/audio/current","data":{"is_playing":true,"uuid":"76a9ba97-3d3c-4ec5-821c-8ca5dd643df2","name":"Media 04","artist":"Artist 02","audio_only":true,"duration":215.9519958}}
+
+{"url":"transport/audio/time","data":6.033791533273956}
+
+{"url":"timer/system_time","data":1791050960}
+
+{"url":"transport/audio/time","data":7.01353326673309}
+
+{"url":"timer/system_time","data":1791050961}
+
+{"url":"transport/audio/time","data":8.029172433375692}
+
+{"url":"timer/system_time","data":1791050962}
+
+{"url":"transport/audio/time","data":9.033567433313777}
+
+{"url":"timer/system_time","data":1791050963}
+
+{"url":"transport/audio/current","data":{"is_playing":false,"uuid":"","name":"","artist":"","audio_only":false,"duration":0.0}}
+
+{"url":"transport/audio/current","data":{"is_playing":true,"uuid":"944af75e-0a67-4b6d-90c9-892e06eec94d","name":"Media 05","artist":"Artist 03","audio_only":true,"duration":195.9120025}}
+
+{"url":"audio/playlist/active","data":{"playlist":{"uuid":"ccbdef39-ab33-42fa-89b4-7f000ee94ae1","name":"Audio Playlist 04","index":3},"item":{"uuid":"22108c8f-4723-438b-9480-b881e711118a","name":"Track 02","index":3}}}
+
+{"url":"transport/audio/time","data":0.27957063326456894}
+
+{"url":"timer/system_time","data":1791050964}
+
+{"url":"transport/audio/time","data":1.2632214665707822}
+
+{"url":"timer/system_time","data":1791050965}
+
+{"url":"transport/audio/time","data":2.2619089667048926}
+
+{"url":"timer/system_time","data":1791050966}
+
+{"url":"transport/audio/time","data":3.271031966671968}
+
+{"url":"timer/system_time","data":1791050967}
+
+{"url":"transport/audio/time","data":4.24558769999072}
+
+{"url":"timer/system_time","data":1791050968}
+
+{"url":"transport/audio/time","data":5.279007933287261}
+
+{"url":"timer/system_time","data":1791050969}
+
+{"url":"transport/audio/current","data":{"is_playing":false,"uuid":"","name":"","artist":"","audio_only":false,"duration":0.0}}
+
+{"url":"transport/audio/current","data":{"is_playing":true,"uuid":"76a9ba97-3d3c-4ec5-821c-8ca5dd643df2","name":"Media 04","artist":"Artist 02","audio_only":true,"duration":215.9519958}}
+
+{"url":"audio/playlist/active","data":{"playlist":{"uuid":"ccbdef39-ab33-42fa-89b4-7f000ee94ae1","name":"Audio Playlist 04","index":3},"item":{"uuid":"0ff5ae8f-74ff-437e-bf1b-f3e6e4492ccf","name":"Track 01","index":2}}}
+
+{"url":"transport/audio/time","data":0.91198996673959}
+
+{"url":"timer/system_time","data":1791050970}
+
+{"url":"transport/audio/time","data":1.8870380333143595}
+
+{"url":"timer/system_time","data":1791050971}
+
+{"url":"transport/audio/time","data":2.945607500025071}
+
+{"url":"timer/system_time","data":1791050972}
+
+{"url":"transport/audio/time","data":3.865202566638278}
+
+{"url":"timer/system_time","data":1791050973}
+
+{"url":"transport/audio/current","data":{"is_playing":false,"uuid":"","name":"","artist":"","audio_only":false,"duration":0.0}}
+
+{"url":"transport/audio/current","data":{"is_playing":true,"uuid":"266f5dd8-6438-49b9-8ff9-4ebdea8fb40a","name":"Media 06","artist":"Artist 04","audio_only":true,"duration":228.4320068}}
+
+{"url":"audio/playlist/active","data":{"playlist":{"uuid":"ccbdef39-ab33-42fa-89b4-7f000ee94ae1","name":"Audio Playlist 04","index":3},"item":{"uuid":"696efa5e-9c52-447d-a826-9cf18b7e768c","name":"Track 03","index":1}}}
+
+{"url":"transport/audio/time","data":0.5282391333704194}
+
+{"url":"timer/system_time","data":1791050974}
+
+{"url":"transport/audio/time","data":1.5363260333643605}
+
+{"url":"timer/system_time","data":1791050975}
+
+{"url":"transport/audio/time","data":2.465678466653141}
+
+{"url":"timer/system_time","data":1791050976}
+
+{"url":"transport/audio/time","data":3.485119433257108}
+
+{"url":"timer/system_time","data":1791050977}
+
+{"url":"transport/audio/current","data":{"is_playing":false,"uuid":"","name":"","artist":"","audio_only":false,"duration":0.0}}
+
+{"url":"status/layers","data":{"video_input":false,"media":true,"slide":true,"announcements":false,"props":false,"messages":false,"audio":false}}
+
+{"url":"audio/playlist/active","data":{"playlist":null,"item":null}}
+
+{"url":"transport/audio/time","data":0.0}
+
+{"url":"timer/system_time","data":1791050978}
+
+{"url":"timer/system_time","data":1791050979}
+
+{"url":"timer/system_time","data":1791050980}
+
+{"url":"timer/system_time","data":1791050981}
+
+{"url":"transport/audio/current","data":{"is_playing":false,"uuid":"","name":"","artist":"","audio_only":false,"duration":0.0}}
+
+{"url":"timer/system_time","data":1791050982}
+
+{"url":"timer/system_time","data":1791050983}
+
+{"url":"timer/system_time","data":1791050984}
+
+{"url":"timer/system_time","data":1791050985}
+
+{"url":"timer/system_time","data":1791050986}
+
+{"url":"timer/system_time","data":1791050987}
+
+{"url":"timer/system_time","data":1791050988}
+
+{"url":"timer/system_time","data":1791050989}
+

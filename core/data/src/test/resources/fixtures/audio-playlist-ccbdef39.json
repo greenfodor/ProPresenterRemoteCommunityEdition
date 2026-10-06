@@ -1,0 +1,239 @@
+{
+  "id": {
+    "uuid": "ccbdef39-ab33-42fa-89b4-7f000ee94ae1",
+    "name": "Audio Playlist 04",
+    "index": 3
+  },
+  "items": [
+    {
+      "id": {
+        "uuid": "e8639a20-b6d4-4b91-ba13-893f8fc177d9",
+        "name": "Track 04",
+        "index": 0
+      },
+      "type": "audio",
+      "artist": "Artist 05",
+      "duration": 200
+    },
+    {
+      "id": {
+        "uuid": "696efa5e-9c52-447d-a826-9cf18b7e768c",
+        "name": "Track 03",
+        "index": 1
+      },
+      "type": "audio",
+      "artist": "Artist 04",
+      "duration": 228
+    },
+    {
+      "id": {
+        "uuid": "0ff5ae8f-74ff-437e-bf1b-f3e6e4492ccf",
+        "name": "Track 01",
+        "index": 2
+      },
+      "type": "audio",
+      "artist": "Artist 02",
+      "duration": 215
+    },
+    {
+      "id": {
+        "uuid": "22108c8f-4723-438b-9480-b881e711118a",
+        "name": "Track 02",
+        "index": 3
+      },
+      "type": "audio",
+      "artist": "Artist 03",
+      "duration": 195
+    },
+    {
+      "id": {
+        "uuid": "99554277-fc04-4db4-850f-4970b957d606",
+        "name": "Track 05",
+        "index": 4
+      },
+      "type": "audio",
+      "artist": "Artist 06",
+      "duration": 181
+    },
+    {
+      "id": {
+        "uuid": "69c7acb7-5f97-46fc-817b-bbe3c1675a33",
+        "name": "Track 06",
+        "index": 5
+      },
+      "type": "audio",
+      "artist": "Artist 07",
+      "duration": 209
+    },
+    {
+      "id": {
+        "uuid": "35bf41c9-3d70-4202-ac78-d0a88bc7597a",
+        "name": "Track 07",
+        "index": 6
+      },
+      "type": "audio",
+      "artist": "Artist 08",
+      "duration": 217
+    },
+    {
+      "id": {
+        "uuid": "c04f5242-06c5-4143-8022-648e19423d2f",
+        "name": "Track 08",
+        "index": 7
+      },
+      "type": "audio",
+      "artist": "Artist 09",
+      "duration": 242
+    },
+    {
+      "id": {
+        "uuid": "4aa0efb5-e86e-41a0-b5e3-d81cdf0c5401",
+        "name": "Track 09",
+        "index": 8
+      },
+      "type": "audio",
+      "artist": "Artist 10",
+      "duration": 234
+    },
+    {
+      "id": {
+        "uuid": "5b456f7b-1dbc-4658-a0b9-a8d39194d536",
+        "name": "Track 10",
+        "index": 9
+      },
+      "type": "audio",
+      "artist": "Artist 02",
+      "duration": 262
+    },
+    {
+      "id": {
+        "uuid": "b71d5985-4c3d-48d1-bb00-facc808987ef",
+        "name": "Track 11",
+        "index": 10
+      },
+      "type": "audio",
+      "artist": "Artist 11",
+      "duration": 434
+    },
+    {
+      "id": {
+        "uuid": "f41d266b-a687-4a07-9b03-3893eabbfdde",
+        "name": "Track 12",
+        "index": 11
+      },
+      "type": "audio",
+      "artist": "Artist 12",
+      "duration": 226
+    },
+    {
+      "id": {
+        "uuid": "0690168c-36c9-4a5f-b17a-1121997a0c96",
+        "name": "Track 13",
+        "index": 12
+      },
+      "type": "audio",
+      "artist": "Artist 13",
+      "duration": 216
+    },
+    {
+      "id": {
+        "uuid": "b9023601-b90b-4f9e-9875-a226e1f06d18",
+        "name": "Track 14",
+        "index": 13
+      },
+      "type": "audio",
+      "artist": "Artist 14",
+      "duration": 277
+    },
+    {
+      "id": {
+        "uuid": "f55b6371-1a86-4eca-af85-14552513a37d",
+        "name": "Track 15",
+        "index": 14
+      },
+      "type": "audio",
+      "artist": "Artist 15",
+      "duration": 128
+    },
+    {
+      "id": {
+        "uuid": "0fe4502d-9e7f-40c1-837c-a4718db61f64",
+        "name": "Track 16",
+        "index": 15
+      },
+      "type": "audio",
+      "artist": "Artist 16",
+      "duration": 312
+    },
+    {
+      "id": {
+        "uuid": "b2eabd51-f311-495f-96d1-181334ba3ee0",
+        "name": "Track 17",
+        "index": 16
+      },
+      "type": "audio",
+      "artist": "Artist 17",
+      "duration": 229
+    },
+    {
+      "id": {
+        "uuid": "b5eacbdc-89d8-4421-92ef-b5691aecf4f8",
+        "name": "Track 18",
+        "index": 17
+      },
+      "type": "audio",
+      "artist": "Artist 02",
+      "duration": 294
+    },
+    {
+      "id": {
+        "uuid": "e4644fde-3d7b-4bf7-ba34-b3eb71dc2d2f",
+        "name": "Track 19",
+        "index": 18
+      },
+      "type": "audio",
+      "artist": "Artist 09",
+      "duration": 222
+    },
+    {
+      "id": {
+        "uuid": "e2a5de10-bdee-4f9a-87ad-8e49960f31ef",
+        "name": "Track 20",
+        "index": 19
+      },
+      "type": "audio",
+      "artist": "Artist 18",
+      "duration": 214
+    },
+    {
+      "id": {
+        "uuid": "8ada93a3-6550-4c14-9701-83f7f041ec69",
+        "name": "Track 21",
+        "index": 20
+      },
+      "type": "audio",
+      "artist": "Artist 19",
+      "duration": 304
+    },
+    {
+      "id": {
+        "uuid": "d560d789-18c7-4e77-b2cb-24d0049e76af",
+        "name": "Track 22",
+        "index": 21
+      },
+      "type": "audio",
+      "artist": "Artist 20",
+      "duration": 247
+    },
+    {
+      "id": {
+        "uuid": "2bb822e7-9a63-4d15-ae3e-baa91b0cbf7c",
+        "name": "Track 23",
+        "index": 22
+      },
+      "type": "audio",
+      "artist": "Artist 10",
+      "duration": 304
+    }
+  ]
+}

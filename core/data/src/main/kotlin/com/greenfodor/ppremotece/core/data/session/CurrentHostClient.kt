@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.data.session
 
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.AudioTrack
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
@@ -77,6 +78,20 @@ internal class CurrentHostClient(
 
     override suspend fun triggerLook(uuid: String): EmptyResult<DataError.Network> =
         current()?.triggerLook(uuid) ?: notConnected()
+
+    override suspend fun audioPlaylist(uuid: String): Result<List<AudioTrack>, DataError.Network> =
+        current()?.audioPlaylist(uuid) ?: notConnected()
+
+    override suspend fun triggerAudioTrack(playlistUuid: String, index: Int): EmptyResult<DataError.Network> =
+        current()?.triggerAudioTrack(playlistUuid, index) ?: notConnected()
+
+    override suspend fun audioNext(): EmptyResult<DataError.Network> = current()?.audioNext() ?: notConnected()
+
+    override suspend fun audioPrevious(): EmptyResult<DataError.Network> = current()?.audioPrevious() ?: notConnected()
+
+    override suspend fun audioPlay(): EmptyResult<DataError.Network> = current()?.audioPlay() ?: notConnected()
+
+    override suspend fun audioPause(): EmptyResult<DataError.Network> = current()?.audioPause() ?: notConnected()
 
     override suspend fun triggerProp(uuid: String): EmptyResult<DataError.Network> =
         current()?.triggerProp(uuid) ?: notConnected()

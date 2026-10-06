@@ -5,6 +5,7 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.greenfodor.ppremotece.core.data.di.coreDataModule
+import com.greenfodor.ppremotece.feature.audio.audioModule
 import com.greenfodor.ppremotece.feature.clear.clearModule
 import com.greenfodor.ppremotece.feature.connect.connectModule
 import com.greenfodor.ppremotece.feature.looks.looksModule
@@ -35,6 +36,7 @@ class PPRemoteApplication :
                 settingsModule,
                 timersModule,
                 macrosModule,
+                audioModule,
                 looksModule,
                 propsModule
             )

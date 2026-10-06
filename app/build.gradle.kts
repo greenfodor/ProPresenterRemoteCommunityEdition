@@ -71,6 +71,7 @@ dependencies {
     implementation(project(":feature:settings"))
     implementation(project(":feature:timers"))
     implementation(project(":feature:macros"))
+    implementation(project(":feature:audio"))
     implementation(project(":feature:looks"))
     implementation(project(":feature:props"))
 

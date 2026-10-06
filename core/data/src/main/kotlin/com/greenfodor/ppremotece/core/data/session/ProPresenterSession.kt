@@ -5,12 +5,15 @@ import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.data.thumbnail.presentationThumbnailUrl
 import com.greenfodor.ppremotece.core.data.thumbnail.propThumbnailUrl
 import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailUrl
+import com.greenfodor.ppremotece.core.domain.audio.AudioRepository
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.looks.LooksRepository
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
+import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
+import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
 import com.greenfodor.ppremotece.core.domain.model.ConnectedHost
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
@@ -77,7 +80,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * [Loadable.NotLoaded] and null while disconnected; [propCollections] its prop collections and
  * [propThumbnailRequests] its prop thumbnail requests, keyed by the host's name and null until the
  * thumbnail cache is cleared; [presentationTransport] and [audioTransport] what its transport layers
- * have loaded, null while disconnected.
+ * have loaded, null while disconnected; [audioPlaylists], [activeAudio] and [audioPosition] its audio
+ * bin, the track it plays and the audio position, not loaded and null while disconnected.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
@@ -90,6 +94,7 @@ class ProPresenterSession(
     LooksRepository,
     PropsRepository,
     TransportRepository,
+    AudioRepository,
     PropThumbnailSource,
     ThumbnailSource {
     private class Connection(
@@ -175,6 +180,30 @@ class ProPresenterSession(
     override val audioTransport: StateFlow<Transport?> =
         connection
             .flatMapLatest { it?.live?.audioTransport ?: flowOf(null) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, null)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val audioPlaylists: StateFlow<Loadable<List<AudioPlaylist>>> =
+        connection
+            .flatMapLatest { it?.live?.audioPlaylists ?: flowOf(Loadable.NotLoaded) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val audioPlaylistFrames: StateFlow<Int> =
+        connection
+            .flatMapLatest { it?.live?.audioPlaylistFrames ?: flowOf(0) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, 0)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val activeAudio: StateFlow<ActiveAudio?> =
+        connection
+            .flatMapLatest { it?.live?.activeAudio ?: flowOf(null) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, null)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val audioPosition: StateFlow<Double?> =
+        connection
+            .flatMapLatest { it?.live?.audioPosition ?: flowOf(null) }
             .stateIn(sessionScope, SharingStarted.Eagerly, null)
 
     override suspend fun savedHost(): ProPresenterHost? = readSavedHost()?.host

@@ -146,6 +146,25 @@ class ProPresenterSessionTest {
     }
 
     @Test
+    fun `the audio bin is not loaded and nothing is active after a disconnect`() = runBlocking {
+        fake.enqueueStream(fake.frames(listOf(AUDIO_PLAYLISTS_FRAME, ACTIVE_AUDIO_FRAME, AUDIO_TIME_FRAME)))
+        assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
+        val collector = launch { session.liveState.collect {} }
+        val loaded = withTimeout(5.seconds) { session.audioPlaylists.first { it is Loadable.Loaded } }
+        assertThat((loaded as Loadable.Loaded).value.single().name).isEqualTo("Audio Playlist 01")
+        assertThat(withTimeout(5.seconds) { session.activeAudio.first { it != null } }?.trackIndex).isEqualTo(2)
+        assertThat(withTimeout(5.seconds) { session.audioPosition.first { it != null } }).isEqualTo(4.5)
+        collector.cancel()
+
+        session.disconnect()
+
+        assertThat(withTimeout(2.seconds) { session.audioPlaylists.first { it == Loadable.NotLoaded } })
+            .isEqualTo(Loadable.NotLoaded)
+        assertThat(withTimeout(2.seconds) { session.activeAudio.first { it == null } }).isNull()
+        assertThat(withTimeout(2.seconds) { session.audioPosition.first { it == null } }).isNull()
+    }
+
+    @Test
     fun `the props are not loaded after a disconnect`() = runBlocking {
         fake.enqueueStream(fake.frames(listOf(PROPS_FRAME)))
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
@@ -330,6 +349,12 @@ class ProPresenterSessionTest {
             """"is_playing":true,"uuid":"m-0","name":"Media 01","artist":"","audio_only":false,"duration":20.0}}"""
         const val AUDIO_TRANSPORT_FRAME = """{"url":"transport/audio/current","data":{"is_playing":true,""" +
             """"uuid":"a-0","name":"Media 03","artist":"Artist 01","audio_only":true,"duration":183.5}}"""
+        const val AUDIO_PLAYLISTS_FRAME = """{"url":"audio/playlists","data":[""" +
+            """{"id":{"uuid":"p-0","name":"Audio Playlist 01","index":0},"type":"playlist","children":[]}]}"""
+        const val ACTIVE_AUDIO_FRAME = """{"url":"audio/playlist/active","data":{""" +
+            """"playlist":{"uuid":"p-0","name":"Audio Playlist 01","index":0},""" +
+            """"item":{"uuid":"t-2","name":"Track 01","index":2}}}"""
+        const val AUDIO_TIME_FRAME = """{"url":"transport/audio/time","data":4.5}"""
         const val CURRENT_LOOK_FRAME =
             """{"url":"look/current","data":{"id":{"uuid":"live","name":"Look 01","index":0},"screens":[]}}"""
         const val PROPS_FRAME = """{"url":"prop_collections","data":{"prop_collections":{"collections":[""" +

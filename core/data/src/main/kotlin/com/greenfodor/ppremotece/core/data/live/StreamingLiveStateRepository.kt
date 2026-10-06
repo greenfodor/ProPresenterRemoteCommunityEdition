@@ -2,11 +2,14 @@ package com.greenfodor.ppremotece.core.data.live
 
 import android.util.Log
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
+import com.greenfodor.ppremotece.core.domain.audio.AudioRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.map
 import com.greenfodor.ppremotece.core.domain.looks.LooksRepository
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
+import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
+import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
@@ -44,6 +47,7 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.timeout
+import kotlinx.coroutines.flow.update
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.pow
 import kotlin.time.Duration
@@ -71,7 +75,10 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * `timers` and `timers/current` frames set [timers], each timer joined with its latest reading, and
  * `macro_collections` frames set [collections], `looks` frames [looks] and `look/current` frames
  * [currentLook], and `prop_collections` frames [propCollections], and `transport/presentation/current`
- * and `transport/audio/current` frames [presentationTransport] and [audioTransport]; the lists are
+ * and `transport/audio/current` frames [presentationTransport] and [audioTransport], and
+ * `audio/playlists`, `audio/playlist/active` and `transport/audio/time` frames [audioPlaylists],
+ * [activeAudio] and [audioPosition], the position starting again as unknown whenever the audio
+ * transport changes what it has loaded; the lists are
  * [Loadable.NotLoaded] until their first frame and keep their content across reconnects. An error
  * frame naming a subscribed url ([rejectedUrl]) removes that url from the subscriptions for the
  * reopened streams of this connection ([withoutRejected]), keeps the content it feeds
@@ -89,7 +96,8 @@ class StreamingLiveStateRepository(
     MacrosRepository,
     LooksRepository,
     PropsRepository,
-    TransportRepository {
+    TransportRepository,
+    AudioRepository {
     private val _lastLive = MutableStateFlow<LiveCue?>(null)
     override val lastLive: StateFlow<LiveCue?> = _lastLive.asStateFlow()
 
@@ -116,6 +124,18 @@ class StreamingLiveStateRepository(
 
     private val audioLoaded = MutableStateFlow<Transport?>(null)
     override val audioTransport: StateFlow<Transport?> = audioLoaded.asStateFlow()
+
+    private val audioPlaylistList = MutableStateFlow<Loadable<List<AudioPlaylist>>>(Loadable.NotLoaded)
+    override val audioPlaylists: StateFlow<Loadable<List<AudioPlaylist>>> = audioPlaylistList.asStateFlow()
+
+    private val audioFrames = MutableStateFlow(0)
+    override val audioPlaylistFrames: StateFlow<Int> = audioFrames.asStateFlow()
+
+    private val activeTrack = MutableStateFlow<ActiveAudio?>(null)
+    override val activeAudio: StateFlow<ActiveAudio?> = activeTrack.asStateFlow()
+
+    private val audioSeconds = MutableStateFlow<Double?>(null)
+    override val audioPosition: StateFlow<Double?> = audioSeconds.asStateFlow()
 
     @Volatile
     private var subscriptions = SUBSCRIPTIONS
@@ -160,7 +180,17 @@ class StreamingLiveStateRepository(
                                 is StatusEvent.PropCollections ->
                                     propList.load(event.collections, "prop_collections")
                                 is StatusEvent.PresentationTransport -> presentationLoaded.value = event.transport
-                                is StatusEvent.AudioTransport -> audioLoaded.value = event.transport
+                                is StatusEvent.AudioTransport -> {
+                                    val loaded = audioLoaded.value
+                                    if (loaded != null && event.transport.uuid != loaded.uuid) audioSeconds.value = null
+                                    audioLoaded.value = event.transport
+                                }
+                                is StatusEvent.AudioTime -> audioSeconds.value = event.seconds
+                                is StatusEvent.AudioPlaylists -> {
+                                    audioPlaylistList.load(event.playlists, "audio/playlists")
+                                    audioFrames.update { it + 1 }
+                                }
+                                is StatusEvent.ActiveAudioChanged -> activeTrack.value = event.active
                                 is StatusEvent.Rejected -> event.messages.forEach(::reject)
                                 else -> Unit
                             }
@@ -217,6 +247,7 @@ class StreamingLiveStateRepository(
             "macro_collections" -> macroCollections.value = Loadable.Unavailable
             "looks" -> lookList.value = Loadable.Unavailable
             "prop_collections" -> propList.value = Loadable.Unavailable
+            "audio/playlists" -> audioPlaylistList.value = Loadable.Unavailable
         }
         log(message)
     }
@@ -244,7 +275,10 @@ class StreamingLiveStateRepository(
                 "look/current",
                 "prop_collections",
                 "transport/presentation/current",
-                "transport/audio/current"
+                "transport/audio/current",
+                "transport/audio/time",
+                "audio/playlists",
+                "audio/playlist/active"
             )
     }
 }

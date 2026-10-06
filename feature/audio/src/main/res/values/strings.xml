@@ -1,0 +1,18 @@
+<resources>
+    <string name="audio_title">Audio</string>
+    <string name="audio_pick_playlist">Choose an audio playlist</string>
+    <string name="audio_no_playlists">No audio playlists in ProPresenter</string>
+    <string name="audio_no_tracks">No tracks in this playlist</string>
+    <string name="audio_retry">Retry</string>
+    <string name="audio_nothing_playing">Nothing playing</string>
+    <string name="audio_playing">PLAYING</string>
+    <string name="audio_paused">PAUSED</string>
+    <string name="audio_play">Play</string>
+    <string name="audio_pause">Pause</string>
+    <string name="audio_previous">Previous track</string>
+    <string name="audio_next">Next track</string>
+    <string name="audio_error_play_track">Couldn\'t play %1$s</string>
+    <string name="audio_error_play">Couldn\'t play</string>
+    <string name="audio_error_pause">Couldn\'t pause</string>
+    <string name="audio_error_skip">Couldn\'t skip</string>
+</resources>
