@@ -238,6 +238,101 @@ class AudioViewModelTest {
     }
 
     @Test
+    fun `the active track is not marked while nothing is loaded`() = runTest(dispatcher) {
+        audio.activeAudio.value = ActiveAudio("p-0", "a-1", 1)
+        audio.audioTransport.value = playing(isPlaying = false, uuid = "")
+
+        viewModel().state.test {
+            assertThat(expectMostRecentItem().tracks.map { it.mark }).containsExactly(TrackMark.NONE, TrackMark.NONE)
+        }
+    }
+
+    @Test
+    fun `the shown playlist stays when the audio is cleared`() = runTest(dispatcher) {
+        audio.activeAudio.value = ActiveAudio("p-1", "b-1", 1)
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().selectedUuid).isEqualTo("p-1")
+            audio.activeAudio.value = null
+            assertThat(viewModel.state.value.selectedUuid).isEqualTo("p-1")
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(client.reads).containsExactly("p-1")
+    }
+
+    @Test
+    fun `a track tap pins the shown playlist`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            expectMostRecentItem()
+            viewModel.onAction(AudioAction.OnTrackClick(0))
+            audio.activeAudio.value = ActiveAudio("p-1", "b-1", 1)
+            assertThat(viewModel.state.value.selectedUuid).isEqualTo("p-0")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a failed re-read keeps the tracks and posts its error`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            expectMostRecentItem()
+            client.readFailure = DataError.Network.TIMEOUT
+            audio.audioPlaylistFrames.value = 2
+            val state = viewModel.state.value
+            assertThat(state.tracks.map { it.name }).containsExactly("Track 01", "Track 02")
+            assertThat(state.tracksError).isNull()
+            cancelAndIgnoreRemainingEvents()
+        }
+        messages.messages.test { assertThat(awaitItem()).isNotNull() }
+    }
+
+    @Test
+    fun `a newly chosen playlist is loading until its tracks are read`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            expectMostRecentItem()
+            client.readGate = CompletableDeferred()
+            viewModel.onAction(AudioAction.OnPlaylistSelect("p-1"))
+            val reading = expectMostRecentItem()
+            assertThat(reading.tracks).isEmpty()
+            assertThat(reading.tracksLoading).isTrue()
+            client.readGate.complete(Unit)
+            assertThat(expectMostRecentItem().tracks.size).isEqualTo(3)
+        }
+    }
+
+    @Test
+    fun `tracks that repeat a uuid are all listed under their own index`() = runTest(dispatcher) {
+        client.tracks["p-0"] = listOf(track("a-0", "Track 01", 0), track("a-0", "Track 01", 1))
+
+        viewModel().state.test {
+            val tracks = expectMostRecentItem().tracks
+            assertThat(tracks.map { it.index }).containsExactly(0, 1)
+            assertThat(tracks.map { it.index }.distinct().size).isEqualTo(tracks.size)
+        }
+    }
+
+    @Test
+    fun `a position frame leaves the track rows as they are`() = runTest(dispatcher) {
+        audio.activeAudio.value = ActiveAudio("p-0", "a-1", 1)
+        audio.audioTransport.value = playing()
+        audio.audioPosition.value = 1.0
+
+        viewModel().state.test {
+            val before = expectMostRecentItem()
+            audio.audioPosition.value = 2.0
+            val after = expectMostRecentItem()
+            assertThat(after.bar.readout).isEqualTo("0:02 / 3:35")
+            assertThat(after.tracks === before.tracks).isTrue()
+        }
+    }
+
+    @Test
     fun `a track of another playlist with the same index is not marked`() = runTest(dispatcher) {
         val viewModel = viewModel()
         audio.audioTransport.value = playing()
@@ -359,11 +454,13 @@ class AudioViewModelTest {
         val reads = mutableListOf<String>()
         val calls = mutableListOf<String>()
         var readFailure: DataError.Network? = null
+        var readGate = CompletableDeferred(Unit)
         var gate = CompletableDeferred(Unit)
         var result: EmptyResult<DataError.Network> = Result.Success(Unit)
 
         override suspend fun audioPlaylist(uuid: String): Result<List<AudioTrack>, DataError.Network> {
             reads += uuid
+            readGate.await()
             return readFailure?.let { Result.Failure(it) } ?: Result.Success(tracks.getValue(uuid))
         }
 

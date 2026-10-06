@@ -133,6 +133,19 @@ class AudioReplayTest {
     }
 
     @Test
+    fun `the position sent before the first transport frame of a connection is kept`() = runBlocking<Unit> {
+        val repository = repository()
+        fake.enqueueStream(fake.frames(listOf(PAUSED_AT_83_TIME_FRAME, PAUSED_TRANSPORT_FRAME)))
+        val collector = launch { repository.liveState.collect {} }
+
+        val transport = withTimeout(5.seconds) { repository.audioTransport.first { it != null } }
+        collector.cancel()
+
+        assertThat(transport?.isPlaying).isEqualTo(false)
+        assertThat(repository.audioPosition.value).isEqualTo(83.0)
+    }
+
+    @Test
     fun `a pause and a resume keep the position`() = runBlocking<Unit> {
         assertThat(audioAfterChunk(PAUSED_CHUNK).position).isEqualTo(4.305506499963813)
         assertThat(audioAfterChunk(RESUMED_CHUNK).position).isEqualTo(5.373020833333333)
@@ -153,13 +166,7 @@ class AudioReplayTest {
      */
     private suspend fun audioAfterChunk(chunk: Int): Audio =
         coroutineScope {
-            val repository = StreamingLiveStateRepository(
-                client = client,
-                scope = scope,
-                watchdogTimeout = 1.seconds,
-                reconnectDelay = { 10.milliseconds },
-                log = {}
-            )
+            val repository = repository()
             fake.enqueueStream(fake.stream(STAGE_10_AUDIO, StreamEnd.STALL, timeScale = 0.0, chunkLimit = chunk))
             val events = StreamReplay.chunks(STAGE_10_AUDIO, timeScale = 0.0).take(chunk)
                 .flatMap { StatusFrameParser().events(it.bytes) }
@@ -180,14 +187,26 @@ class AudioReplayTest {
             audio
         }
 
-    /** The last position of [events] sent since the audio transport last loaded something else; null without one. */
+    private fun repository() =
+        StreamingLiveStateRepository(
+            client = client,
+            scope = scope,
+            watchdogTimeout = 1.seconds,
+            reconnectDelay = { 10.milliseconds },
+            log = {}
+        )
+
+    /**
+     * The last position of [events] sent since the audio transport last changed what it has loaded;
+     * null without one. The first transport frame changes nothing.
+     */
     private fun expectedPosition(events: List<StatusEvent>): Double? {
         var uuid: String? = null
         var position: Double? = null
         events.forEach { event ->
             when (event) {
                 is StatusEvent.AudioTransport -> {
-                    if (event.transport.uuid != uuid) position = null
+                    if (uuid != null && event.transport.uuid != uuid) position = null
                     uuid = event.transport.uuid
                 }
                 is StatusEvent.AudioTime -> position = event.seconds
@@ -199,6 +218,9 @@ class AudioReplayTest {
 
     private companion object {
         const val STAGE_10_AUDIO = "stage10-audio"
+        const val PAUSED_AT_83_TIME_FRAME = """{"url":"transport/audio/time","data":83.0}"""
+        const val PAUSED_TRANSPORT_FRAME = """{"url":"transport/audio/current","data":{"is_playing":false,""" +
+            """"uuid":"a-0","name":"Media 04","artist":"Artist 02","audio_only":true,"duration":215.9}}"""
         const val TRACK_2_UUID = "0ff5ae8f-74ff-437e-bf1b-f3e6e4492ccf"
         const val PLAYLISTS_CHUNK = 14
         const val TRACK_2_PLAYING_CHUNK = 19

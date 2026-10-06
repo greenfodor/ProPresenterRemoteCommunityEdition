@@ -9,6 +9,7 @@ import com.greenfodor.ppremotece.core.domain.audio.AudioRepository
 import com.greenfodor.ppremotece.core.domain.audio.TransportButton
 import com.greenfodor.ppremotece.core.domain.audio.nowPlaying
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.map
 import com.greenfodor.ppremotece.core.domain.live.orEmpty
@@ -37,11 +38,13 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
 
 /**
  * Audio: the audio bin's playlists of the [AudioRepository], as loaded, with the tracks of the
- * chosen one and the now-playing bar ([nowPlaying]). The chosen playlist is the one picked, else
- * the active one, else the first; its tracks are read when it is chosen, on each
- * `audio/playlists` frame and on Retry. A tap plays a track; taps on a track are ignored while
- * its request is in flight, and a failure posts "Couldn't play {track}". The track that the active
- * audio names is marked playing, or paused while the audio transport is not playing. The bar's
+ * chosen one and the now-playing bar ([nowPlaying]). The chosen playlist is the one picked from the
+ * menu or by a track tap, else the active one, else the one already shown, else the first; its
+ * tracks are read when it is chosen, on each `audio/playlists` frame and on Retry, and a failed
+ * re-read keeps the tracks already shown and posts its error. A tap plays a track; taps on a track
+ * are ignored while its request is in flight, and a failure posts "Couldn't play {track}". The
+ * track that the active audio names is marked playing, or paused while the loaded audio is not
+ * playing, and not marked while nothing is loaded. The bar's
  * middle button pauses or resumes and its outer buttons play the previous or next track; a
  * disabled button sends nothing and a failure posts "Couldn't play", "Couldn't pause" or
  * "Couldn't skip". The readout is dimmed while the live stream reconnects.
@@ -72,10 +75,32 @@ class AudioViewModel(
         val position: Double?
     )
 
+    /** The active track and whether its audio plays; [playing] is null while nothing is loaded. */
+    private data class Marked(
+        val active: ActiveAudio?,
+        val playing: Boolean?
+    )
+
+    /** Everything on the screen that does not move with the audio position. */
+    private data class Rows(
+        val playlists: Loadable<List<AudioPlaylistUi>>,
+        val selected: String?,
+        val tracks: List<AudioTrackUi>,
+        val loading: Boolean,
+        val error: DataError.Network?
+    )
+
+    @Volatile
+    private var shown: String? = null
+
     private val selected: StateFlow<String?> =
         combine(audioRepository.audioPlaylists, picked, audioRepository.activeAudio) { playlists, picked, active ->
             val uuids = playlists.orEmpty().map { it.uuid }
-            picked?.takeIf { it in uuids } ?: active?.playlistUuid?.takeIf { it in uuids } ?: uuids.firstOrNull()
+            val next = picked?.takeIf { it in uuids }
+                ?: active?.playlistUuid?.takeIf { it in uuids }
+                ?: shown?.takeIf { it in uuids }
+                ?: uuids.firstOrNull()
+            next.also { shown = it }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val playback =
@@ -86,24 +111,37 @@ class AudioViewModel(
             ::Playback
         )
 
+    private val marked =
+        combine(
+            audioRepository.activeAudio,
+            audioRepository.audioTransport.map { it?.takeIf { loaded -> loaded.uuid.isNotEmpty() }?.isPlaying }
+                .distinctUntilChanged(),
+            ::Marked
+        )
+
+    private val rows =
+        combine(audioRepository.audioPlaylists, selected, trackList, marked) { playlists, selected, list, marked ->
+            val read = list.takeIf { it.playlistUuid == selected }
+            Rows(
+                playlists = playlists.map { all -> all.map { AudioPlaylistUi(it.uuid, it.name) } },
+                selected = selected,
+                tracks = read?.tracks.orEmpty().map { it.toUi(selected, marked) },
+                loading = if (read == null) selected != null else read.loading,
+                error = read?.error
+            )
+        }.distinctUntilChanged()
+
     private val reconnecting =
         liveStateRepository.liveState.map { it.connection == ConnectionStatus.RECONNECTING }.distinctUntilChanged()
 
     val state: StateFlow<AudioState> =
-        combine(
-            audioRepository.audioPlaylists,
-            selected,
-            trackList,
-            playback,
-            reconnecting
-        ) { playlists, selected, list, playback, reconnecting ->
-            val shown = list.takeIf { it.playlistUuid == selected } ?: TrackList()
+        combine(rows, playback, reconnecting) { rows, playback, reconnecting ->
             AudioState(
-                playlists = playlists.map { all -> all.map { AudioPlaylistUi(it.uuid, it.name) } },
-                selectedUuid = selected,
-                tracks = shown.tracks.map { it.toUi(selected, playback) },
-                tracksLoading = shown.loading,
-                tracksError = shown.error?.toUiText(),
+                playlists = rows.playlists,
+                selectedUuid = rows.selected,
+                tracks = rows.tracks,
+                tracksLoading = rows.loading,
+                tracksError = rows.error?.toUiText(),
                 bar = nowPlaying(playback.transport, playback.position, playback.active),
                 dimmed = reconnecting
             )
@@ -136,17 +174,23 @@ class AudioViewModel(
             val kept = shown.tracks.takeIf { shown.playlistUuid == playlistUuid }.orEmpty()
             TrackList(playlistUuid, kept, loading = true)
         }
+        val kept = trackList.value.tracks
         trackList.value = when (val read = client.audioPlaylist(playlistUuid)) {
             is Result.Success -> TrackList(playlistUuid, read.data)
-            is Result.Failure -> TrackList(playlistUuid, error = read.error)
+            is Result.Failure -> if (kept.isEmpty()) {
+                TrackList(playlistUuid, error = read.error)
+            } else {
+                messages.post(read.error.toUiText())
+                TrackList(playlistUuid, kept)
+            }
         }
     }
 
-    private fun AudioTrack.toUi(playlistUuid: String?, playback: Playback): AudioTrackUi {
-        val active = playback.active?.takeIf { it.playlistUuid == playlistUuid && it.trackUuid == uuid }
+    private fun AudioTrack.toUi(playlistUuid: String?, marked: Marked): AudioTrackUi {
+        val active = marked.active?.takeIf { it.playlistUuid == playlistUuid && it.trackUuid == uuid }
         val mark = when {
-            active == null -> TrackMark.NONE
-            playback.transport?.isPlaying == true -> TrackMark.PLAYING
+            active == null || marked.playing == null -> TrackMark.NONE
+            marked.playing -> TrackMark.PLAYING
             else -> TrackMark.PAUSED
         }
         return AudioTrackUi(uuid, name, index, artist, formatDuration(durationSeconds), mark)
@@ -156,6 +200,7 @@ class AudioViewModel(
         val list = trackList.value
         val playlistUuid = list.playlistUuid?.takeIf { it == selected.value } ?: return
         val track = list.tracks.firstOrNull { it.index == index } ?: return
+        picked.value = playlistUuid
         send("track/$playlistUuid/$index", UiText.StringResource(R.string.audio_error_play_track, listOf(track.name))) {
             client.triggerAudioTrack(playlistUuid, index)
         }

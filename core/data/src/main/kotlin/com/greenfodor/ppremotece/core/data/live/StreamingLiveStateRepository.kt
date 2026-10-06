@@ -78,7 +78,7 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * and `transport/audio/current` frames [presentationTransport] and [audioTransport], and
  * `audio/playlists`, `audio/playlist/active` and `transport/audio/time` frames [audioPlaylists],
  * [activeAudio] and [audioPosition], the position starting again as unknown whenever the audio
- * transport loads something else; the lists are
+ * transport changes what it has loaded; the lists are
  * [Loadable.NotLoaded] until their first frame and keep their content across reconnects. An error
  * frame naming a subscribed url ([rejectedUrl]) removes that url from the subscriptions for the
  * reopened streams of this connection ([withoutRejected]), keeps the content it feeds
@@ -181,7 +181,8 @@ class StreamingLiveStateRepository(
                                     propList.load(event.collections, "prop_collections")
                                 is StatusEvent.PresentationTransport -> presentationLoaded.value = event.transport
                                 is StatusEvent.AudioTransport -> {
-                                    if (event.transport.uuid != audioLoaded.value?.uuid) audioSeconds.value = null
+                                    val loaded = audioLoaded.value
+                                    if (loaded != null && event.transport.uuid != loaded.uuid) audioSeconds.value = null
                                     audioLoaded.value = event.transport
                                 }
                                 is StatusEvent.AudioTime -> audioSeconds.value = event.seconds

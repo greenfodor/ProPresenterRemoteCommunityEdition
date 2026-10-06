@@ -190,7 +190,7 @@ private fun Tracks(state: AudioState, bottomPadding: Dp, onAction: (AudioAction)
                 verticalArrangement = Arrangement.spacedBy(ListPadding),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(state.tracks, key = { it.uuid }) { track ->
+                items(state.tracks, key = { it.index }) { track ->
                     TrackRow(track = track, onClick = { onAction(AudioAction.OnTrackClick(track.index)) })
                 }
             }
