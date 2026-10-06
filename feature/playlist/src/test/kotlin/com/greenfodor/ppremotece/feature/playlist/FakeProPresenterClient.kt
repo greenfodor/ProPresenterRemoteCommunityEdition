@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.feature.playlist
 
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.AudioTrack
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
@@ -89,6 +90,19 @@ class FakeProPresenterClient : ProPresenterClient {
         steps += "next"
         return Result.Success(Unit)
     }
+
+    override suspend fun audioPlaylist(uuid: String): Result<List<AudioTrack>, DataError.Network> = notServed()
+
+    override suspend fun triggerAudioTrack(playlistUuid: String, index: Int): EmptyResult<DataError.Network> =
+        notServed()
+
+    override suspend fun audioNext(): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun audioPrevious(): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun audioPlay(): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun audioPause(): EmptyResult<DataError.Network> = notServed()
 
     override suspend fun triggerPrevious(): EmptyResult<DataError.Network> {
         steps += "previous"

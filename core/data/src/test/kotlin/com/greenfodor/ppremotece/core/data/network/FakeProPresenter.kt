@@ -129,8 +129,14 @@ class FakeProPresenter(
             path == "/v1/libraries" -> json(Fixtures.text(Fixtures.LIBRARIES))
             path.startsWith("/v1/library/") -> fixture("library", path.removePrefix("/v1/library/"))
             path.startsWith("/v1/clear/") -> dispatchClear(path)
+            path.startsWith("/v1/audio/") || path.startsWith("/v1/transport/audio/") -> dispatchAudio(path)
             TIMER_MACRO_OR_PROP.containsMatchIn(path) -> dispatchTimerMacroOrProp(path)
             path.endsWith("/trigger") -> dispatchTrigger(path)
+            else -> dispatchContent(path)
+        }
+
+    private fun dispatchContent(path: String): MockResponse =
+        when {
             path.startsWith("/v1/playlist/") -> fixture("playlist", path.removePrefix("/v1/playlist/"))
             path.startsWith("/v1/presentation/") -> fixture("presentation", path.removePrefix("/v1/presentation/"))
             else -> status(404)
@@ -172,6 +178,14 @@ class FakeProPresenter(
             else -> status(404)
         }
 
+    private fun dispatchAudio(path: String): MockResponse =
+        when {
+            AUDIO_COMMAND.matches(path) -> status(204)
+            path.startsWith("/v1/audio/playlist/") ->
+                fixture("audio-playlist", path.removePrefix("/v1/audio/playlist/"))
+            else -> status(404)
+        }
+
     private fun dispatchClear(path: String): MockResponse =
         when {
             CLEAR_LAYER.matches(path) -> status(204)
@@ -204,6 +218,10 @@ class FakeProPresenter(
         const val SERVICE_PLAYLIST_UUID = "065f53c3-e299-4e07-8ac2-258ca76b7188"
         const val SLIDE_INDEX = """{"presentation_index":{"index":3,"presentation_id":""" +
             """{"uuid":"$SONG_A_UUID","name":"Song A","index":0},"total_cues":7,"remaining_cues":3}}"""
+        private val AUDIO_COMMAND = Regex(
+            "^/v1/(audio/playlist/[0-9a-f-]+/\\d+/trigger|audio/playlist/active/(next|previous)/trigger|" +
+                "transport/audio/(play|pause))$"
+        )
         private val CUE_TRIGGER = Regex("^/v1/playlist/[0-9a-f-]+/\\d+/(\\d+)/trigger$")
         private val ITEM_TRIGGER = Regex("^/v1/playlist/[0-9a-f-]+/\\d+/trigger$")
         private val PRESENTATION_TRIGGER = Regex("^/v1/presentation/[0-9a-f-]+/\\d+/trigger$")

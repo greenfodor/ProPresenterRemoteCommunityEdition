@@ -11,13 +11,10 @@ import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
 import com.greenfodor.ppremotece.core.domain.model.TimerState
 import com.greenfodor.ppremotece.core.domain.model.TimerType
-import com.greenfodor.ppremotece.core.domain.model.Transport
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.floatOrNull
 
 private val COLOR_CHANNELS = listOf("red", "green", "blue", "alpha")
@@ -45,19 +42,6 @@ private fun JsonElement?.toCountDownTarget(): CountDownTarget? {
     val seconds = child("time_of_day").intOrNull() ?: return null
     return CountDownTarget(timeOfDaySeconds = seconds, period = child("period").stringOrNull().orEmpty())
 }
-
-/** A transport's loaded content; null unless this is an object. */
-internal fun JsonElement?.toTransport(): Transport? =
-    (this as? JsonObject)?.let {
-        Transport(
-            isPlaying = (child("is_playing") as? JsonPrimitive)?.booleanOrNull ?: false,
-            uuid = child("uuid").stringOrNull().orEmpty(),
-            name = child("name").stringOrNull().orEmpty(),
-            artist = child("artist").stringOrNull().orEmpty(),
-            audioOnly = (child("audio_only") as? JsonPrimitive)?.booleanOrNull ?: false,
-            durationSeconds = (child("duration") as? JsonPrimitive)?.doubleOrNull ?: 0.0
-        )
-    }
 
 /** A look with its uuid and index; null without either. */
 internal fun JsonElement?.toLook(): Look? {

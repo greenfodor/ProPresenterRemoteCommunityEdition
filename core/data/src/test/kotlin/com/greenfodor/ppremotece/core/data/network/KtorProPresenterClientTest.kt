@@ -4,6 +4,7 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.data.Fixtures
+import com.greenfodor.ppremotece.core.domain.model.AudioTrack
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.IconPath
 import com.greenfodor.ppremotece.core.domain.model.Library
@@ -273,6 +274,54 @@ class KtorProPresenterClientTest {
 
         assertThat(fake.requests.map { "${it.method} ${it.url.encodedPath}" })
             .containsExactly("GET /v1/prop/$PROP_UUID/trigger", "GET /v1/prop/$PROP_UUID/clear")
+    }
+
+    @Test
+    fun `an audio playlist lists its tracks with their artist and duration`() = runBlocking<Unit> {
+        val tracks = (client.audioPlaylist(Fixtures.AUDIO_PLAYLIST_UUID) as Result.Success).data
+
+        assertThat(fake.requests.single().url.encodedPath)
+            .isEqualTo("/v1/audio/playlist/${Fixtures.AUDIO_PLAYLIST_UUID}")
+        assertThat(tracks.size).isEqualTo(23)
+        assertThat(tracks.map { it.index }).isEqualTo((0..22).toList())
+        assertThat(tracks[2]).isEqualTo(
+            AudioTrack(
+                uuid = "0ff5ae8f-74ff-437e-bf1b-f3e6e4492ccf",
+                name = "Track 01",
+                index = 2,
+                artist = "Artist 02",
+                durationSeconds = 215
+            )
+        )
+    }
+
+    @Test
+    fun `an audio playlist that does not exist is not found`() = runBlocking<Unit> {
+        assertThat(client.audioPlaylist("00000000-0000-0000-0000-000000000000"))
+            .isEqualTo(Result.Failure(DataError.Network.NOT_FOUND))
+    }
+
+    @Test
+    fun `an audio track is triggered by its playlist and index`() = runBlocking<Unit> {
+        assertThat(client.triggerAudioTrack(Fixtures.AUDIO_PLAYLIST_UUID, 2)).isEqualTo(Result.Success(Unit))
+
+        assertThat(fake.requests.map { "${it.method} ${it.url.encodedPath}" })
+            .containsExactly("GET /v1/audio/playlist/${Fixtures.AUDIO_PLAYLIST_UUID}/2/trigger")
+    }
+
+    @Test
+    fun `the audio bar's calls get the active playlist and audio transport routes`() = runBlocking<Unit> {
+        assertThat(client.audioNext()).isEqualTo(Result.Success(Unit))
+        assertThat(client.audioPrevious()).isEqualTo(Result.Success(Unit))
+        assertThat(client.audioPlay()).isEqualTo(Result.Success(Unit))
+        assertThat(client.audioPause()).isEqualTo(Result.Success(Unit))
+
+        assertThat(fake.requests.map { "${it.method} ${it.url.encodedPath}" }).containsExactly(
+            "GET /v1/audio/playlist/active/next/trigger",
+            "GET /v1/audio/playlist/active/previous/trigger",
+            "GET /v1/transport/audio/play",
+            "GET /v1/transport/audio/pause"
+        )
     }
 
     @Test

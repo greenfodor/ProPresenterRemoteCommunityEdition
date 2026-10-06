@@ -9,6 +9,7 @@ object Fixtures {
     const val ARRANGEMENT_TEST_PLAYLIST = "playlist-6f760dbf.json"
     const val SERVICE_PLAYLIST = "playlist-065f53c3.json"
     const val STAGE_10_PLAYLIST = "playlist-stage10.json"
+    const val AUDIO_PLAYLIST_UUID = "ccbdef39-ab33-42fa-89b4-7f000ee94ae1"
     const val SONG_A = "presentation-08672906.json"
     const val SONG_B = "presentation-ae707301.json"
     const val PLACEHOLDER_SONG = "presentation-1d6c5bd9.json"

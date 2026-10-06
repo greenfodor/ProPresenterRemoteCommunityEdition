@@ -1,0 +1,56 @@
+[
+  {
+    "id": {
+      "uuid": "457403fd-5651-4822-a9b5-c6f5ec24b393",
+      "name": "Audio Playlist 01",
+      "index": 0
+    },
+    "type": "playlist",
+    "children": []
+  },
+  {
+    "id": {
+      "uuid": "4660ea7b-3fae-46fe-82cf-3ba20078f8ec",
+      "name": "Audio Playlist 02",
+      "index": 1
+    },
+    "type": "playlist",
+    "children": []
+  },
+  {
+    "id": {
+      "uuid": "53c9b04d-fa4f-4c96-b0bd-889addce4817",
+      "name": "Audio Playlist 03",
+      "index": 2
+    },
+    "type": "playlist",
+    "children": []
+  },
+  {
+    "id": {
+      "uuid": "ccbdef39-ab33-42fa-89b4-7f000ee94ae1",
+      "name": "Audio Playlist 04",
+      "index": 3
+    },
+    "type": "playlist",
+    "children": []
+  },
+  {
+    "id": {
+      "uuid": "5e71ea5a-f71b-4b8b-a308-0e487ad3e877",
+      "name": "Audio Playlist 05",
+      "index": 4
+    },
+    "type": "playlist",
+    "children": []
+  },
+  {
+    "id": {
+      "uuid": "f3432665-8b83-425f-bfd4-0d0e7898df59",
+      "name": "Audio Playlist 06",
+      "index": 5
+    },
+    "type": "playlist",
+    "children": []
+  }
+]

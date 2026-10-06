@@ -57,6 +57,8 @@ import com.greenfodor.ppremotece.core.domain.layout.widthClassOf
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.settings.keepScreenOn
+import com.greenfodor.ppremotece.feature.audio.AudioRoot
+import com.greenfodor.ppremotece.feature.audio.AudioRoute
 import com.greenfodor.ppremotece.feature.clear.ClearFab
 import com.greenfodor.ppremotece.feature.looks.LooksRoot
 import com.greenfodor.ppremotece.feature.looks.LooksRoute
@@ -110,6 +112,7 @@ internal enum class ShellDestination(
     REMOTE(ShellItem(ShellTab.REMOTE, DesignR.drawable.ic_settings_remote, R.string.shell_remote), RemoteRoute),
     MACROS(ShellItem(ShellTab.MACROS, DesignR.drawable.ic_bolt, R.string.shell_macros), MacrosRoute),
     TIMERS(ShellItem(ShellTab.TIMERS, DesignR.drawable.ic_timer, R.string.shell_timers), TimersRoute),
+    AUDIO(ShellItem(ShellTab.AUDIO, DesignR.drawable.ic_music_note, R.string.shell_audio), AudioRoute),
     LOOKS(ShellItem(ShellTab.LOOKS, DesignR.drawable.ic_theater_comedy, R.string.shell_looks), LooksRoute),
     PROPS(ShellItem(ShellTab.PROPS, DesignR.drawable.ic_layers, R.string.shell_props), PropsRoute),
     SETTINGS(ShellItem(ShellTab.SETTINGS, DesignR.drawable.ic_settings, R.string.shell_settings), SettingsRoute)
@@ -124,6 +127,7 @@ private val ClearFabTabs =
         ShellTab.REMOTE,
         ShellTab.MACROS,
         ShellTab.TIMERS,
+        ShellTab.AUDIO,
         ShellTab.LOOKS,
         ShellTab.PROPS
     )
@@ -395,7 +399,7 @@ private fun NavKey?.toItemKey(): PlaylistItemKey? =
     }
 
 /**
- * The Remote, Macros, Timers, Looks, Props, Settings and More entries. [widthClass], [reconnecting],
+ * The Remote, Macros, Timers, Audio, Looks, Props, Settings and More entries. [widthClass], [reconnecting],
  * [fab] and [moreEntries] are read while an entry composes.
  */
 @Suppress("LongParameterList")
@@ -416,6 +420,9 @@ private fun EntryProviderScope<NavKey>.tabEntries(
     }
     entry<TimersRoute> {
         TimersRoot(widthClass = widthClass(), reconnecting = reconnecting(), floatingActionButton = fab())
+    }
+    entry<AudioRoute> {
+        AudioRoot(reconnecting = reconnecting(), floatingActionButton = fab())
     }
     entry<LooksRoute> {
         LooksRoot(reconnecting = reconnecting(), floatingActionButton = fab())

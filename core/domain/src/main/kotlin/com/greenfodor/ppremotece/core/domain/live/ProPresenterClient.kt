@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.core.domain.live
 
+import com.greenfodor.ppremotece.core.domain.model.AudioTrack
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
@@ -70,6 +71,24 @@ interface ProPresenterClient {
 
     /** Starts, stops or resets timer [uuid]. */
     suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network>
+
+    /** The tracks of the audio playlist [uuid]. */
+    suspend fun audioPlaylist(uuid: String): Result<List<AudioTrack>, DataError.Network>
+
+    /** Plays the track at [index] of the audio playlist [playlistUuid]. */
+    suspend fun triggerAudioTrack(playlistUuid: String, index: Int): EmptyResult<DataError.Network>
+
+    /** Plays the next track of the active audio playlist. */
+    suspend fun audioNext(): EmptyResult<DataError.Network>
+
+    /** Plays the previous track of the active audio playlist. */
+    suspend fun audioPrevious(): EmptyResult<DataError.Network>
+
+    /** Resumes the audio layer's loaded audio. */
+    suspend fun audioPlay(): EmptyResult<DataError.Network>
+
+    /** Pauses the audio layer's loaded audio. */
+    suspend fun audioPause(): EmptyResult<DataError.Network>
 
     suspend fun triggerNext(): EmptyResult<DataError.Network>
 

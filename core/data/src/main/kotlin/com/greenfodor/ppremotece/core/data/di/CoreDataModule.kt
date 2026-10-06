@@ -12,6 +12,7 @@ import com.greenfodor.ppremotece.core.data.settings.DataStoreAppPreferences
 import com.greenfodor.ppremotece.core.data.settings.appSettingsDataStore
 import com.greenfodor.ppremotece.core.data.thumbnail.CoilThumbnailCache
 import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailImageLoader
+import com.greenfodor.ppremotece.core.domain.audio.AudioRepository
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
@@ -46,6 +47,7 @@ val coreDataModule = module {
             LooksRepository::class,
             PropsRepository::class,
             TransportRepository::class,
+            AudioRepository::class,
             PropThumbnailSource::class,
             ThumbnailSource::class
         )

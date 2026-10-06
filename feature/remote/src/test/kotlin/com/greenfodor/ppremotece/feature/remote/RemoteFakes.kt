@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.feature.remote
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.AudioTrack
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.Library
@@ -79,6 +80,19 @@ class FakeProPresenterClient : ProPresenterClient {
 
     override suspend fun timerOperation(uuid: String, operation: TimerOperation): EmptyResult<DataError.Network> =
         notServed()
+
+    override suspend fun audioPlaylist(uuid: String): Result<List<AudioTrack>, DataError.Network> = notServed()
+
+    override suspend fun triggerAudioTrack(playlistUuid: String, index: Int): EmptyResult<DataError.Network> =
+        notServed()
+
+    override suspend fun audioNext(): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun audioPrevious(): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun audioPlay(): EmptyResult<DataError.Network> = notServed()
+
+    override suspend fun audioPause(): EmptyResult<DataError.Network> = notServed()
 
     override suspend fun triggerNext() = record(RemoteCommand.TriggerNext)
 

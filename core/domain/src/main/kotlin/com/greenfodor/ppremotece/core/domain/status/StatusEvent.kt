@@ -1,5 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.status
 
+import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
+import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
@@ -79,6 +81,21 @@ sealed interface StatusEvent {
     /** What the audio layer's transport has loaded, from a `transport/audio/current` frame. */
     data class AudioTransport(
         val transport: Transport
+    ) : StatusEvent
+
+    /** How far into the loaded audio the audio layer is, in seconds, from a `transport/audio/time` frame. */
+    data class AudioTime(
+        val seconds: Double
+    ) : StatusEvent
+
+    /** The audio bin's playlists, flattened in tree order, from an `audio/playlists` frame. */
+    data class AudioPlaylists(
+        val playlists: List<AudioPlaylist>
+    ) : StatusEvent
+
+    /** The audio playlist track that plays, null without one, from an `audio/playlist/active` frame. */
+    data class ActiveAudioChanged(
+        val active: ActiveAudio?
     ) : StatusEvent
 
     data class Heartbeat(

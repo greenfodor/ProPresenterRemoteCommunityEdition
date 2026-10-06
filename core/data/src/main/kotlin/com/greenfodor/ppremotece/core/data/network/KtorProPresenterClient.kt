@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.core.data.network
 
+import com.greenfodor.ppremotece.core.data.dto.AudioPlaylistDto
 import com.greenfodor.ppremotece.core.data.dto.ClearGroupDto
 import com.greenfodor.ppremotece.core.data.dto.IdDto
 import com.greenfodor.ppremotece.core.data.dto.LibraryResponseDto
@@ -10,7 +11,9 @@ import com.greenfodor.ppremotece.core.data.dto.SlideIndexResponseDto
 import com.greenfodor.ppremotece.core.data.dto.VersionDto
 import com.greenfodor.ppremotece.core.data.mapper.toDomain
 import com.greenfodor.ppremotece.core.data.mapper.toLibrary
+import com.greenfodor.ppremotece.core.data.mapper.toTracks
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.model.AudioTrack
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
@@ -125,6 +128,27 @@ class KtorProPresenterClient(
 
     override suspend fun triggerMacro(uuid: String): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/macro/${uuid.encodeURLPathPart()}/trigger") }
+
+    override suspend fun audioPlaylist(uuid: String): Result<List<AudioTrack>, DataError.Network> =
+        safeCall<AudioPlaylistDto> { httpClient.get("$baseUrl/v1/audio/playlist/${uuid.encodeURLPathPart()}") }
+            .map { it.toTracks() }
+
+    override suspend fun triggerAudioTrack(playlistUuid: String, index: Int): EmptyResult<DataError.Network> =
+        safeEmptyCall {
+            httpClient.get("$baseUrl/v1/audio/playlist/${playlistUuid.encodeURLPathPart()}/$index/trigger")
+        }
+
+    override suspend fun audioNext(): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/v1/audio/playlist/active/next/trigger") }
+
+    override suspend fun audioPrevious(): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/v1/audio/playlist/active/previous/trigger") }
+
+    override suspend fun audioPlay(): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/v1/transport/audio/play") }
+
+    override suspend fun audioPause(): EmptyResult<DataError.Network> =
+        safeEmptyCall { httpClient.get("$baseUrl/v1/transport/audio/pause") }
 
     override suspend fun triggerLook(uuid: String): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/look/${uuid.encodeURLPathPart()}/trigger") }

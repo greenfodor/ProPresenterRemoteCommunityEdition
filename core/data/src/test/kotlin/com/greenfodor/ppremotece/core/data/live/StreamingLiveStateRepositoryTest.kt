@@ -590,7 +590,8 @@ class StreamingLiveStateRepositoryTest {
         assertThat(server.recordedStreamBodies()[1]).isEqualTo(
             """["status/slide","timer/system_time","playlist/active","status/layers","timers",""" +
                 """"looks","look/current",""" +
-                """"prop_collections","transport/presentation/current","transport/audio/current"]"""
+                """"prop_collections","transport/presentation/current","transport/audio/current",""" +
+                """"transport/audio/time","audio/playlists","audio/playlist/active"]"""
         )
         assertThat(repository.collections.value).isEqualTo(Loadable.Unavailable)
     }
@@ -766,7 +767,8 @@ class StreamingLiveStateRepositoryTest {
         const val SAME_ITEM_SLIDE_INDEX_CHUNK = 28
         const val SUBSCRIPTIONS_BODY = """["status/slide","timer/system_time","playlist/active","status/layers",""" +
             """"timers","timers/current","macro_collections","looks","look/current","prop_collections",""" +
-            """"transport/presentation/current","transport/audio/current"]"""
+            """"transport/presentation/current","transport/audio/current",""" +
+            """"transport/audio/time","audio/playlists","audio/playlist/active"]"""
         const val STAGE_8_TIMERS = "stage8-timers"
         const val TIMER_0 = "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
         const val TIMERS_READ_CHUNK = 7
@@ -781,7 +783,7 @@ class StreamingLiveStateRepositoryTest {
         const val SUBSCRIPTIONS_WITHOUT_MACROS_BODY =
             """["status/slide","timer/system_time","playlist/active","status/layers","timers","timers/current",""" +
                 """"looks","look/current","prop_collections","transport/presentation/current",""" +
-                """"transport/audio/current"]"""
+                """"transport/audio/current","transport/audio/time","audio/playlists","audio/playlist/active"]"""
         const val STAGE_9_LOOKS = "stage9-looks-props"
         const val LOOKS_READ_CHUNK = 11
         const val PROPS_READ_CHUNK = 10
