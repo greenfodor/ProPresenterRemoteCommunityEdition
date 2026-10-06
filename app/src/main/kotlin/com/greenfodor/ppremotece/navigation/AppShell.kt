@@ -63,10 +63,14 @@ import com.greenfodor.ppremotece.feature.looks.LooksRoute
 import com.greenfodor.ppremotece.feature.macros.MacrosRoot
 import com.greenfodor.ppremotece.feature.macros.MacrosRoute
 import com.greenfodor.ppremotece.feature.playlist.LibraryGridRoute
+import com.greenfodor.ppremotece.feature.playlist.PlaylistItemRoute
+import com.greenfodor.ppremotece.feature.playlist.PlaylistRoute
 import com.greenfodor.ppremotece.feature.playlist.PlaylistsRoute
 import com.greenfodor.ppremotece.feature.playlist.SelectItemPlaceholder
 import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
 import com.greenfodor.ppremotece.feature.playlist.grid.SlideGridRoot
+import com.greenfodor.ppremotece.feature.playlist.items.PlaylistItemRoot
+import com.greenfodor.ppremotece.feature.playlist.items.PlaylistRoot
 import com.greenfodor.ppremotece.feature.playlist.tree.ListMode
 import com.greenfodor.ppremotece.feature.playlist.tree.PlaylistTreeRoot
 import com.greenfodor.ppremotece.feature.props.PropsRoot
@@ -151,7 +155,6 @@ fun AppShell(
     val shellStacks = rememberShellStacks()
     val stacks = shellStacks::stacks
     val update = shellStacks::update
-    val presentation = shellStacks.presentation
     val tab = shellStacks.current
     KeepScreenOn(keepScreenOn(keepAwake, tab))
     var listMode by rememberSaveable { mutableStateOf(ListMode.PLAYLISTS) }
@@ -192,18 +195,6 @@ fun AppShell(
         }
         val currentInMore by rememberUpdatedState(inMore)
         val onBack = { update(stacks().back(currentInMore)) }
-        val slideGrid = @Composable { source: CueSource ->
-            SlideGridRoot(
-                source = source,
-                widthClass = currentWidthClass,
-                headerScrollsWithGrid = currentCompactHeight,
-                reconnecting = reconnecting(),
-                onBack = onBack,
-                closesPane = currentClosesPane,
-                floatingActionButton = currentFab ?: {}
-            )
-        }
-
         ShellFrame(
             layout = layout,
             items = items,
@@ -221,13 +212,13 @@ fun AppShell(
                 sceneStrategies = listOf(listDetailStrategy),
                 entryProvider = entryProvider {
                     presentationEntries(
-                        listMode = { currentListMode },
-                        onModeChange = { listMode = it },
-                        detail = { presentation.getOrNull(1) },
+                        values = { PresentationValues(currentListMode, shellStacks.detail, currentFab) },
+                        detailValues = { DetailValues(currentWidthClass, currentCompactHeight, currentClosesPane) },
                         reconnecting = reconnecting,
-                        fab = { currentFab },
+                        onModeChange = { listMode = it },
+                        onOpenPlaylist = { uuid -> update(stacks().openPlaylist(PlaylistRoute(uuid))) },
                         onOpenDetail = { key -> update(stacks().openDetail(key)) },
-                        slideGrid = slideGrid
+                        onBack = onBack
                     )
                     tabEntries(
                         widthClass = { currentWidthClass },
@@ -287,7 +278,8 @@ private class ShellStacks(
 ) {
     val current: ShellTab get() = tab.value
 
-    val presentation: List<NavKey> get() = backStacks.getValue(ShellTab.PRESENTATION)
+    /** The detail open on the Presentation stack ([detailOf]). */
+    val detail: NavKey? get() = detailOf(backStacks.getValue(ShellTab.PRESENTATION))
 
     fun stacks(): TabStacks = TabStacks(backStacks.mapValues { (_, stack) -> stack.toList() }, tab.value)
 
@@ -304,38 +296,86 @@ private fun rememberShellStacks(): ShellStacks {
     return remember(backStacks, tab) { ShellStacks(backStacks, tab) }
 }
 
+/** What the Presentation tab's list-pane entries read while they compose. */
+private class PresentationValues(
+    val listMode: ListMode,
+    val detail: NavKey?,
+    val fab: (@Composable (SnackbarHostState) -> Unit)?
+)
+
+/** What the Presentation tab's detail-pane entries read while they compose. */
+private class DetailValues(
+    val widthClass: WidthClass,
+    val compactHeight: Boolean,
+    val closesPane: Boolean
+)
+
 /**
- * The playlist tree or library list, and the slide grid opened from it. [listMode], [detail],
- * [reconnecting] and [fab] are read while an entry composes.
+ * The playlist tree or library list, the playlist screen opened from the tree, and the slide grid
+ * or item screen opened from them. [values], [detailValues] and [reconnecting] are read while an
+ * entry composes.
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Suppress("LongParameterList")
 private fun EntryProviderScope<NavKey>.presentationEntries(
-    listMode: () -> ListMode,
-    onModeChange: (ListMode) -> Unit,
-    detail: () -> NavKey?,
+    values: () -> PresentationValues,
+    detailValues: () -> DetailValues,
     reconnecting: () -> Boolean,
-    fab: () -> (@Composable (SnackbarHostState) -> Unit)?,
+    onModeChange: (ListMode) -> Unit,
+    onOpenPlaylist: (String) -> Unit,
     onOpenDetail: (NavKey) -> Unit,
-    slideGrid: @Composable (CueSource) -> Unit
+    onBack: () -> Unit
 ) {
     entry<PlaylistsRoute>(
-        metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder(listMode()) }) +
+        metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder(values().listMode) }) +
             ListDetailSceneStrategy.preferredPaneSize(ListPaneWidth)
     ) {
-        val open = detail()
-        val openGrid = open as? SlideGridRoute
+        val shown = values()
         PlaylistTreeRoot(
-            mode = listMode(),
+            mode = shown.listMode,
             onModeChange = onModeChange,
-            openItem = openGrid?.let { PlaylistItemKey(playlistUuid = it.playlistUuid, index = it.itemIndex) },
-            openPresentation = (open as? LibraryGridRoute)?.presentationUuid,
+            openPresentation = (shown.detail as? LibraryGridRoute)?.presentationUuid,
             reconnecting = reconnecting(),
-            onOpenItem = { item ->
-                onOpenDetail(SlideGridRoute(playlistUuid = item.playlistUuid, itemIndex = item.index))
-            },
+            onOpenPlaylist = onOpenPlaylist,
             onOpenPresentation = { uuid -> onOpenDetail(LibraryGridRoute(uuid)) },
-            floatingActionButton = fab().takeIf { open == null }
+            floatingActionButton = shown.fab.takeIf { shown.detail == null }
+        )
+    }
+    entry<PlaylistRoute>(
+        metadata = ListDetailSceneStrategy.listPane(
+            detailPlaceholder = { SelectItemPlaceholder(ListMode.PLAYLISTS) }
+        ) + ListDetailSceneStrategy.preferredPaneSize(ListPaneWidth)
+    ) { route ->
+        val shown = values()
+        PlaylistRoot(
+            playlistUuid = route.playlistUuid,
+            openItem = shown.detail.toItemKey(),
+            reconnecting = reconnecting(),
+            onBack = onBack,
+            onOpenSlides = { item -> onOpenDetail(SlideGridRoute(item.playlistUuid, item.index)) },
+            onOpenItem = { item -> onOpenDetail(PlaylistItemRoute(item.playlistUuid, item.index)) },
+            floatingActionButton = shown.fab.takeIf { shown.detail == null }
+        )
+    }
+    entry<PlaylistItemRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
+        PlaylistItemRoot(
+            key = PlaylistItemKey(route.playlistUuid, route.itemIndex),
+            reconnecting = reconnecting(),
+            onBack = onBack,
+            closesPane = detailValues().closesPane,
+            floatingActionButton = values().fab ?: {}
+        )
+    }
+    val slideGrid = @Composable { source: CueSource ->
+        val detail = detailValues()
+        SlideGridRoot(
+            source = source,
+            widthClass = detail.widthClass,
+            headerScrollsWithGrid = detail.compactHeight,
+            reconnecting = reconnecting(),
+            onBack = onBack,
+            closesPane = detail.closesPane,
+            floatingActionButton = values().fab ?: {}
         )
     }
     entry<LibraryGridRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
@@ -345,6 +385,14 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
         slideGrid(CueSource.PlaylistItem(PlaylistItemKey(route.playlistUuid, route.itemIndex)))
     }
 }
+
+/** The playlist item this detail route shows; null for any other route. */
+private fun NavKey?.toItemKey(): PlaylistItemKey? =
+    when (this) {
+        is SlideGridRoute -> PlaylistItemKey(playlistUuid, itemIndex)
+        is PlaylistItemRoute -> PlaylistItemKey(playlistUuid, itemIndex)
+        else -> null
+    }
 
 /**
  * The Remote, Macros, Timers, Looks, Props, Settings and More entries. [widthClass], [reconnecting],

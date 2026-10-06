@@ -42,7 +42,7 @@ MVI presentation (State / Action / Event, `XxxRoot` / `XxxScreen`, `UiText`).
 | `:core:data`         | `ppremotece.android.library`         | Ktor client, status stream, `ProPresenterSession`, NSD, DataStore, DTOs, Koin    |
 | `:core:designsystem` | `ppremotece.android.library.compose` | Dark-only `PPRemoteTheme`, `GroupColors`, icons, `UiText`, `ObserveAsEvents`     |
 | `:feature:connect`   | `ppremotece.android.feature`         | Discovery / manual host, connect screen, `ConnectRoute`                          |
-| `:feature:playlist`  | `ppremotece.android.feature`         | Playlist tree + slide grid                                                       |
+| `:feature:playlist`  | `ppremotece.android.feature`         | Playlist tree, playlist screen, item screen and slide grid                       |
 | `:feature:remote`    | `ppremotece.android.feature`         | Remote tab: live and next boxes, item steps, Prev/Next                           |
 | `:feature:clear`     | `ppremotece.android.feature`         | Clear FAB, rail item and sheet: layer clears and clear groups                    |
 | `:feature:settings`  | `ppremotece.android.feature`         | More list and Settings screen                                                    |
@@ -73,7 +73,8 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   the macro's icon, `GET /v1/libraries`,
   `GET /v1/library/{uuid}` and `GET /v1/playlist/active`, read with the slide index on each slide change),
   the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
-  trigger `GET /v1/playlist/{pl}/{item}/trigger`, `GET /v1/trigger/next`,
+  trigger `GET /v1/playlist/{pl}/{item}/trigger` (from the Remote and, for media, audio and live-video
+  items, from the item screen), `GET /v1/trigger/next`,
   `GET /v1/trigger/previous` (from the playlist grid, the Remote, and the library grid while its
   presentation is live outside a playlist), the clear calls and the timer operations
   `GET /v1/timer/{uuid}/start`, `GET /v1/timer/{uuid}/stop` and `GET /v1/timer/{uuid}/reset`, and the
@@ -84,12 +85,15 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   when a presentation is live outside a playlist (or remembered from one after a clear);
 - one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
   "playlist/active", "status/layers", "timers", "timers/current", "macro_collections", "looks",
-  "look/current", "prop_collections"]` (one unknown URL
+  "look/current", "prop_collections", "transport/presentation/current", "transport/audio/current"]`
+  (one unknown URL
   ends the whole stream); after an error frame `URL: x. Error: …` the reopened stream sends the same list
   without `x` for the rest of that connection, and the next connect sends `x` again.
 
 Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content, such as a timer edit) is out of
-bounds, as are `timer/{id}/increment/…`, `timers/{op}` and any `/focus` route.
+bounds, as are `timer/{id}/increment/…`, `timers/{op}`, any `/focus` route, `PUT /v1/transport/{layer}/time`,
+`transport/{layer}/skip_backward|skip_forward|go_to_end`, any `/v1/media/…` route and a thumbnail request
+for a media or audio playlist item (neither thumbnail route serves one).
 Inside a playlist, trigger by `(playlist uuid, item index, cue index)`, or by
 `(playlist uuid, item index)` for the item trigger, only;
 `/v1/presentation/active/{n}/trigger`, `/v1/presentation/{uuid}/{n}/trigger` and

@@ -1,0 +1,154 @@
+{
+  "id": {
+    "uuid": "6f760dbf-04b9-46f2-9bb3-33eeea6a6d90",
+    "name": "Arrangement Test",
+    "index": 7
+  },
+  "items": [
+    {
+      "id": {
+        "uuid": "68ab1ee1-427f-4bb2-b9b8-2f77451011a4",
+        "name": "Song A",
+        "index": 0
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "08672906-49df-4947-8d4c-bed596d6fbf3",
+        "arrangement_name": "Full",
+        "arrangement_uuid": "4adc3b58-27f1-42a5-8ff0-80dfd1afa8a5"
+      },
+      "target_uuid": "08672906-49df-4947-8d4c-bed596d6fbf3",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "924ad3fe-35c3-4065-91ee-844ba92d5d36",
+        "name": "Song A",
+        "index": 1
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "08672906-49df-4947-8d4c-bed596d6fbf3",
+        "arrangement_name": "Chorus Only",
+        "arrangement_uuid": "90da45ff-1c54-4bd0-89e2-aae33ca23ebb"
+      },
+      "target_uuid": "08672906-49df-4947-8d4c-bed596d6fbf3",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "bcd92267-93cf-43d6-a89e-a01b261c84ac",
+        "name": "Song A",
+        "index": 2
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "08672906-49df-4947-8d4c-bed596d6fbf3",
+        "arrangement_name": "Short",
+        "arrangement_uuid": "e5c2816e-644a-4359-bb92-b77e48c12ffb"
+      },
+      "target_uuid": "08672906-49df-4947-8d4c-bed596d6fbf3",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "e3f83b89-4de6-4871-902f-70a013ebdcc0",
+        "name": "Header 01",
+        "index": 3
+      },
+      "type": "header",
+      "is_hidden": false,
+      "is_pco": false,
+      "header_color": {
+        "red": 0.0,
+        "green": 0.0,
+        "blue": 0.0,
+        "alpha": 0.0
+      },
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "2ca780f1-d07f-40c3-b855-5ade46ba2eb9",
+        "name": "Media 01",
+        "index": 4
+      },
+      "type": "media",
+      "is_hidden": false,
+      "is_pco": false,
+      "duration": 20,
+      "target_uuid": "2ca780f1-d07f-40c3-b855-5ade46ba2eb9",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "28bee335-2a94-4751-b0fd-26592d6dd209",
+        "name": "Item 01",
+        "index": 5
+      },
+      "type": "audio",
+      "is_hidden": false,
+      "is_pco": false,
+      "duration": 183,
+      "target_uuid": "28bee335-2a94-4751-b0fd-26592d6dd209",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "bc77541c-9e0c-426e-b12d-d155926f4864",
+        "name": "Header 05",
+        "index": 6
+      },
+      "type": "header",
+      "is_hidden": false,
+      "is_pco": false,
+      "header_color": {
+        "red": 0.3333333432674408,
+        "green": 0.41960784792900085,
+        "blue": 0.18431372940540314,
+        "alpha": 1.0
+      },
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "1ec6def0-5fa2-4740-9692-462eb8982390",
+        "name": "Presentation 327",
+        "index": 7
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "1d6c5bd9-a408-4972-9cc2-c10bb905508a",
+        "arrangement_name": "",
+        "arrangement_uuid": "d2dae806-0fde-4fa3-beec-0788fe665939"
+      },
+      "target_uuid": "1d6c5bd9-a408-4972-9cc2-c10bb905508a",
+      "destination": "presentation"
+    },
+    {
+      "id": {
+        "uuid": "44a66b34-67ea-496a-9162-52ee38f48525",
+        "name": "Song C",
+        "index": 8
+      },
+      "type": "presentation",
+      "is_hidden": false,
+      "is_pco": false,
+      "presentation_info": {
+        "presentation_uuid": "44a66b34-67ea-496a-9162-52ee38f48525",
+        "arrangement_name": "A",
+        "arrangement_uuid": "10d18080-5666-49eb-9bc7-f390df5864b9"
+      },
+      "target_uuid": "44a66b34-67ea-496a-9162-52ee38f48525",
+      "destination": "presentation"
+    }
+  ]
+}

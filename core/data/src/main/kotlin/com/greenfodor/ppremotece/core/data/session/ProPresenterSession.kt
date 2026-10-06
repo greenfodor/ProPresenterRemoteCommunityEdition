@@ -20,6 +20,7 @@ import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.model.PropCollection
+import com.greenfodor.ppremotece.core.domain.model.Transport
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailSource
@@ -38,6 +39,7 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import com.greenfodor.ppremotece.core.domain.thumbnail.boxQuality
 import com.greenfodor.ppremotece.core.domain.timers.LiveTimer
 import com.greenfodor.ppremotece.core.domain.timers.TimersRepository
+import com.greenfodor.ppremotece.core.domain.transport.TransportRepository
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -74,7 +76,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * timers and macro collections, and [looks] and [currentLook] its looks and live look,
  * [Loadable.NotLoaded] and null while disconnected; [propCollections] its prop collections and
  * [propThumbnailRequests] its prop thumbnail requests, keyed by the host's name and null until the
- * thumbnail cache is cleared.
+ * thumbnail cache is cleared; [presentationTransport] and [audioTransport] what its transport layers
+ * have loaded, null while disconnected.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
@@ -86,6 +89,7 @@ class ProPresenterSession(
     MacrosRepository,
     LooksRepository,
     PropsRepository,
+    TransportRepository,
     PropThumbnailSource,
     ThumbnailSource {
     private class Connection(
@@ -160,6 +164,18 @@ class ProPresenterSession(
         connection
             .flatMapLatest { it?.live?.propCollections ?: flowOf(Loadable.NotLoaded) }
             .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val presentationTransport: StateFlow<Transport?> =
+        connection
+            .flatMapLatest { it?.live?.presentationTransport ?: flowOf(null) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, null)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val audioTransport: StateFlow<Transport?> =
+        connection
+            .flatMapLatest { it?.live?.audioTransport ?: flowOf(null) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, null)
 
     override suspend fun savedHost(): ProPresenterHost? = readSavedHost()?.host
 

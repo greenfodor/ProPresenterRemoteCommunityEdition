@@ -5,6 +5,8 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.domain.layout.ShellTab
 import com.greenfodor.ppremotece.feature.playlist.LibraryGridRoute
+import com.greenfodor.ppremotece.feature.playlist.PlaylistItemRoute
+import com.greenfodor.ppremotece.feature.playlist.PlaylistRoute
 import com.greenfodor.ppremotece.feature.playlist.PlaylistsRoute
 import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
 import com.greenfodor.ppremotece.feature.remote.RemoteRoute
@@ -15,6 +17,8 @@ import org.junit.jupiter.api.Test
 class TabStacksTest {
     private val grid1 = SlideGridRoute(playlistUuid = "p", itemIndex = 1)
     private val grid6 = SlideGridRoute(playlistUuid = "p", itemIndex = 6)
+    private val playlist = PlaylistRoute(playlistUuid = "p")
+    private val library = LibraryGridRoute(presentationUuid = "pres")
     private val initial = TabStacks.initial(
         mapOf(
             ShellTab.PRESENTATION to PlaylistsRoute,
@@ -42,14 +46,64 @@ class TabStacksTest {
 
     @Test
     fun `a library grid replaces an open slide grid and the other way round`() {
-        val library = LibraryGridRoute(presentationUuid = "pres")
-
         assertThat(initial.openDetail(grid1).openDetail(library).stack(ShellTab.PRESENTATION))
             .containsExactly(PlaylistsRoute, library)
         assertThat(initial.openDetail(library).openDetail(grid6).stack(ShellTab.PRESENTATION))
             .containsExactly(PlaylistsRoute, grid6)
         assertThat(initial.openDetail(library).back(noneInMore).stack(ShellTab.PRESENTATION))
             .containsExactly(PlaylistsRoute)
+    }
+
+    @Test
+    fun `opening a playlist puts its screen on the tree and closes any open detail`() {
+        assertThat(initial.openPlaylist(playlist).stack(ShellTab.PRESENTATION))
+            .containsExactly(PlaylistsRoute, playlist)
+        assertThat(initial.openDetail(library).openPlaylist(playlist).stack(ShellTab.PRESENTATION))
+            .containsExactly(PlaylistsRoute, playlist)
+    }
+
+    @Test
+    fun `a detail opened from a playlist sits on the playlist screen`() {
+        val stacks = initial.openPlaylist(playlist).openDetail(grid1)
+
+        assertThat(stacks.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute, playlist, grid1)
+        assertThat(stacks.detail).isEqualTo(grid1)
+    }
+
+    @Test
+    fun `another detail opened from a playlist replaces the open one and keeps the playlist`() {
+        val item = PlaylistItemRoute(playlistUuid = "p", itemIndex = 4)
+        val stacks = initial.openPlaylist(playlist).openDetail(grid1).openDetail(item)
+
+        assertThat(stacks.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute, playlist, item)
+        assertThat(stacks.openDetail(grid6).stack(ShellTab.PRESENTATION))
+            .containsExactly(PlaylistsRoute, playlist, grid6)
+    }
+
+    @Test
+    fun `back walks from the detail to the playlist to the tree and stops there`() {
+        val detail = initial.openPlaylist(playlist).openDetail(grid1)
+        val onPlaylist = detail.back(noneInMore)
+        val onTree = onPlaylist.back(noneInMore)
+
+        assertThat(onPlaylist.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute, playlist)
+        assertThat(onPlaylist.detail).isEqualTo(null)
+        assertThat(onTree.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute)
+        assertThat(onTree.back(noneInMore)).isEqualTo(onTree)
+    }
+
+    @Test
+    fun `re-selecting presentation with a playlist and a detail open trims it to the tree`() {
+        val stacks = initial.openPlaylist(playlist).openDetail(grid1).select(ShellTab.PRESENTATION)
+
+        assertThat(stacks.displayed).containsExactly(PlaylistsRoute)
+    }
+
+    @Test
+    fun `no detail is open on the tree or on a playlist screen`() {
+        assertThat(initial.detail).isEqualTo(null)
+        assertThat(initial.openPlaylist(playlist).detail).isEqualTo(null)
+        assertThat(initial.openDetail(library).detail).isEqualTo(library)
     }
 
     @Test

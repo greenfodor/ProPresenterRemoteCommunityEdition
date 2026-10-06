@@ -35,12 +35,17 @@ class FakeContentRepository : ContentRepository {
     var failWith: DataError.Network? = null
     val refreshed = mutableListOf<String>()
 
+    /** The uuid of each playlist read through [playlist]. */
+    val playlistReads = mutableListOf<String>()
+
     private val cache = mutableMapOf<String, MutableStateFlow<Result<Any, DataError.Network>?>>()
 
     override fun playlists(): Flow<Result<List<PlaylistTreeNode>, DataError.Network>> = observe(TREE) { tree }
 
-    override fun playlist(uuid: String): Flow<Result<Playlist, DataError.Network>> =
-        if (uuid in pendingPlaylists) emptyFlow() else observe(uuid) { playlists[uuid] }
+    override fun playlist(uuid: String): Flow<Result<Playlist, DataError.Network>> {
+        playlistReads += uuid
+        return if (uuid in pendingPlaylists) emptyFlow() else observe(uuid) { playlists[uuid] }
+    }
 
     override fun presentation(uuid: String): Flow<Result<Presentation, DataError.Network>> =
         observe(uuid) { presentations[uuid] }
