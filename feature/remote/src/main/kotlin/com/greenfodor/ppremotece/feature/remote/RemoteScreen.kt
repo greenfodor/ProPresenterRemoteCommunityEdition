@@ -8,7 +8,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,10 +47,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
@@ -56,6 +63,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.ThumbnailPrefetch
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
+import com.greenfodor.ppremotece.core.domain.remote.RemoteBox
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
 import com.greenfodor.ppremotece.core.domain.remote.RemoteStatus
 import kotlinx.coroutines.launch
@@ -192,7 +200,12 @@ private fun RemoteScaffold(
 ) {
     val display = state.display
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier.padding(end = if (expanded) SideColumnWidth else 0.dp)
+            )
+        },
         floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -228,12 +241,20 @@ private fun RemoteScaffold(
             }
         }
     ) { padding ->
-        Row(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        val layoutDirection = LocalLayoutDirection.current
+        val bottomInset = padding.calculateBottomPadding()
+        Row(
+            modifier = Modifier.fillMaxSize().padding(
+                start = padding.calculateStartPadding(layoutDirection),
+                top = padding.calculateTopPadding(),
+                end = padding.calculateEndPadding(layoutDirection)
+            )
+        ) {
+            Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(bottom = bottomInset)) {
                 ReconnectingStrip(visible = reconnecting)
                 RemoteContent(state = state, onAction = onAction, fabShown = floatingActionButton != null)
             }
-            if (expanded) SideColumn(display = display, onAction = onAction)
+            if (expanded) SideColumn(display = display, bottomInset = bottomInset, onAction = onAction)
         }
     }
 }
@@ -296,7 +317,8 @@ private fun HeaderActions(display: RemoteDisplay) {
 
 /**
  * The current box over the next box: both as large as fits in half the height less the gap, and
- * the pair centred in the height with the gap between them.
+ * the pair centred in the height with the gap between them. Without a next box its space is kept
+ * empty, so the current box stays in place.
  */
 @Composable
 private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
@@ -316,35 +338,49 @@ private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
                 onImageWidth = { onAction(RemoteAction.OnCurrentBoxSized(it)) },
                 modifier = boxSpace
             )
-            LiveBox(
-                box = display.next,
-                thumbnail = state.nextThumbnail,
-                aspect = display.aspect,
-                onClick = display.tapNext?.let { { onAction(RemoteAction.OnNextBoxClick) } },
-                onImageWidth = { onAction(RemoteAction.OnNextBoxSized(it)) },
-                modifier = boxSpace
-            )
+            if (display.next == RemoteBox.Empty) {
+                LiveBox(
+                    box = display.current,
+                    thumbnail = null,
+                    aspect = display.aspect,
+                    onClick = null,
+                    onImageWidth = { onAction(RemoteAction.OnNextBoxSized(it)) },
+                    modifier = boxSpace.alpha(0f).clearAndSetSemantics {}
+                )
+            } else {
+                LiveBox(
+                    box = display.next,
+                    thumbnail = state.nextThumbnail,
+                    aspect = display.aspect,
+                    onClick = display.tapNext?.let { { onAction(RemoteAction.OnNextBoxClick) } },
+                    onImageWidth = { onAction(RemoteAction.OnNextBoxSized(it)) },
+                    modifier = boxSpace
+                )
+            }
         }
     }
 }
 
 /**
- * The 200 dp column at the end edge of the expanded layout: Next Up at the top (the next item's
- * name and arrangement, the previous and next item buttons, and "Back to live" while cued), and
- * Next over Prev at the bottom.
+ * The 200 dp column at the end edge of the expanded layout, its background running down behind
+ * [bottomInset]: Next Up at the top (the next item's name and arrangement, the previous and next
+ * item buttons, and "Back to live" while cued), scrolling in the height left above Next over Prev
+ * at the bottom.
  */
 @Composable
-private fun SideColumn(display: RemoteDisplay, onAction: (RemoteAction) -> Unit) {
+private fun SideColumn(display: RemoteDisplay, bottomInset: Dp, onAction: (RemoteAction) -> Unit) {
     Column(
         verticalArrangement = Arrangement.spacedBy(SideColumnPadding),
         modifier = Modifier
             .width(SideColumnWidth)
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            .padding(bottom = bottomInset)
             .padding(SideColumnPadding)
     ) {
-        if (display.showsNextUp) SideNextUp(display = display, onAction = onAction)
-        Spacer(modifier = Modifier.weight(1f))
+        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            if (display.showsNextUp) SideNextUp(display = display, onAction = onAction)
+        }
         Button(
             onClick = { onAction(RemoteAction.OnNextClick) },
             enabled = display.nextButton != null,
