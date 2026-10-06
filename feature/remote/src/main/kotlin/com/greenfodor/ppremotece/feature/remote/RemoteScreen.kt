@@ -4,14 +4,22 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,10 +47,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
@@ -51,6 +63,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.ThumbnailPrefetch
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
+import com.greenfodor.ppremotece.core.domain.remote.RemoteBox
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
 import com.greenfodor.ppremotece.core.domain.remote.RemoteStatus
 import kotlinx.coroutines.launch
@@ -61,8 +74,9 @@ private val NextUpHeight = 48.dp
 private val StepButtonHeight = 72.dp
 private val BoxGap = 12.dp
 private val FabClearance = 72.dp
-private const val CURRENT_SHARE = 0.6f
-private const val NEXT_SHARE = 0.4f
+private val SideColumnWidth = 200.dp
+private val SideColumnPadding = 12.dp
+private val SideStepHeight = 64.dp
 
 @Composable
 fun RemoteRoot(
@@ -84,7 +98,7 @@ fun RemoteRoot(
     RemoteScreen(
         state = state,
         onAction = viewModel::onAction,
-        sideBySide = widthClass == WidthClass.EXPANDED,
+        expanded = widthClass == WidthClass.EXPANDED,
         reconnecting = reconnecting,
         snackbarHostState = snackbarHostState,
         floatingActionButton = floatingActionButton,
@@ -93,15 +107,17 @@ fun RemoteRoot(
 }
 
 /**
- * The Remote tab with its cue sidebar: permanent when [sideBySide], else a modal drawer opened from
- * the top bar, closed by back and when the sidebar empties, with its cues composed only while it is
- * open or opening. The thumbnails of [RemoteState.prefetch] are loaded ahead.
+ * The Remote tab with its cue sidebar. When [expanded], the sidebar is permanent and Next Up and
+ * the step buttons sit in a column at the end edge; otherwise the sidebar is a modal drawer opened
+ * from the top bar, closed by back and when the sidebar empties, with its cues composed only while
+ * it is open or opening, and Next Up and the step buttons sit in the bottom bar. The thumbnails of
+ * [RemoteState.prefetch] are loaded ahead.
  */
 @Composable
 fun RemoteScreen(
     state: RemoteState,
     onAction: (RemoteAction) -> Unit,
-    sideBySide: Boolean,
+    expanded: Boolean,
     modifier: Modifier = Modifier,
     reconnecting: Boolean = false,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -120,14 +136,14 @@ fun RemoteScreen(
     }
     ThumbnailPrefetch(state.prefetch)
     val sidebarEmpty = state.sidebar.isEmpty()
-    LaunchedEffect(sideBySide, sidebarEmpty) {
-        if (sideBySide) {
+    LaunchedEffect(expanded, sidebarEmpty) {
+        if (expanded) {
             drawerState.snapTo(DrawerValue.Closed)
         } else if (sidebarEmpty) {
             drawerState.close()
         }
     }
-    if (sideBySide) {
+    if (expanded) {
         PermanentNavigationDrawer(
             drawerContent = { PermanentDrawerSheet(modifier = Modifier.width(CueSidebarWidth)) { sidebar() } },
             modifier = modifier
@@ -138,7 +154,7 @@ fun RemoteScreen(
                 reconnecting,
                 snackbarHostState,
                 floatingActionButton,
-                sideBySide = true,
+                expanded = true,
                 onOpenCues = null
             )
         }
@@ -164,7 +180,7 @@ fun RemoteScreen(
                 reconnecting,
                 snackbarHostState,
                 floatingActionButton,
-                sideBySide = false,
+                expanded = false,
                 onOpenCues = { scope.launch { drawerState.open() } }
             )
         }
@@ -179,12 +195,17 @@ private fun RemoteScaffold(
     reconnecting: Boolean,
     snackbarHostState: SnackbarHostState,
     floatingActionButton: (@Composable (SnackbarHostState) -> Unit)?,
-    sideBySide: Boolean,
+    expanded: Boolean,
     onOpenCues: (() -> Unit)?
 ) {
     val display = state.display
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier.padding(end = if (expanded) SideColumnWidth else 0.dp)
+            )
+        },
         floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -212,43 +233,63 @@ private fun RemoteScaffold(
             )
         },
         bottomBar = {
-            Column {
-                if (display.showsNextUp) NextUpRow(display = display, onAction = onAction)
-                StepButtons(display = display, onAction = onAction)
+            if (!expanded) {
+                Column {
+                    if (display.showsNextUp) NextUpRow(display = display, onAction = onAction)
+                    StepButtons(display = display, onAction = onAction)
+                }
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            ReconnectingStrip(visible = reconnecting)
-            val fabClearance = if (floatingActionButton != null) FabClearance else 0.dp
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(start = BoxGap, top = BoxGap, end = BoxGap, bottom = BoxGap + fabClearance)
-            ) {
-                when (display.status) {
-                    RemoteStatus.LOADING -> state.error?.let { error ->
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.align(Alignment.Center)
-                        ) {
-                            Text(text = error.asString(), color = MaterialTheme.colorScheme.error)
-                            Button(onClick = { onAction(RemoteAction.OnRetryClick) }) {
-                                Text(stringResource(R.string.remote_retry))
-                            }
-                        }
-                    } ?: CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    RemoteStatus.NOTHING_LIVE -> Text(
-                        text = stringResource(R.string.remote_nothing_live),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                    RemoteStatus.SHOWING -> Boxes(state = state, sideBySide = sideBySide, onAction = onAction)
-                }
+        val layoutDirection = LocalLayoutDirection.current
+        val bottomInset = padding.calculateBottomPadding()
+        Row(
+            modifier = Modifier.fillMaxSize().padding(
+                start = padding.calculateStartPadding(layoutDirection),
+                top = padding.calculateTopPadding(),
+                end = padding.calculateEndPadding(layoutDirection)
+            )
+        ) {
+            Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(bottom = bottomInset)) {
+                ReconnectingStrip(visible = reconnecting)
+                RemoteContent(state = state, onAction = onAction, fabShown = floatingActionButton != null)
             }
+            if (expanded) SideColumn(display = display, bottomInset = bottomInset, onAction = onAction)
+        }
+    }
+}
+
+/** The boxes, or the loading, error or "Nothing live" state, in the space left under the strip. */
+@Composable
+private fun ColumnScope.RemoteContent(state: RemoteState, onAction: (RemoteAction) -> Unit, fabShown: Boolean) {
+    val display = state.display
+    val fabClearance = if (fabShown) FabClearance else 0.dp
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .padding(start = BoxGap, top = BoxGap, end = BoxGap, bottom = BoxGap + fabClearance)
+    ) {
+        when (display.status) {
+            RemoteStatus.LOADING -> state.error?.let { error ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.align(Alignment.Center)
+                ) {
+                    Text(text = error.asString(), color = MaterialTheme.colorScheme.error)
+                    Button(onClick = { onAction(RemoteAction.OnRetryClick) }) {
+                        Text(stringResource(R.string.remote_retry))
+                    }
+                }
+            } ?: CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            RemoteStatus.NOTHING_LIVE -> Text(
+                text = stringResource(R.string.remote_nothing_live),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.Center)
+            )
+            RemoteStatus.SHOWING -> Boxes(state = state, onAction = onAction)
         }
     }
 }
@@ -274,38 +315,130 @@ private fun HeaderActions(display: RemoteDisplay) {
     }
 }
 
+/**
+ * The current box over the next box: both as large as fits in half the height less the gap, and
+ * the pair centred in the height with the gap between them. Without a next box its space is kept
+ * empty, so the current box stays in place.
+ */
 @Composable
-private fun Boxes(state: RemoteState, sideBySide: Boolean, onAction: (RemoteAction) -> Unit) {
+private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
     val display = state.display
-    val current = @Composable { modifier: Modifier ->
-        LiveBox(
-            box = display.current,
-            thumbnail = state.currentThumbnail,
-            aspect = display.aspect,
-            onClick = display.tapCurrent?.let { { onAction(RemoteAction.OnCurrentClick) } },
-            onImageWidth = { onAction(RemoteAction.OnCurrentBoxSized(it)) },
-            modifier = modifier
-        )
-    }
-    val next = @Composable { modifier: Modifier ->
-        LiveBox(
-            box = display.next,
-            thumbnail = state.nextThumbnail,
-            aspect = display.aspect,
-            onClick = display.tapNext?.let { { onAction(RemoteAction.OnNextBoxClick) } },
-            onImageWidth = { onAction(RemoteAction.OnNextBoxSized(it)) },
-            modifier = modifier
-        )
-    }
-    if (sideBySide) {
-        Row(horizontalArrangement = Arrangement.spacedBy(BoxGap), modifier = Modifier.fillMaxSize()) {
-            current(Modifier.weight(CURRENT_SHARE).fillMaxSize())
-            next(Modifier.weight(NEXT_SHARE).fillMaxSize())
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val boxSpace = Modifier.fillMaxWidth().heightIn(max = (maxHeight - BoxGap) / 2)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(BoxGap, Alignment.CenterVertically),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            LiveBox(
+                box = display.current,
+                thumbnail = state.currentThumbnail,
+                aspect = display.aspect,
+                onClick = display.tapCurrent?.let { { onAction(RemoteAction.OnCurrentClick) } },
+                onImageWidth = { onAction(RemoteAction.OnCurrentBoxSized(it)) },
+                modifier = boxSpace
+            )
+            if (display.next == RemoteBox.Empty) {
+                LiveBox(
+                    box = display.current,
+                    thumbnail = null,
+                    aspect = display.aspect,
+                    onClick = null,
+                    onImageWidth = { onAction(RemoteAction.OnNextBoxSized(it)) },
+                    modifier = boxSpace.alpha(0f).clearAndSetSemantics {}
+                )
+            } else {
+                LiveBox(
+                    box = display.next,
+                    thumbnail = state.nextThumbnail,
+                    aspect = display.aspect,
+                    onClick = display.tapNext?.let { { onAction(RemoteAction.OnNextBoxClick) } },
+                    onImageWidth = { onAction(RemoteAction.OnNextBoxSized(it)) },
+                    modifier = boxSpace
+                )
+            }
         }
-    } else {
-        Column(verticalArrangement = Arrangement.spacedBy(BoxGap), modifier = Modifier.fillMaxSize()) {
-            current(Modifier.weight(1f).fillMaxWidth())
-            next(Modifier.weight(1f).fillMaxWidth())
+    }
+}
+
+/**
+ * The 200 dp column at the end edge of the expanded layout, its background running down behind
+ * [bottomInset]: Next Up at the top (the next item's name and arrangement, the previous and next
+ * item buttons, and "Back to live" while cued), scrolling in the height left above Next over Prev
+ * at the bottom.
+ */
+@Composable
+private fun SideColumn(display: RemoteDisplay, bottomInset: Dp, onAction: (RemoteAction) -> Unit) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(SideColumnPadding),
+        modifier = Modifier
+            .width(SideColumnWidth)
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            .padding(bottom = bottomInset)
+            .padding(SideColumnPadding)
+    ) {
+        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            if (display.showsNextUp) SideNextUp(display = display, onAction = onAction)
+        }
+        Button(
+            onClick = { onAction(RemoteAction.OnNextClick) },
+            enabled = display.nextButton != null,
+            modifier = Modifier.fillMaxWidth().height(SideStepHeight)
+        ) {
+            Text(stringResource(R.string.remote_next), modifier = Modifier.padding(end = 8.dp))
+            Icon(painterResource(DesignR.drawable.ic_arrow_forward), contentDescription = null)
+        }
+        FilledTonalButton(
+            onClick = { onAction(RemoteAction.OnPreviousClick) },
+            enabled = display.previousButton != null,
+            modifier = Modifier.fillMaxWidth().height(SideStepHeight)
+        ) {
+            Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = null)
+            Text(stringResource(R.string.remote_previous), modifier = Modifier.padding(start = 8.dp))
+        }
+    }
+}
+
+@Composable
+private fun SideNextUp(display: RemoteDisplay, onAction: (RemoteAction) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        val nextUp = display.nextUp
+        when {
+            nextUp != null -> {
+                Text(
+                    text = stringResource(R.string.remote_next_up, nextUp.name),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                nextUp.arrangement?.let { ArrangementChip(text = it.label()) }
+            }
+            display.endOfPlaylist -> Text(
+                text = stringResource(R.string.remote_end_of_playlist),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            IconButton(
+                onClick = { onAction(RemoteAction.OnPreviousItemClick) },
+                enabled = display.previousItem != null
+            ) {
+                Icon(painterResource(DesignR.drawable.ic_skip_previous), stringResource(R.string.remote_previous_item))
+            }
+            IconButton(
+                onClick = { onAction(RemoteAction.OnNextItemClick) },
+                enabled = display.nextItem != null
+            ) {
+                Icon(painterResource(DesignR.drawable.ic_skip_next), stringResource(R.string.remote_next_item))
+            }
+        }
+        if (display.cued) {
+            AssistChip(
+                onClick = { onAction(RemoteAction.OnBackToLiveClick) },
+                label = { Text(stringResource(R.string.remote_back_to_live)) }
+            )
         }
     }
 }

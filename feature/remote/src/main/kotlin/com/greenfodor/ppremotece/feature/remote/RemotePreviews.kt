@@ -28,12 +28,12 @@ import com.greenfodor.ppremotece.core.domain.remote.RemoteStatus
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 
 private const val PLAYLIST = "pl"
-private const val SONG = "song-a"
+internal const val PREVIEW_SONG = "song-a"
 private val size = SlideSize(1920, 858)
 private val chorusColor = GroupColor(red = 0.8f, green = 0f, blue = 0.3f, alpha = 1f)
 
 private val song = Presentation(
-    uuid = SONG,
+    uuid = PREVIEW_SONG,
     name = "Song A",
     groups = listOf(
         Group("v", "Verse 1", null, List(3) { Slide("Verse 1 · ${it + 1}", size = size) }),
@@ -42,24 +42,37 @@ private val song = Presentation(
     arrangements = listOf(Arrangement("full", "Full", listOf("v", "c"), totalCues = 5))
 )
 
-private val keys = List(3) { PlaylistItemKey(PLAYLIST, it) }
+internal val previewKeys = List(3) { PlaylistItemKey(PLAYLIST, it) }
 
 private val playlist = Playlist(
     uuid = PLAYLIST,
     name = "Arrangement Test",
     items = listOf(
-        PlaylistItem(keys[0], "Song A", PlaylistItemType.PRESENTATION, PresentationRef(SONG, "full", "Full")),
-        PlaylistItem(keys[1], "Loop", PlaylistItemType.MEDIA, null),
-        PlaylistItem(keys[2], "Song A", PlaylistItemType.PRESENTATION, PresentationRef(SONG, "full", "Full"))
+        PlaylistItem(
+            previewKeys[0],
+            "Song A",
+            PlaylistItemType.PRESENTATION,
+            PresentationRef(PREVIEW_SONG, "full", "Full")
+        ),
+        PlaylistItem(previewKeys[1], "Loop", PlaylistItemType.MEDIA, null),
+        PlaylistItem(
+            previewKeys[2],
+            "Song A",
+            PlaylistItemType.PRESENTATION,
+            PresentationRef(PREVIEW_SONG, "full", "Full")
+        )
     )
 )
 
 private val connected = LiveState(ConnectionStatus.CONNECTED, item = null, slide = null)
 
-private fun live(item: Int, cue: Int) = connected.copy(item = keys[item], slide = LiveSlide(SONG, cue, 5))
+internal fun previewLive(item: Int, cue: Int) = connected.copy(
+    item = previewKeys[item],
+    slide = LiveSlide(PREVIEW_SONG, cue, 5)
+)
 
-private fun state(inputs: RemoteInputs): RemoteState {
-    val display = RemoteDisplay.reduce(inputs, playlist, mapOf(SONG to song))
+internal fun previewState(inputs: RemoteInputs): RemoteState {
+    val display = RemoteDisplay.reduce(inputs, playlist, mapOf(PREVIEW_SONG to song))
 
     fun thumbnail(box: RemoteBox) =
         (box as? RemoteBox.Slide)?.let {
@@ -72,59 +85,74 @@ private fun state(inputs: RemoteInputs): RemoteState {
 }
 
 @Composable
-private fun Preview(state: RemoteState, sideBySide: Boolean = false, reconnecting: Boolean = false) {
+internal fun RemotePreview(state: RemoteState, expanded: Boolean = false, reconnecting: Boolean = false) {
     PPRemoteTheme {
         SyntheticThumbnails {
-            RemoteScreen(state = state, onAction = {}, sideBySide = sideBySide, reconnecting = reconnecting)
+            RemoteScreen(state = state, onAction = {}, expanded = expanded, reconnecting = reconnecting)
         }
     }
 }
 
-@Preview(widthDp = 411, heightDp = 891)
+@Preview(widthDp = 527, heightDp = 1173)
 @Composable
 private fun LivePreview() {
-    Preview(state(RemoteInputs(live(0, 1), LiveCue(CueSource.PlaylistItem(keys[0]), SONG, 1))))
-}
-
-@Preview(widthDp = 1173, heightDp = 527)
-@Composable
-private fun LiveSideBySidePreview() {
-    Preview(state(RemoteInputs(live(0, 1), LiveCue(CueSource.PlaylistItem(keys[0]), SONG, 1))), sideBySide = true)
+    RemotePreview(
+        previewState(RemoteInputs(previewLive(0, 1), LiveCue(CueSource.PlaylistItem(previewKeys[0]), PREVIEW_SONG, 1)))
+    )
 }
 
 @Preview(widthDp = 411, heightDp = 891)
 @Composable
 private fun LastCueReconnectingPreview() {
-    Preview(state(RemoteInputs(live(2, 4), LiveCue(CueSource.PlaylistItem(keys[2]), SONG, 4))), reconnecting = true)
+    RemotePreview(
+        previewState(RemoteInputs(previewLive(2, 4), LiveCue(CueSource.PlaylistItem(previewKeys[2]), PREVIEW_SONG, 4))),
+        reconnecting = true
+    )
 }
 
 @Preview(widthDp = 411, heightDp = 891)
 @Composable
 private fun CuedPreview() {
-    Preview(state(RemoteInputs(live(0, 1), LiveCue(CueSource.PlaylistItem(keys[0]), SONG, 1), cued = keys[2])))
+    RemotePreview(
+        previewState(
+            RemoteInputs(
+                previewLive(0, 1),
+                LiveCue(CueSource.PlaylistItem(previewKeys[0]), PREVIEW_SONG, 1),
+                cued = previewKeys[2]
+            )
+        )
+    )
 }
 
 @Preview(widthDp = 411, heightDp = 891)
 @Composable
 private fun MediaLivePreview() {
-    Preview(state(RemoteInputs(connected, LiveCue(CueSource.PlaylistItem(keys[0]), SONG, 1), mediaLive = keys[1])))
+    RemotePreview(
+        previewState(
+            RemoteInputs(
+                connected,
+                LiveCue(CueSource.PlaylistItem(previewKeys[0]), PREVIEW_SONG, 1),
+                mediaLive = previewKeys[1]
+            )
+        )
+    )
 }
 
 @Preview(widthDp = 411, heightDp = 891)
 @Composable
 private fun TextOnlyPreview() {
-    val outside = connected.copy(slide = LiveSlide(SONG, 1, 26), slideText = SlideText("Text 03", "Text 04"))
-    Preview(state(RemoteInputs(outside, lastLive = null)))
+    val outside = connected.copy(slide = LiveSlide(PREVIEW_SONG, 1, 26), slideText = SlideText("Text 03", "Text 04"))
+    RemotePreview(previewState(RemoteInputs(outside, lastLive = null)))
 }
 
 @Preview(widthDp = 411, heightDp = 891)
 @Composable
 private fun NothingLivePreview() {
-    Preview(RemoteState(RemoteDisplay(status = RemoteStatus.NOTHING_LIVE)))
+    RemotePreview(RemoteState(RemoteDisplay(status = RemoteStatus.NOTHING_LIVE)))
 }
 
 @Preview(widthDp = 411, heightDp = 891)
 @Composable
 private fun LoadingPreview() {
-    Preview(RemoteState())
+    RemotePreview(RemoteState())
 }
