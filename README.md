@@ -26,8 +26,8 @@ supported by Renewed Vision. ProPresenter is a trademark of Renewed Vision.
   playlist; a tap plays a track; a bar shows what plays, with previous, play or pause, and next.
 - **Looks.** A card per look; a tap makes it the live look.
 - **Props.** A tile per prop with its thumbnail, grouped by collection; a tap shows or hides it.
-- **Clear.** One button for every layer (slide, media, live video, props, messages, announcements,
-  audio) and for each clear group.
+- **Clear.** A button per layer (slide, media, live video, props, messages, announcements, audio)
+  and per clear group.
 - **Settings.** Keep the screen on (never, on the Remote tab, always); orientation (follow the
   system, portrait, landscape); auto-connect; disconnect.
 
@@ -58,18 +58,22 @@ Use it on a network you trust.
    on your Android device and download the `.apk` file.
 2. Open the downloaded file. Android asks you to allow installs from the app you downloaded it
    with (your browser or file manager): allow it, then install.
-3. Open the app and pick your ProPresenter computer from the list, or type its address and port.
+3. Open the app. If Android asks whether the app may find and connect to devices on your local
+   network, allow it: the app cannot reach ProPresenter without it.
+4. Pick your ProPresenter computer from the list, or type its address and port.
 
-Later versions install over this one and keep your settings.
+Later releases from this page install over this one and keep your settings. A build you make
+yourself is signed with another key and does not install over a release.
 
 ## Build
 
-You need a JDK (Gradle downloads the Java 25 toolchain it compiles with) and the Android SDK.
+You need JDK 17 or later to run Gradle (it downloads the Java 25 toolchain it compiles with) and
+the Android SDK.
 
 ```bash
-./gradlew build            # compile, static analysis and all unit tests
-./gradlew assembleDebug    # the debug build, installed next to a release build
-./gradlew assembleRelease  # the minified release build
+./gradlew build              # compile, static analysis and all unit tests
+./gradlew :app:installDebug  # install the debug build, which sits next to a release build
+./gradlew assembleRelease    # the minified release build
 ```
 
 `assembleRelease` signs the APK only when `local.properties` names a signing properties file; see
