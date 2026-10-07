@@ -54,16 +54,36 @@ Use it on a network you trust.
 
 ## Install
 
+### With Obtainium (recommended)
+
+[Obtainium](https://obtainium.imranr.dev/) installs apps straight from their GitHub Releases and
+checks them for new versions, so you do not have to watch this page.
+
+1. Install Obtainium on your Android device. It is not on Google Play: get it from the Obtainium
+   site linked above. Android asks you to allow installs from the app you download it with.
+2. In Obtainium, choose **Add App** and enter this repository's address:
+   `https://github.com/greenfodor/ProPresenterRemoteCommunityEdition`
+3. Add it, then install the app from Obtainium. Android asks you to allow Obtainium to install
+   apps: allow it.
+
+Obtainium can tell you when a new release is out; allow its notifications if you want that.
+
+### By hand
+
 1. Open the [latest release](https://github.com/greenfodor/ProPresenterRemoteCommunityEdition/releases/latest)
    on your Android device and download the `.apk` file.
 2. Open the downloaded file. Android asks you to allow installs from the app you downloaded it
    with (your browser or file manager): allow it, then install.
-3. Open the app. If Android asks whether the app may find and connect to devices on your local
-   network, allow it: the app cannot reach ProPresenter without it.
-4. Pick your ProPresenter computer from the list, or type its address and port.
 
-Later releases from this page install over this one and keep your settings. A build you make
-yourself is signed with another key and does not install over a release.
+### First start
+
+1. Open the app. If Android asks whether the app may find and connect to devices on your local
+   network, allow it: the app cannot reach ProPresenter without it.
+2. Pick your ProPresenter computer from the list, or type its address and port.
+
+A later release installs over the one you have and keeps your settings, whichever way you
+installed it. A build you make yourself is signed with another key and does not install over a
+release.
 
 ## Build
 
