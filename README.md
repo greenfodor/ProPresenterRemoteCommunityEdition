@@ -54,6 +54,23 @@ Use it on a network you trust.
 
 ## Install
 
+### With Obtainium (recommended)
+
+[Obtainium](https://obtainium.imranr.dev/) installs apps straight from their GitHub Releases and
+tells you when a new version is out, so you do not have to check this page.
+
+1. Install Obtainium on your Android device.
+2. In Obtainium, choose **Add App** and enter this repository's address:
+   `https://github.com/greenfodor/ProPresenterRemoteCommunityEdition`
+3. Add it, then install the app from Obtainium. Android asks you to allow Obtainium to install
+   apps: allow it.
+4. Continue with step 3 below.
+
+When a new release is published, Obtainium offers the update; it installs over the version you
+have and keeps your settings.
+
+### By hand
+
 1. Open the [latest release](https://github.com/greenfodor/ProPresenterRemoteCommunityEdition/releases/latest)
    on your Android device and download the `.apk` file.
 2. Open the downloaded file. Android asks you to allow installs from the app you downloaded it

@@ -7,6 +7,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- The README suggests Obtainium for installing the app and getting its updates.
+
 ## [0.3.0] - 2026-10-07
 
 ### Added
