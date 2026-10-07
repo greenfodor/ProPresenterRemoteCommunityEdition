@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.feature.remote
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -33,6 +34,7 @@ import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -50,6 +52,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
 import com.greenfodor.ppremotece.core.designsystem.ui.ErrorWithRetry
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
+import com.greenfodor.ppremotece.core.designsystem.ui.OutlinedBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.ThumbnailPrefetch
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
@@ -74,6 +78,7 @@ private val FabClearance = 72.dp
 private val SideColumnWidth = 200.dp
 private val SideColumnPadding = 12.dp
 private val SideStepHeight = 64.dp
+private val NextUpCardPadding = 12.dp
 
 @Composable
 fun RemoteRoot(
@@ -353,8 +358,7 @@ private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
 
 /**
  * The 200 dp column at the end edge of the expanded layout, its background running down behind
- * [bottomInset]: Next Up at the top (the next item's name and arrangement, the previous and next
- * item buttons, and "Back to live" while cued), scrolling in the height left above Next over Prev
+ * [bottomInset]: the Next Up card at the top, scrolling in the height left above Next over Prev
  * at the bottom.
  */
 @Composable
@@ -369,22 +373,64 @@ private fun SideColumn(display: RemoteDisplay, bottomInset: Dp, onAction: (Remot
             .padding(SideColumnPadding)
     ) {
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            if (display.showsNextUp) SideNextUp(display = display, onAction = onAction)
+            if (display.showsNextUp) NextUpCard(display = display, onAction = onAction)
         }
         NextButton(display, onAction, Modifier.fillMaxWidth().height(SideStepHeight))
         PreviousButton(display, onAction, Modifier.fillMaxWidth().height(SideStepHeight))
     }
 }
 
+/**
+ * The Next Up card of the side column, on `surfaceContainerLow` with medium corners: a centred
+ * `NEXT UP` heading, the next item's name on up to three lines and its arrangement chip, then
+ * "Next item" over "Previous item". While an item is cued it has a 2 dp `secondary` ring, a `CUED`
+ * badge beside the heading and "Back to live" as its last row. At the last item it reads
+ * "End of playlist" and has no "Next item".
+ */
 @Composable
-private fun SideNextUp(display: RemoteDisplay, onAction: (RemoteAction) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        NextUpLabel(display = display, maxLines = 2)
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            PreviousItemButton(display, onAction)
-            NextItemButton(display, onAction)
+private fun NextUpCard(display: RemoteDisplay, onAction: (RemoteAction) -> Unit) {
+    val shape = MaterialTheme.shapes.medium
+    val ring = if (display.cued) Modifier.border(2.dp, MaterialTheme.colorScheme.secondary, shape) else Modifier
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = shape,
+        modifier = Modifier.fillMaxWidth().then(ring)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(NextUpCardPadding)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(R.string.remote_next_up_heading),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (display.cued) OutlinedBadge(stringResource(DesignR.string.cue_cued))
+            }
+            val nextUp = display.nextUp
+            if (nextUp != null) {
+                Text(
+                    text = nextUp.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    textAlign = TextAlign.Center,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+                nextUp.arrangement?.let { ArrangementChip(text = it.label()) }
+                NextItemLabelButton(display, onAction, Modifier.fillMaxWidth())
+            } else if (display.endOfPlaylist) {
+                Text(
+                    text = stringResource(R.string.remote_end_of_playlist),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+            PreviousItemLabelButton(display, onAction, Modifier.fillMaxWidth())
+            if (display.cued) BackToLiveButton(onAction, Modifier.fillMaxWidth())
         }
-        if (display.cued) BackToLiveChip(onAction)
     }
 }
 

@@ -47,3 +47,15 @@ private fun EndOfPlaylistExpandedPreview() {
         expanded = true
     )
 }
+
+@Preview(widthDp = 1173, heightDp = 527)
+@Composable
+private fun LongNextUpExpandedPreview() {
+    val state = previewState(
+        RemoteInputs(previewLive(0, 1), LiveCue(CueSource.PlaylistItem(previewKeys[0]), PREVIEW_SONG, 1))
+    )
+    val nextUp = state.display.nextUp?.copy(
+        name = "Song B with a name long enough to fill three whole lines of the card"
+    )
+    RemotePreview(state.copy(display = state.display.copy(nextUp = nextUp)), expanded = true)
+}

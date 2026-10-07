@@ -1,5 +1,7 @@
 package com.greenfodor.ppremotece.feature.remote
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -7,6 +9,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -18,6 +21,9 @@ import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
+
+private val LabelButtonHeight = 48.dp
+private val LabelButtonPadding = PaddingValues(horizontal = 8.dp)
 
 /** The Next button of the Remote, enabled while [display] has a next cue to send. */
 @Composable
@@ -64,6 +70,58 @@ internal fun NextItemButton(display: RemoteDisplay, onAction: (RemoteAction) -> 
         enabled = display.nextItem != null
     ) {
         Icon(painterResource(DesignR.drawable.ic_skip_next), stringResource(R.string.remote_next_item))
+    }
+}
+
+/** The labelled previous-item button, the width it is given and 48 dp high, enabled as [PreviousItemButton] is. */
+@Composable
+internal fun PreviousItemLabelButton(
+    display: RemoteDisplay,
+    onAction: (RemoteAction) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = { onAction(RemoteAction.OnPreviousItemClick) },
+        enabled = display.previousItem != null,
+        contentPadding = LabelButtonPadding,
+        modifier = modifier.heightIn(min = LabelButtonHeight)
+    ) {
+        Icon(painterResource(DesignR.drawable.ic_skip_previous), contentDescription = null)
+        Text(
+            text = stringResource(R.string.remote_previous_item),
+            maxLines = 1,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+    }
+}
+
+/** The labelled next-item button, the width it is given and 48 dp high, enabled as [NextItemButton] is. */
+@Composable
+internal fun NextItemLabelButton(
+    display: RemoteDisplay,
+    onAction: (RemoteAction) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = { onAction(RemoteAction.OnNextItemClick) },
+        enabled = display.nextItem != null,
+        contentPadding = LabelButtonPadding,
+        modifier = modifier.heightIn(min = LabelButtonHeight)
+    ) {
+        Text(text = stringResource(R.string.remote_next_item), maxLines = 1, modifier = Modifier.padding(end = 4.dp))
+        Icon(painterResource(DesignR.drawable.ic_skip_next), contentDescription = null)
+    }
+}
+
+/** The tonal "Back to live" button, the width it is given and 48 dp high, shown while an item is cued. */
+@Composable
+internal fun BackToLiveButton(onAction: (RemoteAction) -> Unit, modifier: Modifier = Modifier) {
+    FilledTonalButton(
+        onClick = { onAction(RemoteAction.OnBackToLiveClick) },
+        contentPadding = LabelButtonPadding,
+        modifier = modifier.heightIn(min = LabelButtonHeight)
+    ) {
+        Text(text = stringResource(R.string.remote_back_to_live), maxLines = 1)
     }
 }
 

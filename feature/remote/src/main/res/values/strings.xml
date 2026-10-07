@@ -3,6 +3,7 @@
     <string name="remote_nothing_live">Nothing live</string>
     <string name="remote_cue_position">%1$d / %2$d</string>
     <string name="remote_next_up">Next: %1$s</string>
+    <string name="remote_next_up_heading">NEXT UP</string>
     <string name="remote_end_of_playlist">End of playlist</string>
     <string name="remote_back_to_live">Back to live</string>
     <string name="remote_previous">Previous</string>
