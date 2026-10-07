@@ -7,14 +7,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -39,16 +40,18 @@ internal fun BuildOverlay() {
 
 /**
  * A diagonal red band reading `DEBUG` across the top-end corner, 44 dp from the corner along the
- * diagonal. It fills its parent without taking a size of its own, takes no touches and has no
- * semantics.
+ * diagonal. It fills its parent and takes no touches.
  */
 @Composable
 private fun DebugRibbon(modifier: Modifier = Modifier) {
     val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val text = remember(measurer, density) {
+        val size = with(density) { RibbonTextSize.toSp() }
+        measurer.measure(RIBBON_TEXT, TextStyle(color = Color.White, fontSize = size, fontWeight = FontWeight.Bold))
+    }
     val atStart = LocalLayoutDirection.current == LayoutDirection.Rtl
-    Canvas(modifier = modifier.fillMaxSize().clearAndSetSemantics {}) {
-        val style = TextStyle(color = Color.White, fontSize = RibbonTextSize.toSp(), fontWeight = FontWeight.Bold)
-        val text = measurer.measure(RIBBON_TEXT, style)
+    Canvas(modifier = modifier.fillMaxSize()) {
         val distance = RibbonDistance.toPx()
         val thickness = RibbonThickness.toPx()
         val length = distance * 2 + thickness

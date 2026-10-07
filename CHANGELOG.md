@@ -15,7 +15,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   labelled Next item and Previous item buttons, and Back to live while an item is cued.
 - An app icon: a deck of slides with the live one in front, with a themed (monochrome) layer; the
   debug build's icon carries a `DEBUG` ribbon.
-- Debug builds draw a `DEBUG` ribbon across the top corner of every screen.
+- Debug builds draw a `DEBUG` ribbon across the top corner of the app.
 - This changelog.
 
 ### Changed
@@ -31,7 +31,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Audio: a playlist's tracks are read again after the connection to ProPresenter returns.
 - In two panes with navigation buttons at the side, the list pane is no longer padded for them.
 
-## [0.2.0] - 2026-10-07
+## 0.2.0 - 2026-10-07
 
 ### Added
 - A `CLEARED` mark on the slide that was live before a clear, on the grid, the list view, the
@@ -52,7 +52,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The system Back in the two-pane layout no longer closes the app.
 - Transports whose stream URL ProPresenter rejects are shown as not available.
 
-## [0.1.0] - 2026-10-06
+## 0.1.0 - 2026-10-06
 
 ### Added
 - Connect to ProPresenter by discovery or by entering a host; auto-connect to the saved host.
