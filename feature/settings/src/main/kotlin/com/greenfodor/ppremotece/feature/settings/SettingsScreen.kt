@@ -10,8 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -28,12 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
+import com.greenfodor.ppremotece.core.designsystem.ui.TabTitle
+import com.greenfodor.ppremotece.core.designsystem.ui.scrollInsets
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -52,7 +51,6 @@ internal val PreviewState = SettingsState(
 /** The Settings screen; [onDisconnected] runs once a confirmed Disconnect has closed the connection. */
 @Composable
 fun SettingsRoot(
-    onBack: () -> Unit,
     onDisconnected: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = koinViewModel()
@@ -76,7 +74,6 @@ fun SettingsRoot(
         onAction = viewModel::onAction,
         appVersion = appVersion,
         snackbarHostState = snackbarHostState,
-        onBack = onBack,
         onOpenSource = { uriHandler.tryOpenUri(SOURCE_URL) },
         modifier = modifier
     )
@@ -89,7 +86,6 @@ fun SettingsScreen(
     state: SettingsState,
     onAction: (SettingsAction) -> Unit,
     appVersion: String,
-    onBack: () -> Unit,
     onOpenSource: () -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
@@ -99,19 +95,21 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(DesignR.drawable.ic_arrow_back), stringResource(R.string.settings_back))
-                    }
-                },
+                title = { TabTitle(DesignR.drawable.ic_settings, stringResource(R.string.settings_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+        val insets = scrollInsets(padding)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(insets.frame)
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = insets.scrollBottom)
+        ) {
             KeepAwakeSection(mode = state.keepAwake, onModeChange = { onAction(SettingsAction.OnKeepAwakeChange(it)) })
             OrientationSection(
                 orientation = state.orientation,
@@ -180,7 +178,7 @@ private fun appVersion(context: Context): String {
 @Composable
 private fun SettingsScreenPreview() {
     PPRemoteTheme {
-        SettingsScreen(state = PreviewState, onAction = {}, appVersion = "0.1.0", onBack = {}, onOpenSource = {})
+        SettingsScreen(state = PreviewState, onAction = {}, appVersion = "0.1.0", onOpenSource = {})
     }
 }
 

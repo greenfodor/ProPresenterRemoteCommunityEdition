@@ -114,7 +114,7 @@ internal enum class ShellDestination(
     REMOTE(ShellItem(ShellTab.REMOTE, DesignR.drawable.ic_settings_remote, R.string.shell_remote), RemoteRoute),
     MACROS(ShellItem(ShellTab.MACROS, DesignR.drawable.ic_bolt, R.string.shell_macros), MacrosRoute),
     TIMERS(ShellItem(ShellTab.TIMERS, DesignR.drawable.ic_timer, R.string.shell_timers), TimersRoute),
-    AUDIO(ShellItem(ShellTab.AUDIO, DesignR.drawable.ic_music_note, R.string.shell_audio), AudioRoute),
+    AUDIO(ShellItem(ShellTab.AUDIO, DesignR.drawable.ic_music_note_2, R.string.shell_audio), AudioRoute),
     LOOKS(ShellItem(ShellTab.LOOKS, DesignR.drawable.ic_theater_comedy, R.string.shell_looks), LooksRoute),
     PROPS(ShellItem(ShellTab.PROPS, DesignR.drawable.ic_layers, R.string.shell_props), PropsRoute),
     SETTINGS(ShellItem(ShellTab.SETTINGS, DesignR.drawable.ic_settings, R.string.shell_settings), SettingsRoute)
@@ -238,7 +238,6 @@ fun AppShell(
                         reconnecting = reconnecting,
                         fab = { currentFab },
                         moreEntries = { currentMoreEntries },
-                        onBack = onBack,
                         onOpenFromMore = onOpenFromMore,
                         onDisconnected = onDisconnected
                     )
@@ -422,7 +421,6 @@ private fun EntryProviderScope<NavKey>.tabEntries(
     reconnecting: () -> Boolean,
     fab: () -> (@Composable (SnackbarHostState) -> Unit)?,
     moreEntries: () -> List<MoreEntry>,
-    onBack: () -> Unit,
     onOpenFromMore: (NavKey) -> Unit,
     onDisconnected: () -> Unit
 ) {
@@ -445,7 +443,7 @@ private fun EntryProviderScope<NavKey>.tabEntries(
         PropsRoot(widthClass = widthClass(), reconnecting = reconnecting(), floatingActionButton = fab())
     }
     entry<SettingsRoute> {
-        SettingsRoot(onBack = onBack, onDisconnected = onDisconnected)
+        SettingsRoot(onDisconnected = onDisconnected)
     }
     entry<MoreRoute> {
         MoreScreen(entries = moreEntries(), onOpen = onOpenFromMore)

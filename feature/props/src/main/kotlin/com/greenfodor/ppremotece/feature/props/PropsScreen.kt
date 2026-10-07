@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
@@ -43,11 +44,14 @@ import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
 import com.greenfodor.ppremotece.core.designsystem.ui.PropThumbnail
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.SyntheticThumbnails
+import com.greenfodor.ppremotece.core.designsystem.ui.TabTitle
+import com.greenfodor.ppremotece.core.designsystem.ui.scrollInsets
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequests
 import org.koin.compose.viewmodel.koinViewModel
+import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val GridPadding = 8.dp
 private val GridGap = 8.dp
@@ -100,14 +104,15 @@ fun PropsScreen(
         floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.props_title)) },
+                title = { TabTitle(DesignR.drawable.ic_layers, stringResource(R.string.props_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        val insets = scrollInsets(padding)
+        Column(modifier = Modifier.fillMaxSize().padding(insets.frame)) {
             ReconnectingStrip(visible = reconnecting)
             LoadableList(state.sections, emptyText = stringResource(R.string.props_empty)) { sections ->
                 PropGrid(
@@ -115,6 +120,7 @@ fun PropsScreen(
                     showHeaders = state.showHeaders,
                     thumbnails = state.thumbnails,
                     widthClass = widthClass,
+                    bottomInset = insets.scrollBottom,
                     onAction = onAction
                 )
             }
@@ -128,6 +134,7 @@ private fun PropGrid(
     showHeaders: Boolean,
     thumbnails: PropThumbnailRequests?,
     widthClass: WidthClass,
+    bottomInset: Dp,
     onAction: (PropsAction) -> Unit
 ) {
     LazyVerticalGrid(
@@ -136,7 +143,7 @@ private fun PropGrid(
             start = GridPadding,
             top = GridPadding,
             end = GridPadding,
-            bottom = BottomClearance
+            bottom = BottomClearance + bottomInset
         ),
         horizontalArrangement = Arrangement.spacedBy(GridGap),
         verticalArrangement = Arrangement.spacedBy(GridGap),

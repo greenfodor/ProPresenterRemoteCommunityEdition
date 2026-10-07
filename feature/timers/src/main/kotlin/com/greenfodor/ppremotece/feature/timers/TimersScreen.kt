@@ -44,6 +44,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
+import com.greenfodor.ppremotece.core.designsystem.ui.TabTitle
+import com.greenfodor.ppremotece.core.designsystem.ui.scrollInsets
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.model.TimerOperation
@@ -104,14 +106,15 @@ fun TimersScreen(
         floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.timers_title)) },
+                title = { TabTitle(DesignR.drawable.ic_timer, stringResource(R.string.timers_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        val insets = scrollInsets(padding)
+        Column(modifier = Modifier.fillMaxSize().padding(insets.frame)) {
             ReconnectingStrip(visible = reconnecting)
             LoadableList(state.timers, emptyText = stringResource(R.string.timers_empty)) { timers ->
                 LazyVerticalGrid(
@@ -120,7 +123,7 @@ fun TimersScreen(
                         start = GridPadding,
                         top = GridPadding,
                         end = GridPadding,
-                        bottom = BottomClearance
+                        bottom = BottomClearance + insets.scrollBottom
                     ),
                     horizontalArrangement = Arrangement.spacedBy(GridGap),
                     verticalArrangement = Arrangement.spacedBy(GridGap),

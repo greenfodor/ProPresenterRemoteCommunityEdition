@@ -51,6 +51,7 @@ import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
+import com.greenfodor.ppremotece.core.designsystem.ui.scrollInsets
 import com.greenfodor.ppremotece.core.designsystem.ui.toColor
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
@@ -142,9 +143,10 @@ fun PlaylistScreen(
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        val insets = scrollInsets(padding)
+        Column(modifier = Modifier.fillMaxSize().padding(insets.frame)) {
             ReconnectingStrip(visible = reconnecting)
-            val bottomPadding = if (floatingActionButton != null) FabClearance else 0.dp
+            val bottomPadding = insets.scrollBottom + if (floatingActionButton != null) FabClearance else 0.dp
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = { onAction(PlaylistAction.OnRefresh) },

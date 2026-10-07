@@ -4,13 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -44,6 +42,8 @@ import com.greenfodor.ppremotece.core.designsystem.ui.LiveBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
 import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
+import com.greenfodor.ppremotece.core.designsystem.ui.TabTitle
+import com.greenfodor.ppremotece.core.designsystem.ui.scrollInsets
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
@@ -98,24 +98,15 @@ fun LooksScreen(
         floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painterResource(DesignR.drawable.ic_theater_comedy),
-                            contentDescription = null,
-                            modifier = Modifier.size(IconSize)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(stringResource(R.string.looks_title))
-                    }
-                },
+                title = { TabTitle(DesignR.drawable.ic_theater_comedy, stringResource(R.string.looks_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        val insets = scrollInsets(padding)
+        Column(modifier = Modifier.fillMaxSize().padding(insets.frame)) {
             ReconnectingStrip(visible = reconnecting)
             LoadableList(state.looks, emptyText = stringResource(R.string.looks_empty)) { looks ->
                 LazyVerticalGrid(
@@ -124,7 +115,7 @@ fun LooksScreen(
                         start = GridPadding,
                         top = GridPadding,
                         end = GridPadding,
-                        bottom = BottomClearance
+                        bottom = BottomClearance + insets.scrollBottom
                     ),
                     horizontalArrangement = Arrangement.spacedBy(GridGap),
                     verticalArrangement = Arrangement.spacedBy(GridGap),

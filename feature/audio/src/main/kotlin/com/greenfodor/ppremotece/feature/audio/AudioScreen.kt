@@ -52,6 +52,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
 import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
 import com.greenfodor.ppremotece.core.designsystem.ui.OutlinedBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
+import com.greenfodor.ppremotece.core.designsystem.ui.TabTitle
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
@@ -103,7 +104,7 @@ fun AudioScreen(
         floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.audio_title)) },
+                title = { TabTitle(DesignR.drawable.ic_music_note_2, stringResource(R.string.audio_title)) },
                 actions = { PlaylistPicker(state = state, initiallyOpen = pickerOpen, onAction = onAction) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
