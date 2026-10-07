@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.feature.audio
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
 import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
+import com.greenfodor.ppremotece.core.designsystem.ui.OutlinedBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
@@ -56,6 +58,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val RowHeight = 64.dp
+private val PausedRingWidth = 2.dp
 private val BottomClearance = 88.dp
 private val PickerMaxWidth = 220.dp
 private val ListPadding = 8.dp
@@ -191,7 +194,7 @@ private fun Tracks(state: AudioState, bottomPadding: Dp, onAction: (AudioAction)
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(state.tracks, key = { it.index }) { track ->
-                    TrackRow(track = track, onClick = { onAction(AudioAction.OnTrackClick(track.index)) })
+                    TrackRow(track = track, onClick = { onAction(AudioAction.OnTrackClick(track.uuid)) })
                 }
             }
         }
@@ -212,14 +215,21 @@ private fun TracksError(error: UiText, onRetry: () -> Unit) {
 
 /**
  * A 64 dp track card on `surfaceContainerHigh`: a music note, the name over the artist, and the
- * duration trailing in tabular numerals. The active track gets the ring ([LiveMark]) and a
- * `PLAYING` or `PAUSED` badge before its duration.
+ * duration trailing in tabular numerals. The playing track gets the ring ([LiveMark]) and a
+ * `PLAYING` badge before its duration; the paused one a 2 dp `secondary` ring and an outlined
+ * `PAUSED` badge.
  */
 @Composable
 internal fun TrackRow(track: AudioTrackUi, onClick: () -> Unit) {
     val marked = track.mark != TrackMark.NONE
+    val paused = track.mark == TrackMark.PAUSED
     val shape = MaterialTheme.shapes.large
-    LiveMark(live = marked, shape = shape, badge = null) {
+    val pausedRing = if (paused) {
+        Modifier.border(PausedRingWidth, MaterialTheme.colorScheme.secondary, shape)
+    } else {
+        Modifier
+    }
+    LiveMark(live = track.mark == TrackMark.PLAYING, shape = shape, badge = null, modifier = pausedRing) {
         Surface(
             onClick = onClick,
             shape = shape,
@@ -231,7 +241,7 @@ internal fun TrackRow(track: AudioTrackUi, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(start = 12.dp, end = 16.dp)
             ) {
-                TrackNote(marked = marked)
+                TrackNote(mark = track.mark)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = track.name,
@@ -247,12 +257,10 @@ internal fun TrackRow(track: AudioTrackUi, onClick: () -> Unit) {
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                if (marked) {
-                    LiveBadge(
-                        text = stringResource(
-                            if (track.mark == TrackMark.PLAYING) R.string.audio_playing else R.string.audio_paused
-                        )
-                    )
+                when (track.mark) {
+                    TrackMark.PLAYING -> LiveBadge(text = stringResource(R.string.audio_playing))
+                    TrackMark.PAUSED -> OutlinedBadge(text = stringResource(R.string.audio_paused))
+                    TrackMark.NONE -> Unit
                 }
                 Text(
                     text = track.duration,
@@ -264,9 +272,9 @@ internal fun TrackRow(track: AudioTrackUi, onClick: () -> Unit) {
     }
 }
 
-/** The music note at the start of a track card, in `tertiary` on the [marked] track. */
+/** The music note at the start of a track card: `tertiary` on the playing track, `secondary` on the paused one. */
 @Composable
-private fun TrackNote(marked: Boolean) {
+private fun TrackNote(mark: TrackMark) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier.size(NoteSize).background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
@@ -274,7 +282,11 @@ private fun TrackNote(marked: Boolean) {
         Icon(
             painterResource(DesignR.drawable.ic_music_note),
             contentDescription = null,
-            tint = if (marked) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
+            tint = when (mark) {
+                TrackMark.PLAYING -> MaterialTheme.colorScheme.tertiary
+                TrackMark.PAUSED -> MaterialTheme.colorScheme.secondary
+                TrackMark.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+            }
         )
     }
 }

@@ -19,6 +19,8 @@ import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /** Records triggers, an item trigger answering [itemResult] once [itemGate] opens; reads are not served. */
 class FakeProPresenterClient : ProPresenterClient {
@@ -93,7 +95,9 @@ class FakeProPresenterClient : ProPresenterClient {
 
     override suspend fun audioPlaylist(uuid: String): Result<List<AudioTrack>, DataError.Network> = notServed()
 
-    override suspend fun triggerAudioTrack(playlistUuid: String, index: Int): EmptyResult<DataError.Network> =
+    override fun playlistChanges(uuid: String): Flow<Unit> = emptyFlow()
+
+    override suspend fun triggerAudioTrack(playlistUuid: String, trackUuid: String): EmptyResult<DataError.Network> =
         notServed()
 
     override suspend fun audioNext(): EmptyResult<DataError.Network> = notServed()

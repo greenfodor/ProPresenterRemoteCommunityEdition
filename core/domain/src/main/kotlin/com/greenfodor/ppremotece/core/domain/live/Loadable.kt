@@ -22,5 +22,8 @@ fun <T, R> Loadable<T>.map(transform: (T) -> R): Loadable<R> =
         Loadable.Unavailable -> Loadable.Unavailable
     }
 
+/** The loaded content, or null in any other state. */
+fun <T> Loadable<T>.orNull(): T? = (this as? Loadable.Loaded)?.value
+
 /** The loaded list, or an empty list in any other state. */
 fun <T> Loadable<List<T>>.orEmpty(): List<T> = (this as? Loadable.Loaded)?.value.orEmpty()

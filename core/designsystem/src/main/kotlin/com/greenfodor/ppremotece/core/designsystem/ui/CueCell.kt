@@ -171,8 +171,9 @@ fun CueMarkBadge(mark: CueMark, modifier: Modifier = Modifier) {
     }
 }
 
+/** A badge in the `CUED` look, reading [text]: `secondary` text and outline on the darkest surface. */
 @Composable
-private fun OutlinedBadge(text: String, modifier: Modifier = Modifier) {
+fun OutlinedBadge(text: String, modifier: Modifier = Modifier) {
     Badge(
         text = text,
         container = MaterialTheme.colorScheme.surfaceContainerLowest,

@@ -10,6 +10,7 @@ import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.data.network.FakeProPresenter
 import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.domain.live.Loadable
+import com.greenfodor.ppremotece.core.domain.live.orNull
 import com.greenfodor.ppremotece.core.domain.model.Cue
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
@@ -27,6 +28,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -134,15 +136,27 @@ class ProPresenterSessionTest {
         fake.enqueueStream(fake.frames(listOf(PRESENTATION_TRANSPORT_FRAME, AUDIO_TRANSPORT_FRAME)))
         assertThat(session.connect(host())).isInstanceOf<Result.Success<*>>()
         val collector = launch { session.liveState.collect {} }
-        assertThat(withTimeout(5.seconds) { session.presentationTransport.first { it != null } }?.name)
+        assertThat(
+            withTimeout(5.seconds) {
+                session.presentationTransport.map { it.orNull() }.first { it != null }
+            }?.name
+        )
             .isEqualTo("Media 01")
-        assertThat(withTimeout(5.seconds) { session.audioTransport.first { it != null } }?.name).isEqualTo("Media 03")
+        assertThat(
+            withTimeout(5.seconds) {
+                session.audioTransport.map { it.orNull() }.first { it != null }
+            }?.name
+        ).isEqualTo("Media 03")
         collector.cancel()
 
         session.disconnect()
 
-        assertThat(withTimeout(2.seconds) { session.presentationTransport.first { it == null } }).isNull()
-        assertThat(withTimeout(2.seconds) { session.audioTransport.first { it == null } }).isNull()
+        assertThat(
+            withTimeout(2.seconds) {
+                session.presentationTransport.map { it.orNull() }.first { it == null }
+            }
+        ).isNull()
+        assertThat(withTimeout(2.seconds) { session.audioTransport.map { it.orNull() }.first { it == null } }).isNull()
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.designsystem.ui.toUiText
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.live.orNull
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.result.Result
@@ -32,7 +33,8 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
 /**
  * The card of the playlist item [key]: its name, type and duration, read through the
  * [ContentRepository] and kept while a later read fails, and whether a transport of the
- * [TransportRepository] plays it ([itemLive]). An item that is not a media, audio or live-video
+ * [TransportRepository] plays it or holds it paused ([itemLive]); an unavailable transport marks
+ * nothing. An item that is not a media, audio or live-video
  * item is shown as no longer in the playlist.
  * A tap triggers the item; taps are ignored while its request is in flight, and a failure posts
  * "Couldn't start {item}".
@@ -85,7 +87,7 @@ class PlaylistItemViewModel(
                     name = item.name,
                     type = item.type,
                     duration = item.durationSeconds?.let(::formatDuration),
-                    live = itemLive(item, presentation, audio),
+                    live = itemLive(item, presentation.orNull(), audio.orNull()),
                     isLoading = false
                 )
             }

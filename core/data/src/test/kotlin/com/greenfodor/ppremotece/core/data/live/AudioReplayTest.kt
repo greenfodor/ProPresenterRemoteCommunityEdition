@@ -13,6 +13,7 @@ import com.greenfodor.ppremotece.core.data.network.StreamReplay
 import com.greenfodor.ppremotece.core.domain.audio.TransportButton
 import com.greenfodor.ppremotece.core.domain.audio.nowPlaying
 import com.greenfodor.ppremotece.core.domain.live.Loadable
+import com.greenfodor.ppremotece.core.domain.live.orNull
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
 import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
 import com.greenfodor.ppremotece.core.domain.model.Transport
@@ -25,6 +26,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -92,7 +94,9 @@ class AudioReplayTest {
         assertThat(audio.active).isEqualTo(ActiveAudio(Fixtures.AUDIO_PLAYLIST_UUID, TRACK_2_UUID, trackIndex = 2))
         assertThat(audio.transport?.isPlaying).isEqualTo(true)
         assertThat(audio.transport?.name).isEqualTo("Media 04")
-        assertThat(nowPlaying(audio.transport, audio.position, audio.active).button).isEqualTo(TransportButton.PAUSE)
+        assertThat(
+            nowPlaying(audio.transport.asLoadable(), audio.position, audio.active).button
+        ).isEqualTo(TransportButton.PAUSE)
     }
 
     @Test
@@ -100,7 +104,9 @@ class AudioReplayTest {
         val audio = audioAfterChunk(TRACK_2_FOUR_SECONDS_CHUNK)
 
         assertThat(audio.position).isEqualTo(4.305506499963813)
-        assertThat(nowPlaying(audio.transport, audio.position, audio.active).readout).isEqualTo("0:04 / 3:35")
+        assertThat(
+            nowPlaying(audio.transport.asLoadable(), audio.position, audio.active).readout
+        ).isEqualTo("0:04 / 3:35")
     }
 
     @Test
@@ -110,7 +116,9 @@ class AudioReplayTest {
 
         assertThat(paused.active?.trackIndex).isEqualTo(2)
         assertThat(paused.transport?.isPlaying).isEqualTo(false)
-        assertThat(nowPlaying(paused.transport, paused.position, paused.active).button).isEqualTo(TransportButton.PLAY)
+        assertThat(
+            nowPlaying(paused.transport.asLoadable(), paused.position, paused.active).button
+        ).isEqualTo(TransportButton.PLAY)
         assertThat(resumed.transport?.isPlaying).isEqualTo(true)
     }
 
@@ -128,7 +136,7 @@ class AudioReplayTest {
 
         assertThat(loaded.active?.trackIndex).isEqualTo(3)
         assertThat(loaded.position).isNull()
-        assertThat(nowPlaying(loaded.transport, loaded.position, loaded.active).progress).isEqualTo(0f)
+        assertThat(nowPlaying(loaded.transport.asLoadable(), loaded.position, loaded.active).progress).isEqualTo(0f)
         assertThat(firstFrame.position).isEqualTo(0.27957063326456894)
     }
 
@@ -138,7 +146,7 @@ class AudioReplayTest {
         fake.enqueueStream(fake.frames(listOf(PAUSED_AT_83_TIME_FRAME, PAUSED_TRANSPORT_FRAME)))
         val collector = launch { repository.liveState.collect {} }
 
-        val transport = withTimeout(5.seconds) { repository.audioTransport.first { it != null } }
+        val transport = withTimeout(5.seconds) { repository.audioTransport.map { it.orNull() }.first { it != null } }
         collector.cancel()
 
         assertThat(transport?.isPlaying).isEqualTo(false)
@@ -157,7 +165,7 @@ class AudioReplayTest {
 
         assertThat(audio.active).isNull()
         assertThat(audio.transport?.uuid).isEqualTo("")
-        assertThat(nowPlaying(audio.transport, audio.position, audio.active).loaded).isEqualTo(false)
+        assertThat(nowPlaying(audio.transport.asLoadable(), audio.position, audio.active).loaded).isEqualTo(false)
     }
 
     /**
@@ -179,7 +187,7 @@ class AudioReplayTest {
                     playlists = repository.audioPlaylists.filterIsInstance<Loadable.Loaded<List<AudioPlaylist>>>()
                         .first().value,
                     active = repository.activeAudio.first { it == expectedActive },
-                    transport = repository.audioTransport.first { it == expectedTransport },
+                    transport = repository.audioTransport.map { it.orNull() }.first { it == expectedTransport },
                     position = repository.audioPosition.first { it == expectedPosition }
                 )
             }
@@ -215,6 +223,8 @@ class AudioReplayTest {
         }
         return position
     }
+
+    private fun Transport?.asLoadable(): Loadable<Transport> = this?.let { Loadable.Loaded(it) } ?: Loadable.NotLoaded
 
     private companion object {
         const val STAGE_10_AUDIO = "stage10-audio"

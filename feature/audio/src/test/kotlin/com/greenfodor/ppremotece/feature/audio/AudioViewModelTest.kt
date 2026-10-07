@@ -12,6 +12,7 @@ import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.audio.AudioRepository
+import com.greenfodor.ppremotece.core.domain.audio.NowPlaying
 import com.greenfodor.ppremotece.core.domain.audio.TransportButton
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.Loadable
@@ -48,7 +49,7 @@ class AudioViewModelTest {
             MutableStateFlow<Loadable<List<AudioPlaylist>>>(Loadable.Loaded(this@AudioViewModelTest.playlists))
         override val audioPlaylistFrames = MutableStateFlow(1)
         override val activeAudio = MutableStateFlow<ActiveAudio?>(null)
-        override val audioTransport = MutableStateFlow<Transport?>(null)
+        override val audioTransport = MutableStateFlow<Loadable<Transport>>(Loadable.NotLoaded)
         override val audioPosition = MutableStateFlow<Double?>(null)
     }
     private val live = object : LiveStateRepository {
@@ -78,7 +79,7 @@ class AudioViewModelTest {
         AudioTrack(uuid, name, index, artist = "Artist 0${index + 1}", durationSeconds = 200 + index)
 
     private fun playing(isPlaying: Boolean = true, uuid: String = "x-0") =
-        Transport(isPlaying, uuid, "Media 04", "Artist 02", audioOnly = true, durationSeconds = 215.9)
+        Loadable.Loaded(Transport(isPlaying, uuid, "Media 04", "Artist 02", audioOnly = true, durationSeconds = 215.9))
 
     private suspend fun messageId(): Int {
         var id = 0
@@ -176,17 +177,17 @@ class AudioViewModelTest {
     }
 
     @Test
-    fun `a tap plays the track by the chosen playlist and its index`() = runTest(dispatcher) {
+    fun `a tap plays the track by the chosen playlist and the track uuid`() = runTest(dispatcher) {
         val viewModel = viewModel()
 
         viewModel.state.test {
             expectMostRecentItem()
             viewModel.onAction(AudioAction.OnPlaylistSelect("p-1"))
-            viewModel.onAction(AudioAction.OnTrackClick(2))
+            viewModel.onAction(AudioAction.OnTrackClick("b-2"))
             cancelAndIgnoreRemainingEvents()
         }
 
-        assertThat(client.calls).containsExactly("track p-1/2")
+        assertThat(client.calls).containsExactly("track p-1/b-2")
     }
 
     @Test
@@ -196,15 +197,15 @@ class AudioViewModelTest {
         viewModel.state.test {
             expectMostRecentItem()
             client.gate = CompletableDeferred()
-            viewModel.onAction(AudioAction.OnTrackClick(0))
-            viewModel.onAction(AudioAction.OnTrackClick(0))
-            viewModel.onAction(AudioAction.OnTrackClick(1))
+            viewModel.onAction(AudioAction.OnTrackClick("a-0"))
+            viewModel.onAction(AudioAction.OnTrackClick("a-0"))
+            viewModel.onAction(AudioAction.OnTrackClick("a-1"))
             client.gate.complete(Unit)
-            viewModel.onAction(AudioAction.OnTrackClick(0))
+            viewModel.onAction(AudioAction.OnTrackClick("a-0"))
             cancelAndIgnoreRemainingEvents()
         }
 
-        assertThat(client.calls).containsExactly("track p-0/0", "track p-0/1", "track p-0/0")
+        assertThat(client.calls).containsExactly("track p-0/a-0", "track p-0/a-1", "track p-0/a-0")
     }
 
     @Test
@@ -214,7 +215,7 @@ class AudioViewModelTest {
         viewModel.state.test {
             expectMostRecentItem()
             client.result = Result.Failure(DataError.Network.TIMEOUT)
-            viewModel.onAction(AudioAction.OnTrackClick(1))
+            viewModel.onAction(AudioAction.OnTrackClick("a-1"))
             cancelAndIgnoreRemainingEvents()
         }
 
@@ -262,12 +263,30 @@ class AudioViewModelTest {
     }
 
     @Test
+    fun `an unavailable audio transport gives the unavailable bar and its buttons send nothing`() =
+        runTest(dispatcher) {
+            audio.activeAudio.value = ActiveAudio("p-0", "a-1", 1)
+            audio.audioTransport.value = Loadable.Unavailable
+            val viewModel = viewModel()
+
+            viewModel.state.test {
+                assertThat(expectMostRecentItem().bar).isEqualTo(NowPlaying.Unavailable)
+                viewModel.onAction(AudioAction.OnPlayPauseClick)
+                viewModel.onAction(AudioAction.OnNextClick)
+                viewModel.onAction(AudioAction.OnPreviousClick)
+                cancelAndIgnoreRemainingEvents()
+            }
+
+            assertThat(client.calls).isEmpty()
+        }
+
+    @Test
     fun `a track tap pins the shown playlist`() = runTest(dispatcher) {
         val viewModel = viewModel()
 
         viewModel.state.test {
             expectMostRecentItem()
-            viewModel.onAction(AudioAction.OnTrackClick(0))
+            viewModel.onAction(AudioAction.OnTrackClick("a-0"))
             audio.activeAudio.value = ActiveAudio("p-1", "b-1", 1)
             assertThat(viewModel.state.value.selectedUuid).isEqualTo("p-0")
             cancelAndIgnoreRemainingEvents()
@@ -464,7 +483,8 @@ class AudioViewModelTest {
             return readFailure?.let { Result.Failure(it) } ?: Result.Success(tracks.getValue(uuid))
         }
 
-        override suspend fun triggerAudioTrack(playlistUuid: String, index: Int) = call("track $playlistUuid/$index")
+        override suspend fun triggerAudioTrack(playlistUuid: String, trackUuid: String) =
+            call("track $playlistUuid/$trackUuid")
 
         override suspend fun audioNext() = call("next")
 

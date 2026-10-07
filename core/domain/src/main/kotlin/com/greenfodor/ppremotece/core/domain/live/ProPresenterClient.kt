@@ -17,6 +17,7 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
+import kotlinx.coroutines.flow.Flow
 
 /** Reads and triggers on one ProPresenter host over its HTTP API. */
 @Suppress("TooManyFunctions")
@@ -26,6 +27,14 @@ interface ProPresenterClient {
     suspend fun playlists(): Result<List<PlaylistTreeNode>, DataError.Network>
 
     suspend fun playlist(uuid: String): Result<Playlist, DataError.Network>
+
+    /**
+     * One emission each time ProPresenter reports that playlist [uuid] was edited, over a
+     * connection that stays open while the flow is collected. The flow completes when ProPresenter
+     * ends the connection, and fails with [PlaylistNotFoundException] when it does not know the
+     * playlist and with the transport's error when the connection fails.
+     */
+    fun playlistChanges(uuid: String): Flow<Unit>
 
     suspend fun libraries(): Result<List<Library>, DataError.Network>
 
@@ -75,8 +84,8 @@ interface ProPresenterClient {
     /** The tracks of the audio playlist [uuid]. */
     suspend fun audioPlaylist(uuid: String): Result<List<AudioTrack>, DataError.Network>
 
-    /** Plays the track at [index] of the audio playlist [playlistUuid]. */
-    suspend fun triggerAudioTrack(playlistUuid: String, index: Int): EmptyResult<DataError.Network>
+    /** Plays the track [trackUuid] of the audio playlist [playlistUuid]. */
+    suspend fun triggerAudioTrack(playlistUuid: String, trackUuid: String): EmptyResult<DataError.Network>
 
     /** Plays the next track of the active audio playlist. */
     suspend fun audioNext(): EmptyResult<DataError.Network>
@@ -94,3 +103,6 @@ interface ProPresenterClient {
 
     suspend fun triggerPrevious(): EmptyResult<DataError.Network>
 }
+
+/** ProPresenter does not know the playlist whose changes were asked for. */
+class PlaylistNotFoundException : Exception()

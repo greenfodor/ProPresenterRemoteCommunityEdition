@@ -60,7 +60,8 @@ private fun smoothProgress(target: Float, playing: Boolean): Animatable<Float, A
 /**
  * The now-playing bar: a 4 dp progress line, moving evenly while the audio plays, over the loaded audio's name and its readout (drawn at
  * 38 % alpha while [dimmed]), then previous, Play or Pause, and next, each 48 dp. With nothing
- * loaded it reads "Nothing playing" and every button is disabled.
+ * loaded it reads "Nothing playing", and "Not available on this ProPresenter" when the bar is not
+ * available; every button is then disabled.
  */
 @Composable
 internal fun NowPlayingBar(
@@ -92,7 +93,11 @@ internal fun NowPlayingBar(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (bar.loaded) bar.name else stringResource(R.string.audio_nothing_playing),
+                    text = when {
+                        !bar.available -> stringResource(DesignR.string.not_available)
+                        bar.loaded -> bar.name
+                        else -> stringResource(R.string.audio_nothing_playing)
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (bar.loaded) {
                         MaterialTheme.colorScheme.onSurface

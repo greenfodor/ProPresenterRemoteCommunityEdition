@@ -6,6 +6,7 @@ import com.greenfodor.ppremotece.core.domain.audio.AudioRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.map
+import com.greenfodor.ppremotece.core.domain.live.orNull
 import com.greenfodor.ppremotece.core.domain.looks.LooksRepository
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
@@ -49,6 +50,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.timeout
 import kotlinx.coroutines.flow.update
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.pow
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -82,7 +84,9 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * [Loadable.NotLoaded] until their first frame and keep their content across reconnects. An error
  * frame naming a subscribed url ([rejectedUrl]) removes that url from the subscriptions for the
  * reopened streams of this connection ([withoutRejected]), keeps the content it feeds
- * [Loadable.Unavailable] and is passed to [log] once.
+ * [Loadable.Unavailable] and is passed to [log] once; a rejected transport url leaves that transport
+ * unavailable (the audio one without a position), and a rejected `audio/playlist/active` leaves no
+ * active track. [requestLiveRead] makes the next chunk read `slide_index` and `playlist/active` again.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
@@ -119,11 +123,11 @@ class StreamingLiveStateRepository(
     private val propList = MutableStateFlow<Loadable<List<PropCollection>>>(Loadable.NotLoaded)
     override val propCollections: StateFlow<Loadable<List<PropCollection>>> = propList.asStateFlow()
 
-    private val presentationLoaded = MutableStateFlow<Transport?>(null)
-    override val presentationTransport: StateFlow<Transport?> = presentationLoaded.asStateFlow()
+    private val presentationLoaded = MutableStateFlow<Loadable<Transport>>(Loadable.NotLoaded)
+    override val presentationTransport: StateFlow<Loadable<Transport>> = presentationLoaded.asStateFlow()
 
-    private val audioLoaded = MutableStateFlow<Transport?>(null)
-    override val audioTransport: StateFlow<Transport?> = audioLoaded.asStateFlow()
+    private val audioLoaded = MutableStateFlow<Loadable<Transport>>(Loadable.NotLoaded)
+    override val audioTransport: StateFlow<Loadable<Transport>> = audioLoaded.asStateFlow()
 
     private val audioPlaylistList = MutableStateFlow<Loadable<List<AudioPlaylist>>>(Loadable.NotLoaded)
     override val audioPlaylists: StateFlow<Loadable<List<AudioPlaylist>>> = audioPlaylistList.asStateFlow()
@@ -139,6 +143,13 @@ class StreamingLiveStateRepository(
 
     @Volatile
     private var subscriptions = SUBSCRIPTIONS
+
+    private val liveReadRequested = AtomicBoolean()
+
+    /** Reads `slide_index` and `playlist/active` again when the stream's next chunk arrives. */
+    fun requestLiveRead() {
+        liveReadRequested.set(true)
+    }
 
     private val rejected: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
@@ -179,13 +190,15 @@ class StreamingLiveStateRepository(
                                 is StatusEvent.CurrentLook -> liveLook.value = event.look
                                 is StatusEvent.PropCollections ->
                                     propList.load(event.collections, "prop_collections")
-                                is StatusEvent.PresentationTransport -> presentationLoaded.value = event.transport
+                                is StatusEvent.PresentationTransport ->
+                                    presentationLoaded.load(event.transport, "transport/presentation/current")
                                 is StatusEvent.AudioTransport -> {
-                                    val loaded = audioLoaded.value
+                                    val loaded = audioLoaded.value.orNull()
                                     if (loaded != null && event.transport.uuid != loaded.uuid) audioSeconds.value = null
-                                    audioLoaded.value = event.transport
+                                    audioLoaded.load(event.transport, *AUDIO_TRANSPORT_URLS)
                                 }
-                                is StatusEvent.AudioTime -> audioSeconds.value = event.seconds
+                                is StatusEvent.AudioTime ->
+                                    if (AUDIO_TRANSPORT_URLS.none { it in rejected }) audioSeconds.value = event.seconds
                                 is StatusEvent.AudioPlaylists -> {
                                     audioPlaylistList.load(event.playlists, "audio/playlists")
                                     audioFrames.update { it + 1 }
@@ -195,6 +208,7 @@ class StreamingLiveStateRepository(
                                 else -> Unit
                             }
                         }
+                        if (liveReadRequested.getAndSet(false)) slideReadNeeded = true
                         if (slideReadNeeded) {
                             val (slideRead, activeRead) = coroutineScope {
                                 val slide = async { client.slideIndex() }
@@ -248,6 +262,12 @@ class StreamingLiveStateRepository(
             "looks" -> lookList.value = Loadable.Unavailable
             "prop_collections" -> propList.value = Loadable.Unavailable
             "audio/playlists" -> audioPlaylistList.value = Loadable.Unavailable
+            "transport/presentation/current" -> presentationLoaded.value = Loadable.Unavailable
+            in AUDIO_TRANSPORT_URLS -> {
+                audioLoaded.value = Loadable.Unavailable
+                audioSeconds.value = null
+            }
+            "audio/playlist/active" -> activeTrack.value = null
         }
         log(message)
     }
@@ -262,6 +282,7 @@ class StreamingLiveStateRepository(
 
     private companion object {
         const val TAG = "LiveStream"
+        val AUDIO_TRANSPORT_URLS = arrayOf("transport/audio/current", "transport/audio/time")
         val SUBSCRIPTIONS =
             listOf(
                 "status/slide",

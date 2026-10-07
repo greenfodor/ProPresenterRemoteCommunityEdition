@@ -7,9 +7,9 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
-import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
@@ -17,6 +17,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
 import com.greenfodor.ppremotece.core.domain.model.Transport
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
+import com.greenfodor.ppremotece.core.domain.transport.ItemLive
 import com.greenfodor.ppremotece.core.domain.transport.TransportRepository
 import com.greenfodor.ppremotece.feature.playlist.FakeContentRepository
 import com.greenfodor.ppremotece.feature.playlist.FakeProPresenterClient
@@ -40,8 +41,8 @@ class PlaylistItemViewModelTest {
     private val client = FakeProPresenterClient()
     private val messages = UiMessages()
     private val transports = object : TransportRepository {
-        override val presentationTransport = MutableStateFlow<Transport?>(null)
-        override val audioTransport = MutableStateFlow<Transport?>(null)
+        override val presentationTransport = MutableStateFlow<Loadable<Transport>>(Loadable.NotLoaded)
+        override val audioTransport = MutableStateFlow<Loadable<Transport>>(Loadable.NotLoaded)
     }
     private val dispatcher = UnconfinedTestDispatcher()
 
@@ -73,7 +74,8 @@ class PlaylistItemViewModelTest {
 
     private fun viewModel(key: PlaylistItemKey) = PlaylistItemViewModel(key, content, transports, client, messages)
 
-    private fun playing(uuid: String, isPlaying: Boolean = true) = Transport(isPlaying, uuid, "", "", false, 0.0)
+    private fun playing(uuid: String, isPlaying: Boolean = true) =
+        Loadable.Loaded(Transport(isPlaying, uuid, "", "", false, 0.0))
 
     @Test
     fun `the card shows the item's name, type and duration`() = runTest(dispatcher) {
@@ -82,7 +84,7 @@ class PlaylistItemViewModelTest {
             assertThat(state.name).isEqualTo("Track 01")
             assertThat(state.type).isEqualTo(PlaylistItemType.AUDIO)
             assertThat(state.duration).isEqualTo("3:03")
-            assertThat(state.live).isFalse()
+            assertThat(state.live).isEqualTo(ItemLive.NONE)
         }
     }
 
@@ -143,22 +145,26 @@ class PlaylistItemViewModelTest {
     @Test
     fun `a media item is live while the presentation transport plays its target`() = runTest(dispatcher) {
         viewModel(MEDIA).state.test {
-            assertThat(expectMostRecentItem().live).isFalse()
+            assertThat(expectMostRecentItem().live).isEqualTo(ItemLive.NONE)
             transports.presentationTransport.value = playing("m-0")
-            assertThat(awaitItem().live).isTrue()
+            assertThat(awaitItem().live).isEqualTo(ItemLive.LIVE)
             transports.presentationTransport.value = playing("")
-            assertThat(awaitItem().live).isFalse()
+            assertThat(awaitItem().live).isEqualTo(ItemLive.NONE)
         }
     }
 
     @Test
-    fun `an audio item is live while the audio transport plays its target`() = runTest(dispatcher) {
+    fun `an audio item is live while played, paused while held and unmarked when unavailable`() = runTest(
+        dispatcher
+    ) {
         transports.audioTransport.value = playing("a-0")
 
         viewModel(AUDIO).state.test {
-            assertThat(expectMostRecentItem().live).isTrue()
+            assertThat(expectMostRecentItem().live).isEqualTo(ItemLive.LIVE)
             transports.audioTransport.value = playing("a-0", isPlaying = false)
-            assertThat(awaitItem().live).isFalse()
+            assertThat(awaitItem().live).isEqualTo(ItemLive.PAUSED)
+            transports.audioTransport.value = Loadable.Unavailable
+            assertThat(awaitItem().live).isEqualTo(ItemLive.NONE)
         }
     }
 

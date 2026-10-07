@@ -13,6 +13,7 @@ import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.map
 import com.greenfodor.ppremotece.core.domain.live.orEmpty
+import com.greenfodor.ppremotece.core.domain.live.orNull
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
 import com.greenfodor.ppremotece.core.domain.model.AudioTrack
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
@@ -41,13 +42,14 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * chosen one and the now-playing bar ([nowPlaying]). The chosen playlist is the one picked from the
  * menu or by a track tap, else the active one, else the one already shown, else the first; its
  * tracks are read when it is chosen, on each `audio/playlists` frame and on Retry, and a failed
- * re-read keeps the tracks already shown and posts its error. A tap plays a track; taps on a track
- * are ignored while its request is in flight, and a failure posts "Couldn't play {track}". The
+ * re-read keeps the tracks already shown and posts its error. A tap plays a track by its uuid; taps
+ * on a track are ignored while its request is in flight, and a failure posts "Couldn't play {track}". The
  * track that the active audio names is marked playing, or paused while the loaded audio is not
  * playing, and not marked while nothing is loaded. The bar's
  * middle button pauses or resumes and its outer buttons play the previous or next track; a
  * disabled button sends nothing and a failure posts "Couldn't play", "Couldn't pause" or
- * "Couldn't skip". The readout is dimmed while the live stream reconnects.
+ * "Couldn't skip". While the audio transport is unavailable the bar says so and its buttons are
+ * disabled. The readout is dimmed while the live stream reconnects.
  */
 class AudioViewModel(
     private val audioRepository: AudioRepository,
@@ -71,7 +73,7 @@ class AudioViewModel(
     /** What the audio layer plays: the active track, the transport and its position. */
     private data class Playback(
         val active: ActiveAudio?,
-        val transport: Transport?,
+        val transport: Loadable<Transport>,
         val position: Double?
     )
 
@@ -114,7 +116,7 @@ class AudioViewModel(
     private val marked =
         combine(
             audioRepository.activeAudio,
-            audioRepository.audioTransport.map { it?.takeIf { loaded -> loaded.uuid.isNotEmpty() }?.isPlaying }
+            audioRepository.audioTransport.map { it.orNull()?.takeIf { loaded -> loaded.uuid.isNotEmpty() }?.isPlaying }
                 .distinctUntilChanged(),
             ::Marked
         )
@@ -157,7 +159,7 @@ class AudioViewModel(
     fun onAction(action: AudioAction) {
         when (action) {
             is AudioAction.OnPlaylistSelect -> picked.value = action.uuid
-            is AudioAction.OnTrackClick -> playTrack(action.index)
+            is AudioAction.OnTrackClick -> playTrack(action.trackUuid)
             AudioAction.OnPlayPauseClick -> playOrPause()
             AudioAction.OnNextClick -> skip("next") { client.audioNext() }
             AudioAction.OnPreviousClick -> skip("previous") { client.audioPrevious() }
@@ -196,13 +198,13 @@ class AudioViewModel(
         return AudioTrackUi(uuid, name, index, artist, formatDuration(durationSeconds), mark)
     }
 
-    private fun playTrack(index: Int) {
+    private fun playTrack(trackUuid: String) {
         val list = trackList.value
         val playlistUuid = list.playlistUuid?.takeIf { it == selected.value } ?: return
-        val track = list.tracks.firstOrNull { it.index == index } ?: return
+        val track = list.tracks.firstOrNull { it.uuid == trackUuid } ?: return
         picked.value = playlistUuid
-        send("track/$playlistUuid/$index", UiText.StringResource(R.string.audio_error_play_track, listOf(track.name))) {
-            client.triggerAudioTrack(playlistUuid, index)
+        send(trackUuid, UiText.StringResource(R.string.audio_error_play_track, listOf(track.name))) {
+            client.triggerAudioTrack(playlistUuid, trackUuid)
         }
     }
 

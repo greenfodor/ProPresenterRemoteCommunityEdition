@@ -11,9 +11,12 @@ import com.greenfodor.ppremotece.core.data.network.HttpClientFactory
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.data.network.StreamEnd
 import com.greenfodor.ppremotece.core.data.network.StreamReplay
+import com.greenfodor.ppremotece.core.domain.live.orNull
 import com.greenfodor.ppremotece.core.domain.model.Transport
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import com.greenfodor.ppremotece.core.domain.status.StatusFrameParser
+import com.greenfodor.ppremotece.core.domain.transport.ItemLive
+import com.greenfodor.ppremotece.core.domain.transport.ItemLive.NONE
 import com.greenfodor.ppremotece.core.domain.transport.itemLive
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -60,7 +64,7 @@ class TransportReplayTest {
         val (presentation, audio) = transportsAfterChunk(AUDIO_ITEM_LIVE_CHUNK)
 
         assertThat(items.map { itemLive(it, presentation, audio) })
-            .containsExactly(false, false, false, false, false, true, false, false, false)
+            .containsExactly(NONE, NONE, NONE, NONE, NONE, ItemLive.LIVE, NONE, NONE, NONE)
         assertThat(audio?.name).isEqualTo("Media 03")
         assertThat(audio?.artist).isEqualTo("Artist 01")
     }
@@ -70,7 +74,7 @@ class TransportReplayTest {
         val (presentation, audio) = transportsAfterChunk(MEDIA_ITEM_LIVE_CHUNK)
 
         assertThat(items.map { itemLive(it, presentation, audio) })
-            .containsExactly(false, false, false, false, true, false, false, false, false)
+            .containsExactly(NONE, NONE, NONE, NONE, ItemLive.LIVE, NONE, NONE, NONE, NONE)
     }
 
     @Test
@@ -79,9 +83,9 @@ class TransportReplayTest {
         val (restoredPresentation, restoredAudio) = transportsAfterChunk(RESTORED_CHUNK)
 
         assertThat(clearedPresentation?.uuid).isEqualTo("")
-        assertThat(items.any { itemLive(it, clearedPresentation, clearedAudio) }).isFalse()
+        assertThat(items.any { itemLive(it, clearedPresentation, clearedAudio) != NONE }).isFalse()
         assertThat(restoredPresentation?.isPlaying).isEqualTo(true)
-        assertThat(items.any { itemLive(it, restoredPresentation, restoredAudio) }).isFalse()
+        assertThat(items.any { itemLive(it, restoredPresentation, restoredAudio) != NONE }).isFalse()
     }
 
     /**
@@ -104,8 +108,18 @@ class TransportReplayTest {
             val expectedAudio = events.filterIsInstance<StatusEvent.AudioTransport>().last().transport
             val collector = launch { repository.liveState.collect {} }
             val presentation =
-                withTimeout(5.seconds) { repository.presentationTransport.first { it == expectedPresentation } }
-            val audio = withTimeout(5.seconds) { repository.audioTransport.first { it == expectedAudio } }
+                withTimeout(5.seconds) {
+                    repository.presentationTransport.map { it.orNull() }.first {
+                        it ==
+                            expectedPresentation
+                    }
+                }
+            val audio = withTimeout(5.seconds) {
+                repository.audioTransport.map { it.orNull() }.first {
+                    it ==
+                        expectedAudio
+                }
+            }
             collector.cancel()
             presentation to audio
         }
