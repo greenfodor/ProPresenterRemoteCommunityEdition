@@ -1,5 +1,7 @@
 package com.greenfodor.ppremotece.feature.remote
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -7,6 +9,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -18,6 +21,9 @@ import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
+
+private val LabelButtonHeight = 48.dp
+private val LabelButtonPadding = PaddingValues(horizontal = 8.dp)
 
 /** The Next button of the Remote, enabled while [display] has a next cue to send. */
 @Composable
@@ -45,25 +51,83 @@ internal fun PreviousButton(display: RemoteDisplay, onAction: (RemoteAction) -> 
     }
 }
 
-/** The previous-item button, enabled while [display] has an item before the shown one. */
+/**
+ * The previous-item button, enabled while [display] has an item before the shown one: an icon
+ * button, or, when [labelled], an outlined "Previous item" button at least 48 dp high.
+ */
 @Composable
-internal fun PreviousItemButton(display: RemoteDisplay, onAction: (RemoteAction) -> Unit) {
-    IconButton(
-        onClick = { onAction(RemoteAction.OnPreviousItemClick) },
-        enabled = display.previousItem != null
-    ) {
-        Icon(painterResource(DesignR.drawable.ic_skip_previous), stringResource(R.string.remote_previous_item))
+internal fun PreviousItemButton(
+    display: RemoteDisplay,
+    onAction: (RemoteAction) -> Unit,
+    modifier: Modifier = Modifier,
+    labelled: Boolean = false
+) {
+    val onClick = { onAction(RemoteAction.OnPreviousItemClick) }
+    val enabled = display.previousItem != null
+    val label = stringResource(R.string.remote_previous_item)
+    if (labelled) {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            contentPadding = LabelButtonPadding,
+            modifier = modifier.heightIn(min = LabelButtonHeight)
+        ) {
+            Icon(painterResource(DesignR.drawable.ic_skip_previous), contentDescription = null)
+            ButtonLabel(label, Modifier.weight(1f, fill = false).padding(start = 4.dp))
+        }
+    } else {
+        IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
+            Icon(painterResource(DesignR.drawable.ic_skip_previous), label)
+        }
     }
 }
 
-/** The next-item button, enabled while [display] has an item after the shown one. */
+/**
+ * The next-item button, enabled while [display] has an item after the shown one: an icon button,
+ * or, when [labelled], an outlined "Next item" button at least 48 dp high.
+ */
 @Composable
-internal fun NextItemButton(display: RemoteDisplay, onAction: (RemoteAction) -> Unit) {
-    IconButton(
-        onClick = { onAction(RemoteAction.OnNextItemClick) },
-        enabled = display.nextItem != null
+internal fun NextItemButton(
+    display: RemoteDisplay,
+    onAction: (RemoteAction) -> Unit,
+    modifier: Modifier = Modifier,
+    labelled: Boolean = false
+) {
+    val onClick = { onAction(RemoteAction.OnNextItemClick) }
+    val enabled = display.nextItem != null
+    val label = stringResource(R.string.remote_next_item)
+    if (labelled) {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            contentPadding = LabelButtonPadding,
+            modifier = modifier.heightIn(min = LabelButtonHeight)
+        ) {
+            ButtonLabel(label, Modifier.weight(1f, fill = false).padding(end = 4.dp))
+            Icon(painterResource(DesignR.drawable.ic_skip_next), contentDescription = null)
+        }
+    } else {
+        IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
+            Icon(painterResource(DesignR.drawable.ic_skip_next), label)
+        }
+    }
+}
+
+/** A button's [text] on one line, cut short with an ellipsis. */
+@Composable
+private fun ButtonLabel(text: String, modifier: Modifier = Modifier) {
+    Text(text = text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
+}
+
+/** The tonal "Back to live" button, at least 48 dp high, shown while an item is cued. */
+@Composable
+internal fun BackToLiveButton(onAction: (RemoteAction) -> Unit, modifier: Modifier = Modifier) {
+    FilledTonalButton(
+        onClick = { onAction(RemoteAction.OnBackToLiveClick) },
+        contentPadding = LabelButtonPadding,
+        modifier = modifier.heightIn(min = LabelButtonHeight)
     ) {
-        Icon(painterResource(DesignR.drawable.ic_skip_next), stringResource(R.string.remote_next_item))
+        ButtonLabel(stringResource(R.string.remote_back_to_live))
     }
 }
 
