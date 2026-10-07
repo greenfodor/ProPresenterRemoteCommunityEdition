@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -45,7 +45,8 @@ private val RailItemSpacing = 4.dp
 
 /**
  * The bar or rail of [items] around [content]; the rail ends with the Clear button, and beside the
- * rail the content stays clear of a display cutout at the end edge.
+ * rail the content stays clear of a side navigation bar or a display cutout at the end edge, which
+ * is filled with the rail's colour.
  */
 @Composable
 internal fun ShellFrame(
@@ -85,7 +86,8 @@ internal fun ShellFrame(
                     if (layout == NavigationLayout.RAIL) {
                         Modifier
                             .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Start))
-                            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.End))
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.End))
                     } else {
                         Modifier
                     }
