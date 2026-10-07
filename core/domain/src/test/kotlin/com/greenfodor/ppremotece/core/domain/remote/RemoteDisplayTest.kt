@@ -146,11 +146,14 @@ class RemoteDisplayTest {
     }
 
     @Test
-    fun `after a clear the remembered cue is shown and sent as if it were live`() {
+    fun `after a clear the remembered cue is shown cleared and sent as if it were live`() {
         val live = reduce(RemoteInputs(liveAt(0, SONG_A, 2), lastLive = remembered(0, SONG_A, 2)))
         val afterClear = reduce(RemoteInputs(cleared, lastLive = remembered(0, SONG_A, 2)))
 
-        assertThat(afterClear).isEqualTo(live)
+        assertThat(afterClear.current).isEqualTo(cue(0, SONG_A, 2, BoxMark.CLEARED))
+        assertThat(afterClear.next).isEqualTo(cue(0, SONG_A, 3, BoxMark.NEXT))
+        assertThat(afterClear.sidebar?.marks).isEqualTo(mapOf(2 to BoxMark.CLEARED, 3 to BoxMark.NEXT))
+        assertThat(afterClear.copy(current = live.current, sidebar = live.sidebar)).isEqualTo(live)
         assertThat(afterClear.tapCurrent).isEqualTo(RemoteCommand.TriggerCue(key(0), 2))
         assertThat(afterClear.nextButton).isEqualTo(RemoteCommand.TriggerCue(key(0), 3))
         assertThat(afterClear.previousButton).isEqualTo(RemoteCommand.TriggerCue(key(0), 1))
@@ -412,11 +415,13 @@ class RemoteDisplayTest {
     }
 
     @Test
-    fun `after a clear the remembered presentation cue is shown and sent as if it were live`() {
+    fun `after a clear the remembered presentation cue is shown cleared and sent as if it were live`() {
         val live = reduce(RemoteInputs(liveOutside(SONG_L, 5, totalCues = 8), lastLive = null))
         val afterClear = reduce(RemoteInputs(cleared, lastLive = rememberedPresentation(SONG_L, 5)))
 
-        assertThat(afterClear).isEqualTo(live)
+        assertThat((afterClear.current as RemoteBox.Slide).mark).isEqualTo(BoxMark.CLEARED)
+        assertThat(afterClear.sidebar?.marks).isEqualTo(mapOf(5 to BoxMark.CLEARED, 7 to BoxMark.NEXT))
+        assertThat(afterClear.copy(current = live.current, sidebar = live.sidebar)).isEqualTo(live)
         assertThat(afterClear.tapCurrent).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 5))
         assertThat(afterClear.nextButton).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 7))
         assertThat(afterClear.previousButton).isEqualTo(RemoteCommand.TriggerPresentationCue(SONG_L, 4))

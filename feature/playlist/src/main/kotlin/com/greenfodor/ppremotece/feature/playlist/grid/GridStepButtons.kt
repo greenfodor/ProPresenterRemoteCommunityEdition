@@ -21,6 +21,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.domain.live.CueStep
+import com.greenfodor.ppremotece.core.domain.live.CueSteps
 import com.greenfodor.ppremotece.feature.playlist.R
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
@@ -29,11 +31,12 @@ private val WideStepButtonHeight = 56.dp
 private val WideStepButtonWidth = 160.dp
 
 /**
- * The Previous and Next buttons under the grid: 64 dp tall and half the width each, or, when
- * [wide], 56 dp tall and 160 dp wide at the end of the bar.
+ * The Previous and Next buttons under the grid, each enabled unless its step of [steps] is
+ * disabled: 64 dp tall and half the width each, or, when [wide], 56 dp tall and 160 dp wide at the
+ * end of the bar.
  */
 @Composable
-internal fun StepButtons(enabled: Boolean, wide: Boolean, onAction: (SlideGridAction) -> Unit) {
+internal fun StepButtons(steps: CueSteps, wide: Boolean, onAction: (SlideGridAction) -> Unit) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
         modifier = Modifier
@@ -49,7 +52,7 @@ internal fun StepButtons(enabled: Boolean, wide: Boolean, onAction: (SlideGridAc
         }
         FilledTonalButton(
             onClick = { onAction(SlideGridAction.OnPreviousClick) },
-            enabled = enabled,
+            enabled = steps.previous != CueStep.Disabled,
             modifier = buttonSize
         ) {
             Icon(painterResource(DesignR.drawable.ic_skip_previous), contentDescription = null)
@@ -57,7 +60,7 @@ internal fun StepButtons(enabled: Boolean, wide: Boolean, onAction: (SlideGridAc
         }
         Button(
             onClick = { onAction(SlideGridAction.OnNextClick) },
-            enabled = enabled,
+            enabled = steps.next != CueStep.Disabled,
             modifier = buttonSize
         ) {
             Text(stringResource(R.string.grid_next), modifier = Modifier.padding(end = 8.dp))
@@ -66,14 +69,16 @@ internal fun StepButtons(enabled: Boolean, wide: Boolean, onAction: (SlideGridAc
     }
 }
 
+private val PreviewSteps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative)
+
 @Preview(widthDp = 527)
 @Composable
 private fun StepButtonsPreview() {
-    PPRemoteTheme { StepButtons(enabled = true, wide = false, onAction = {}) }
+    PPRemoteTheme { StepButtons(PreviewSteps, wide = false, onAction = {}) }
 }
 
 @Preview(widthDp = 813)
 @Composable
 private fun StepButtonsWidePreview() {
-    PPRemoteTheme { StepButtons(enabled = true, wide = true, onAction = {}) }
+    PPRemoteTheme { StepButtons(PreviewSteps, wide = true, onAction = {}) }
 }

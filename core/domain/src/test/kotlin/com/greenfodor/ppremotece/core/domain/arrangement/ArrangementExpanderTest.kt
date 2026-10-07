@@ -50,7 +50,8 @@ class ArrangementExpanderTest {
                 slideIndexInGroup = 0,
                 slideText = "V1",
                 enabled = true,
-                size = null
+                size = null,
+                startsGroup = true
             )
         )
         assertThat(result.cues.map { it.slideIndexInGroup }).containsExactly(0, 1, 0, 1, 0)
@@ -201,4 +202,28 @@ class ArrangementExpanderTest {
 
     private fun ref(arrangementUuid: String, arrangementName: String) =
         PresentationRef(presentationUuid = "p-1", arrangementUuid = arrangementUuid, arrangementName = arrangementName)
+
+    @Test
+    fun `the first cue of each group occurrence starts a group, also when a group repeats back to back`() {
+        val twice = Arrangement("a-vcc", "VCC", listOf("g-verse", "g-chorus", "g-chorus"), totalCues = 6)
+        val song = presentation.copy(arrangements = listOf(twice))
+
+        val result = ArrangementExpander.expand(song, ref("a-vcc", "VCC"))
+
+        assertThat(result.cues.map { it.startsGroup }).containsExactly(true, false, true, false, true, false)
+    }
+
+    @Test
+    fun `a one-slide group starts a group on its only cue`() {
+        val result = ArrangementExpander.expand(presentation, ref("a-twice", "Twice"))
+
+        assertThat(result.cues.map { it.startsGroup }).containsExactly(true, false, true, true, false)
+    }
+
+    @Test
+    fun `an item without an arrangement starts a group on each stored group's first slide`() {
+        val result = ArrangementExpander.expand(presentation, ref("", ""))
+
+        assertThat(result.cues.map { it.startsGroup }).containsExactly(true, false, true, false, true)
+    }
 }

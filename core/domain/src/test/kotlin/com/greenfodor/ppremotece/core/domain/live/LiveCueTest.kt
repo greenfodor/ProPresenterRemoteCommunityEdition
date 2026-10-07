@@ -30,37 +30,39 @@ class LiveCueTest {
 
     @Test
     fun `next is the cue after the live one`() {
-        assertThat(nextCueIndex(liveAt(2), source, "p-1", cues)).isEqualTo(3)
+        assertThat(markedCue(liveAt(2), lastLive = null, source, "p-1", cues)?.next).isEqualTo(3)
     }
 
     @Test
     fun `next skips a disabled cue`() {
-        assertThat(nextCueIndex(liveAt(0), source, "p-1", cues)).isEqualTo(2)
-        assertThat(nextCueIndex(liveAt(5), source, "p-1", cues)).isEqualTo(7)
+        assertThat(markedCue(liveAt(0), lastLive = null, source, "p-1", cues)?.next).isEqualTo(2)
+        assertThat(markedCue(liveAt(5), lastLive = null, source, "p-1", cues)?.next).isEqualTo(7)
     }
 
     @Test
     fun `there is no next on the last cue`() {
-        assertThat(nextCueIndex(liveAt(7), source, "p-1", cues)).isNull()
+        assertThat(markedCue(liveAt(7), lastLive = null, source, "p-1", cues)?.next).isNull()
     }
 
     @Test
     fun `there is no next when only disabled cues follow`() {
         val lastDisabled = cues.map { if (it.index == 7) it.copy(enabled = false) else it }
 
-        assertThat(nextCueIndex(liveAt(6), source, "p-1", lastDisabled)).isNull()
+        assertThat(markedCue(liveAt(6), lastLive = null, source, "p-1", lastDisabled)?.next).isNull()
     }
 
     @Test
     fun `there is no next when the item is not live`() {
-        assertThat(nextCueIndex(liveAt(2).copy(slide = null), source, "p-1", cues)).isNull()
-        assertThat(nextCueIndex(liveAt(2).copy(item = null), source, "p-1", cues)).isNull()
+        assertThat(markedCue(liveAt(2).copy(slide = null), lastLive = null, source, "p-1", cues)?.next).isNull()
+        assertThat(markedCue(liveAt(2).copy(item = null), lastLive = null, source, "p-1", cues)?.next).isNull()
     }
 
     @Test
     fun `there is no next for another item`() {
-        assertThat(nextCueIndex(liveAt(2), CueSource.PlaylistItem(PlaylistItemKey("pl-1", 5)), "p-1", cues)).isNull()
-        assertThat(nextCueIndex(liveAt(2), source, "p-2", cues)).isNull()
+        assertThat(
+            markedCue(liveAt(2), lastLive = null, CueSource.PlaylistItem(PlaylistItemKey("pl-1", 5)), "p-1", cues)?.next
+        ).isNull()
+        assertThat(markedCue(liveAt(2), lastLive = null, source, "p-2", cues)?.next).isNull()
     }
 
     @Test
@@ -69,7 +71,7 @@ class LiveCueTest {
         val outside = liveAt(3).copy(item = null)
 
         assertThat(liveCueIndex(outside, presentation, "p-1", cues)).isEqualTo(3)
-        assertThat(nextCueIndex(outside, presentation, "p-1", cues)).isEqualTo(4)
+        assertThat(markedCue(outside, lastLive = null, presentation, "p-1", cues)?.next).isEqualTo(4)
         assertThat(liveCueIndex(liveAt(3), presentation, "p-1", cues)).isNull()
         assertThat(liveCueIndex(outside, CueSource.Presentation("p-2"), "p-2", cues)).isNull()
         assertThat(liveCueIndex(outside, presentation, "p-1", cues.take(7))).isNull()
@@ -102,6 +104,7 @@ class LiveCueTest {
             slideIndexInGroup = 0,
             slideText = "",
             enabled = enabled,
-            size = null
+            size = null,
+            startsGroup = index == 0
         )
 }

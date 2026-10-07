@@ -18,15 +18,15 @@ data class GroupSequence(
 )
 
 /**
- * The group occurrences of [cueList] in cue order: a new occurrence starts with a group's first
- * slide or a change of group. [GroupSequence.livePill] holds [liveCueIndex], null without one.
+ * The group occurrences of [cueList] in cue order: a new occurrence starts at each cue that starts
+ * a group. [GroupSequence.livePill] holds [liveCueIndex], null without one.
  */
 fun groupSequence(cueList: CueList, liveCueIndex: Int?): GroupSequence {
     val pills = mutableListOf<GroupPill>()
     val occurrences = mutableMapOf<String, Int>()
     var livePill: Int? = null
-    cueList.cues.forEachIndexed { position, cue ->
-        if (cue.slideIndexInGroup == 0 || cueList.cues.getOrNull(position - 1)?.groupUuid != cue.groupUuid) {
+    cueList.cues.forEach { cue ->
+        if (cue.startsGroup) {
             val occurrence = occurrences.getOrDefault(cue.groupUuid, 0)
             occurrences[cue.groupUuid] = occurrence + 1
             pills += GroupPill(cue.groupUuid, cue.groupName, cue.groupColor, cue.index, occurrence)

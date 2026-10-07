@@ -66,6 +66,9 @@ private val playlist = Playlist(
 
 private val connected = LiveState(ConnectionStatus.CONNECTED, item = null, slide = null)
 
+/** A cleared output: nothing live. */
+internal val previewCleared = connected
+
 internal fun previewLive(item: Int, cue: Int) = connected.copy(
     item = previewKeys[item],
     slide = LiveSlide(PREVIEW_SONG, cue, 5)
@@ -98,6 +101,14 @@ internal fun RemotePreview(state: RemoteState, expanded: Boolean = false, reconn
 private fun LivePreview() {
     RemotePreview(
         previewState(RemoteInputs(previewLive(0, 1), LiveCue(CueSource.PlaylistItem(previewKeys[0]), PREVIEW_SONG, 1)))
+    )
+}
+
+@Preview(widthDp = 527, heightDp = 1173)
+@Composable
+private fun ClearedPreview() {
+    RemotePreview(
+        previewState(RemoteInputs(previewCleared, LiveCue(CueSource.PlaylistItem(previewKeys[0]), PREVIEW_SONG, 1)))
     )
 }
 

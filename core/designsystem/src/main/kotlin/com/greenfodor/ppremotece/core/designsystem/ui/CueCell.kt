@@ -46,14 +46,15 @@ enum class CueMark {
     NONE,
     LIVE,
     NEXT,
-    CUED
+    CUED,
+    CLEARED
 }
 
 /**
- * One cue: a reserved ring slot (LIVE 4 dp `tertiary`, NEXT and CUED 2 dp `secondary`), a 4 dp
- * frame in the group colour, the slide image with its badges at the top, and a 28 dp label strip
- * with "[number]. [groupName]" and the slide [label]. A disabled cue is dimmed, badged and not clickable;
- * with a null [onClick] the cell is not clickable.
+ * One cue: a reserved ring slot (LIVE 4 dp `tertiary`, NEXT, CUED and CLEARED 2 dp `secondary`), a
+ * 4 dp frame in the group colour, the slide image with its badges at the top, and a 28 dp label
+ * strip with "[number]. [groupName]" ("[number]." unless [showGroupName]) and the slide [label]. A
+ * disabled cue is dimmed, badged and not clickable; with a null [onClick] the cell is not clickable.
  * A new [thumbnailGeneration] loads the image again.
  */
 @Composable
@@ -69,7 +70,8 @@ fun CueCell(
     label: String = "",
     enabled: Boolean = true,
     mark: CueMark = CueMark.NONE,
-    thumbnailGeneration: Int = 0
+    thumbnailGeneration: Int = 0,
+    showGroupName: Boolean = true
 ) {
     val groupColors = PPRemoteTheme.groupColors
     val frameColor = groupColor?.takeIf { it.alpha > 0f }?.toColor() ?: MaterialTheme.colorScheme.outlineVariant
@@ -102,7 +104,7 @@ fun CueCell(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Text(
-                        text = stringResource(R.string.cue_label, number, groupName),
+                        text = cueLabel(number, groupName, showGroupName),
                         style = MaterialTheme.typography.labelMedium,
                         color = labelColor,
                         maxLines = 1,
@@ -143,7 +145,16 @@ private fun BoxScope.CueBadges(mark: CueMark, enabled: Boolean) {
     }
 }
 
-/** The `LIVE`, `NEXT` or `CUED` badge of [mark]; nothing for [CueMark.NONE]. */
+/** "[number]. [groupName]", or "[number]." unless [showGroupName]. */
+@Composable
+internal fun cueLabel(number: Int, groupName: String, showGroupName: Boolean): String =
+    if (showGroupName) {
+        stringResource(R.string.cue_label, number, groupName)
+    } else {
+        stringResource(R.string.cue_number, number)
+    }
+
+/** The `LIVE`, `NEXT`, `CUED` or `CLEARED` badge of [mark]; nothing for [CueMark.NONE]. */
 @Composable
 fun CueMarkBadge(mark: CueMark, modifier: Modifier = Modifier) {
     when (mark) {
@@ -154,15 +165,21 @@ fun CueMarkBadge(mark: CueMark, modifier: Modifier = Modifier) {
             content = MaterialTheme.colorScheme.onSecondary,
             modifier = modifier
         )
-        CueMark.CUED -> Badge(
-            text = stringResource(R.string.cue_cued),
-            container = MaterialTheme.colorScheme.surfaceContainerLowest,
-            content = MaterialTheme.colorScheme.secondary,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary),
-            modifier = modifier
-        )
+        CueMark.CUED -> OutlinedBadge(stringResource(R.string.cue_cued), modifier)
+        CueMark.CLEARED -> OutlinedBadge(stringResource(R.string.cue_cleared), modifier)
         CueMark.NONE -> Unit
     }
+}
+
+@Composable
+private fun OutlinedBadge(text: String, modifier: Modifier = Modifier) {
+    Badge(
+        text = text,
+        container = MaterialTheme.colorScheme.surfaceContainerLowest,
+        content = MaterialTheme.colorScheme.secondary,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary),
+        modifier = modifier
+    )
 }
 
 /** The `LIVE` badge, reading [text]: `onTertiary` text on `tertiary`. */
@@ -233,6 +250,15 @@ private fun CueCellMarksPreview() {
                     onClick = {},
                     label = "Label 01",
                     enabled = false
+                )
+                CueCell(
+                    number = 3,
+                    groupName = "Verse 1",
+                    groupColor = null,
+                    fallbackText = "Verse 1 · 3",
+                    aspect = PREVIEW_ASPECT,
+                    onClick = {},
+                    showGroupName = false
                 )
             }
         }

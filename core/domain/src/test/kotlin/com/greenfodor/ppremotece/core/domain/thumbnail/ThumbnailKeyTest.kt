@@ -120,7 +120,8 @@ class ThumbnailKeyTest {
             slideIndexInGroup = slideIndexInGroup,
             slideText = text,
             enabled = true,
-            size = size
+            size = size,
+            startsGroup = slideIndexInGroup == 0
         )
 
     private fun presentationOf(size: SlideSize?) =

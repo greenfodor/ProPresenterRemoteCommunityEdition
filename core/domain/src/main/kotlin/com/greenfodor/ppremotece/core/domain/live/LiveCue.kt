@@ -18,12 +18,6 @@ fun liveCueIndex(live: LiveState, source: CueSource, presentationUuid: String?, 
     return slide?.takeIf { isLive }?.index
 }
 
-/** The first enabled cue after the live cue of [source], or null when it is not live or none follows. */
-fun nextCueIndex(live: LiveState, source: CueSource, presentationUuid: String?, cues: List<Cue>): Int? {
-    val liveIndex = liveCueIndex(live, source, presentationUuid, cues) ?: return null
-    return nextCueIndex(cues, liveIndex)
-}
-
 /** The first enabled cue after [after], or null when none follows. */
 fun nextCueIndex(cues: List<Cue>, after: Int): Int? = cues.firstOrNull { it.index > after && it.enabled }?.index
 

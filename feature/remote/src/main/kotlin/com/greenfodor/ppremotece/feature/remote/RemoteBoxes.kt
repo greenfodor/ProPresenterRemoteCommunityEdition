@@ -76,7 +76,8 @@ internal fun LiveBox(
                 thumbnail = thumbnail,
                 label = box.cue.slideLabel,
                 enabled = box.cue.enabled,
-                mark = box.mark.toCueMark()
+                mark = box.mark.toCueMark(),
+                showGroupName = box.cue.startsGroup
             )
             is RemoteBox.Text -> TextBox(
                 text = box.text,
@@ -161,6 +162,7 @@ internal fun BoxMark.toCueMark(): CueMark =
         BoxMark.LIVE -> CueMark.LIVE
         BoxMark.NEXT -> CueMark.NEXT
         BoxMark.CUED -> CueMark.CUED
+        BoxMark.CLEARED -> CueMark.CLEARED
     }
 
 private fun PlaylistItemType.icon(): Int =

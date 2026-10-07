@@ -73,7 +73,8 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
 - `GET` reads (including `GET /v1/clear/group/{id}/icon`, the clear group's icon, `GET /v1/macro/{uuid}/icon`,
   the macro's icon, `GET /v1/libraries`,
   `GET /v1/library/{uuid}` and `GET /v1/playlist/active`, read with the slide index on each slide change),
-  the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger`, the item
+  the item-cue trigger `GET /v1/playlist/{pl}/{item}/{cue}/trigger` (also from the playlist grid's
+  Prev/Next while the slide is cleared, for the enabled cue after or before the last live one), the item
   trigger `GET /v1/playlist/{pl}/{item}/trigger` (from the Remote and, for media, audio and live-video
   items, from the item screen), `GET /v1/trigger/next`,
   `GET /v1/trigger/previous` (from the playlist grid, the Remote, and the library grid while its
@@ -85,7 +86,8 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   `GET /v1/audio/playlist/{uuid}` (a playlist's tracks), `GET /v1/audio/playlist/{uuid}/{index}/trigger`,
   `GET /v1/audio/playlist/active/next/trigger`, `GET /v1/audio/playlist/active/previous/trigger`,
   `GET /v1/transport/audio/play` and `GET /v1/transport/audio/pause`;
-- the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode and
+- the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode (a cue
+  tap, and the library grid's Prev/Next while the slide is cleared, never for a playlist item) and
   when a presentation is live outside a playlist (or remembered from one after a clear);
 - one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
   "playlist/active", "status/layers", "timers", "timers/current", "macro_collections", "looks",

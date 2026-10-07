@@ -17,6 +17,15 @@ private fun LiveExpandedPreview() {
 
 @Preview(widthDp = 1173, heightDp = 527)
 @Composable
+private fun ClearedExpandedPreview() {
+    RemotePreview(
+        previewState(RemoteInputs(previewCleared, LiveCue(CueSource.PlaylistItem(previewKeys[0]), PREVIEW_SONG, 1))),
+        expanded = true
+    )
+}
+
+@Preview(widthDp = 1173, heightDp = 527)
+@Composable
 private fun CuedExpandedPreview() {
     RemotePreview(
         previewState(

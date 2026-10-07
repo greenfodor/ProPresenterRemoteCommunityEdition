@@ -6,9 +6,10 @@ import com.greenfodor.ppremotece.core.domain.arrangement.groupSequence
 import com.greenfodor.ppremotece.core.domain.arrangement.liveCueList
 import com.greenfodor.ppremotece.core.domain.arrangement.resyncTarget
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
-import com.greenfodor.ppremotece.core.domain.live.liveCueIndex
-import com.greenfodor.ppremotece.core.domain.live.nextCueIndex
+import com.greenfodor.ppremotece.core.domain.live.cueSteps
+import com.greenfodor.ppremotece.core.domain.live.markedCue
 import com.greenfodor.ppremotece.core.domain.model.CueSource
+import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveState
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.model.PresentationRef
@@ -41,6 +42,7 @@ internal fun gridState(
                 text = cue.slideText,
                 label = cue.slideLabel,
                 enabled = cue.enabled,
+                startsGroup = cue.startsGroup,
                 thumbnail = thumbnails?.request(source, presentation.uuid, cue, ThumbnailQuality.Grid)
             )
         },
@@ -52,9 +54,10 @@ internal fun gridState(
 }
 
 /**
- * This grid with [live]'s live and next cues, the arrangement banner with its Re-sync target
- * ([resyncTarget]; none while [liveItemLoading]) and the group strip. The live arrangement is
- * expanded once.
+ * This grid with its marked cue ([markedCue]: the live cue, or the cue of [lastLive] after a
+ * clear), its steps ([cueSteps]), the arrangement banner with its Re-sync target ([resyncTarget];
+ * none while [liveItemLoading]) and the group strip holding the marked cue. The live arrangement
+ * is expanded once.
  */
 @Suppress("LongParameterList")
 internal fun SlideGridState.withLive(
@@ -62,21 +65,22 @@ internal fun SlideGridState.withLive(
     presentation: Presentation,
     cueList: CueList,
     live: LiveState,
+    lastLive: LiveCue?,
     liveItemRef: PresentationRef?,
     liveItemLoading: Boolean = false
 ): SlideGridState {
-    val liveIndex = liveCueIndex(live, source, presentation.uuid, cueList.cues)
+    val marked = markedCue(live, lastLive, source, presentation.uuid, cueList.cues)
     val slide = live.slide?.takeIf { it.presentationUuid == presentation.uuid && source is CueSource.PlaylistItem }
     val liveCues = slide?.let { liveCueList(presentation, live, liveItemRef) }
     val banner = slide?.let { arrangementBanner(source, cueList, live, presentation, liveCues) }
     return copy(
-        liveCueIndex = liveIndex,
-        nextCueIndex = nextCueIndex(live, source, presentation.uuid, cueList.cues),
+        marked = marked,
+        steps = cueSteps(marked, source, cueList.cues, cueList.countMismatch),
         banner = banner,
         resync = banner
             ?.takeUnless { liveItemLoading }
             ?.let { resyncTarget(liveCues?.cues, checkNotNull(slide).index, cueList.cues) },
-        groupSequence = groupSequence(cueList, liveIndex)
+        groupSequence = groupSequence(cueList, marked?.index)
     )
 }
 

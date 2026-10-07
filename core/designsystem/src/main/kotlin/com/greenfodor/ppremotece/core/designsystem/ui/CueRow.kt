@@ -36,11 +36,12 @@ private val RowMinHeight = 56.dp
 private val DisabledIconSize = 16.dp
 
 /**
- * One cue as text: a 6 dp bar in the group colour, "[number]. [groupName]" with its `LIVE`/`NEXT`
- * badge and the slide [label] right-aligned, then the full slide [text] without a line limit (the
- * group name in italics when the text is empty). The ring slot is the grid cell's (LIVE 4 dp
- * `tertiary`, NEXT and CUED 2 dp `secondary`). A disabled cue is dimmed, shows `visibility_off`
- * and is not clickable; with a null [onClick] the row is not clickable.
+ * One cue as text: a 6 dp bar in the group colour, "[number]. [groupName]" ("[number]." unless
+ * [showGroupName]) with its mark's badge and the slide [label] right-aligned, then the full slide
+ * [text] without a line limit (the group name in italics when the text is empty). The ring slot is
+ * the grid cell's (LIVE 4 dp `tertiary`, NEXT, CUED and CLEARED 2 dp `secondary`). A disabled cue
+ * is dimmed, shows `visibility_off` and is not clickable; with a null [onClick] the row is not
+ * clickable.
  */
 @Composable
 fun CueRow(
@@ -52,7 +53,8 @@ fun CueRow(
     modifier: Modifier = Modifier,
     label: String = "",
     enabled: Boolean = true,
-    mark: CueMark = CueMark.NONE
+    mark: CueMark = CueMark.NONE,
+    showGroupName: Boolean = true
 ) {
     val barColor = groupColor?.takeIf { it.alpha > 0f }?.toColor() ?: MaterialTheme.colorScheme.outlineVariant
     CueMarkFrame(mark = mark, enabled = enabled, onClick = onClick, modifier = modifier) {
@@ -78,7 +80,7 @@ fun CueRow(
                     ) {
                         CueMarkBadge(mark = mark)
                         Text(
-                            text = stringResource(R.string.cue_label, number, groupName),
+                            text = cueLabel(number, groupName, showGroupName),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -148,6 +150,22 @@ private fun CueRowLivePreview() {
 private fun CueRowNextPreview() {
     PPRemoteTheme {
         CueRow(3, "Chorus", PreviewChorus, "Chorus · 2", onClick = {}, mark = CueMark.NEXT)
+    }
+}
+
+@Preview(widthDp = 360)
+@Composable
+private fun CueRowClearedPreview() {
+    PPRemoteTheme {
+        CueRow(2, "Chorus", PreviewChorus, "Chorus · 1\nChorus · 1, line 2", onClick = {}, mark = CueMark.CLEARED)
+    }
+}
+
+@Preview(widthDp = 360)
+@Composable
+private fun CueRowNoGroupNamePreview() {
+    PPRemoteTheme {
+        CueRow(3, "Chorus", PreviewChorus, "Chorus · 2", onClick = {}, showGroupName = false)
     }
 }
 

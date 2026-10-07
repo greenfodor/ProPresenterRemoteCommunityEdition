@@ -9,8 +9,10 @@
     <string name="cue_live">LIVE</string>
     <string name="cue_next">NEXT</string>
     <string name="cue_cued">CUED</string>
+    <string name="cue_cleared">CLEARED</string>
     <string name="cue_disabled">Disabled slide</string>
     <string name="cue_label">%1$d. %2$s</string>
+    <string name="cue_number">%1$d.</string>
     <string name="reconnecting">Reconnecting…</string>
     <string name="not_available">Not available on this ProPresenter</string>
 </resources>
