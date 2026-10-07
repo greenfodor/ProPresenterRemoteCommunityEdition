@@ -29,7 +29,7 @@ private val RingShape = RoundedCornerShape(CueContentCorner + RingGap + RingSlot
 
 /**
  * A full-width cue with a reserved ring slot around [content] holding [mark]'s ring: the 4 dp
- * [LiveMark] ring for LIVE, 2 dp `secondary` for NEXT and CUED, none otherwise. A disabled cue is
+ * [LiveMark] ring for LIVE, 2 dp `secondary` for NEXT, CUED and CLEARED, none otherwise. A disabled cue is
  * dimmed and not clickable; with a null [onClick] it is not clickable. A LIVE cue is marked
  * selected.
  */
@@ -41,7 +41,7 @@ internal fun CueMarkFrame(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val secondaryRing = mark == CueMark.NEXT || mark == CueMark.CUED
+    val secondaryRing = mark == CueMark.NEXT || mark == CueMark.CUED || mark == CueMark.CLEARED
     LiveMark(
         live = mark == CueMark.LIVE,
         shape = RingShape,

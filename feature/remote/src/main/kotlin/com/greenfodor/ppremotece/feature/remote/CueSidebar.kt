@@ -52,7 +52,8 @@ internal fun CueSidebar(
                 thumbnail = row.thumbnail,
                 label = row.cue.slideLabel,
                 enabled = row.cue.enabled,
-                mark = row.mark.toCueMark()
+                mark = row.mark.toCueMark(),
+                showGroupName = row.cue.startsGroup
             )
         }
     }

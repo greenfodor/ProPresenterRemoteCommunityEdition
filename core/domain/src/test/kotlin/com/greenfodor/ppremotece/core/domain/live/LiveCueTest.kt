@@ -102,6 +102,7 @@ class LiveCueTest {
             slideIndexInGroup = 0,
             slideText = "",
             enabled = enabled,
-            size = null
+            size = null,
+            startsGroup = index == 0
         )
 }

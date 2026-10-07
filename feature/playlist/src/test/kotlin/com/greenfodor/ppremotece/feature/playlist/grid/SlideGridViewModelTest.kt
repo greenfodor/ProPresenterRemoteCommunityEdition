@@ -18,6 +18,8 @@ import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
+import com.greenfodor.ppremotece.core.domain.live.CueStep
+import com.greenfodor.ppremotece.core.domain.live.CueSteps
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
@@ -169,12 +171,12 @@ class SlideGridViewModelTest {
         val viewModel = viewModel()
 
         viewModel.state.test {
-            assertThat(awaitItem().nextCueIndex).isNull()
+            assertThat(awaitItem().marked?.next).isNull()
             live.value = LiveState(ConnectionStatus.CONNECTED, item, LiveSlide(SONG_C, index = 0, totalCues = 8))
 
             val state = awaitItem()
-            assertThat(state.liveCueIndex).isEqualTo(0)
-            assertThat(state.nextCueIndex).isEqualTo(2)
+            assertThat(state.marked?.index).isEqualTo(0)
+            assertThat(state.marked?.next).isEqualTo(2)
         }
     }
 
@@ -189,8 +191,8 @@ class SlideGridViewModelTest {
 
         viewModel.state.test {
             val state = awaitItem()
-            assertThat(state.liveCueIndex).isNull()
-            assertThat(state.nextCueIndex).isNull()
+            assertThat(state.marked?.index).isNull()
+            assertThat(state.marked?.next).isNull()
         }
     }
 
@@ -348,17 +350,17 @@ class SlideGridViewModelTest {
             val state = awaitItem()
             assertThat(state.title).isEqualTo("Song C")
             assertThat(state.cues.map { it.index }).containsExactly(0, 1, 2, 3, 4, 5, 6, 7)
-            assertThat(state.stepsEnabled).isFalse()
+            assertThat(state.steps).isEqualTo(disabledSteps)
             assertThat(state.cues[0].thumbnail?.url).isEqualTo("http://host/presentation/$SONG_C/thumbnail/0")
 
             live.value = outside(cue = 2, totalCues = 8)
-            assertThat(awaitItem().liveCueIndex).isEqualTo(2)
+            assertThat(awaitItem().marked?.index).isEqualTo(2)
             live.value = outside(cue = 2, totalCues = 9)
-            assertThat(awaitItem().liveCueIndex).isNull()
+            assertThat(awaitItem().marked?.index).isNull()
             live.value = outside(cue = 0, totalCues = 8)
-            assertThat(awaitItem().nextCueIndex).isEqualTo(2)
+            assertThat(awaitItem().marked?.next).isEqualTo(2)
             live.value = outside(cue = 0, totalCues = 8).copy(item = item)
-            assertThat(awaitItem().liveCueIndex).isNull()
+            assertThat(awaitItem().marked?.index).isNull()
         }
     }
 
@@ -367,11 +369,11 @@ class SlideGridViewModelTest {
         content.failWith = DataError.Network.SERVER
         val viewModel = viewModel(CueSource.Presentation(SONG_C))
 
-        assertThat(viewModel.state.value.stepsEnabled).isFalse()
+        assertThat(viewModel.state.value.steps).isEqualTo(disabledSteps)
         viewModel.state.test {
             val failed = awaitItem()
             assertThat(failed.error).isNotNull()
-            assertThat(failed.stepsEnabled).isFalse()
+            assertThat(failed.steps).isEqualTo(disabledSteps)
         }
     }
 
@@ -380,19 +382,19 @@ class SlideGridViewModelTest {
         val viewModel = viewModel(CueSource.Presentation(SONG_C))
 
         viewModel.state.test {
-            assertThat(awaitItem().stepsEnabled).isFalse()
+            assertThat(awaitItem().steps).isEqualTo(disabledSteps)
             viewModel.onAction(SlideGridAction.OnNextClick)
             viewModel.onAction(SlideGridAction.OnPreviousClick)
             assertThat(client.steps).isEmpty()
 
             live.value = outside(cue = 3, totalCues = 8)
-            assertThat(awaitItem().stepsEnabled).isTrue()
+            assertThat(awaitItem().steps).isEqualTo(relativeSteps)
             viewModel.onAction(SlideGridAction.OnNextClick)
             viewModel.onAction(SlideGridAction.OnPreviousClick)
             assertThat(client.steps).containsExactly("next", "previous")
 
             live.value = outside(cue = 3, totalCues = 8).copy(item = item)
-            assertThat(awaitItem().stepsEnabled).isFalse()
+            assertThat(awaitItem().steps).isEqualTo(disabledSteps)
             viewModel.onAction(SlideGridAction.OnNextClick)
             assertThat(client.steps).containsExactly("next", "previous")
         }
@@ -404,7 +406,7 @@ class SlideGridViewModelTest {
         val viewModel = viewModel()
 
         viewModel.state.test {
-            assertThat(awaitItem().stepsEnabled).isTrue()
+            assertThat(awaitItem().steps).isEqualTo(relativeSteps)
             viewModel.onAction(SlideGridAction.OnNextClick)
             viewModel.onAction(SlideGridAction.OnPreviousClick)
         }
@@ -456,7 +458,7 @@ class SlideGridViewModelTest {
             awaitItem()
             live.value = outside(cue = 2, totalCues = 8)
             expectNoEvents()
-            assertThat(viewModel.state.value.liveCueIndex).isNull()
+            assertThat(viewModel.state.value.marked?.index).isNull()
         }
     }
 
@@ -689,6 +691,9 @@ class SlideGridViewModelTest {
             assertThat(awaitItem()).isEqualTo(SlideGridEvent.ScrollToCue(5))
         }
     }
+
+    private val relativeSteps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative)
+    private val disabledSteps = CueSteps(next = CueStep.Disabled, previous = CueStep.Disabled)
 
     private fun SlideGridEvent.messageId() = ((this as SlideGridEvent.ShowError).message as UiText.StringResource).id
 

@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.feature.playlist.grid
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,17 +52,20 @@ import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private val PillHeight = 32.dp
 private val PillTouchHeight = 48.dp
+private val ClearedOutlineWidth = 2.dp
 
 /**
- * One 32 dp pill in a 48 dp tall slot per group occurrence of [sequence], filled with the group colour; the live pill has
- * a 2 dp `tertiary` ring and is scrolled into view. A tap reports the occurrence's first cue.
+ * One 32 dp pill in a 48 dp tall slot per group occurrence of [sequence], filled with the group colour; the pill holding
+ * the marked cue has a 2 dp `tertiary` ring, or a 2 dp `secondary` outline when [cleared], and is scrolled into view. A
+ * tap reports the occurrence's first cue.
  */
 @Composable
 internal fun GroupStrip(
     sequence: GroupSequence,
     onPillClick: (firstCueIndex: Int) -> Unit,
     horizontalPadding: Dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    cleared: Boolean = false
 ) {
     val rowState = rememberLazyListState()
     LaunchedEffect(sequence.livePill) {
@@ -84,7 +88,8 @@ internal fun GroupStrip(
             Box(contentAlignment = Alignment.Center, modifier = Modifier.height(PillTouchHeight)) {
                 GroupPillChip(
                     pill = pill,
-                    live = index == sequence.livePill,
+                    live = index == sequence.livePill && !cleared,
+                    cleared = index == sequence.livePill && cleared,
                     onClick = { onPillClick(pill.firstCueIndex) }
                 )
             }
@@ -94,7 +99,7 @@ internal fun GroupStrip(
 
 /** A 32 dp group pill, its name in an automatic text colour. */
 @Composable
-private fun GroupPillChip(pill: GroupPill, live: Boolean, onClick: () -> Unit) {
+private fun GroupPillChip(pill: GroupPill, live: Boolean, cleared: Boolean, onClick: () -> Unit) {
     val fill = pill.color?.toColor() ?: MaterialTheme.colorScheme.outlineVariant
     Surface(
         onClick = onClick,
@@ -103,7 +108,12 @@ private fun GroupPillChip(pill: GroupPill, live: Boolean, onClick: () -> Unit) {
         contentColor = LocalGroupColors.current.labelOn(fill),
         modifier = Modifier.height(PillHeight).semantics { selected = live }
     ) {
-        LiveMark(live = live, shape = CircleShape, badge = null) {
+        val outline = if (cleared) {
+            Modifier.border(ClearedOutlineWidth, MaterialTheme.colorScheme.secondary, CircleShape)
+        } else {
+            Modifier
+        }
+        LiveMark(live = live, shape = CircleShape, badge = null, modifier = outline) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.align(Alignment.Center).padding(horizontal = 12.dp)
@@ -219,6 +229,21 @@ private fun GroupStripPreview() {
 private fun GroupStripLivePreview() {
     PPRemoteTheme {
         Surface { GroupStrip(GroupSequence(PreviewPills, livePill = 3), onPillClick = {}, horizontalPadding = 8.dp) }
+    }
+}
+
+@Preview(widthDp = 411)
+@Composable
+private fun GroupStripClearedPreview() {
+    PPRemoteTheme {
+        Surface {
+            GroupStrip(
+                GroupSequence(PreviewPills, livePill = 3),
+                onPillClick = {},
+                horizontalPadding = 8.dp,
+                cleared = true
+            )
+        }
     }
 }
 

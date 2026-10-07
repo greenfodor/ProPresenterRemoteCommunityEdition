@@ -47,7 +47,8 @@ data class Arrangement(
 
 /**
  * One triggerable slide position of a playlist item, numbered from 0 in arrangement order.
- * [slideIndexInGroup] is the slide's position within its group.
+ * [slideIndexInGroup] is the slide's position within its group, and [startsGroup] is true for the
+ * first cue of each occurrence of a group.
  */
 data class Cue(
     val index: Int,
@@ -58,5 +59,6 @@ data class Cue(
     val slideText: String,
     val enabled: Boolean,
     val size: SlideSize?,
-    val slideLabel: String = ""
+    val slideLabel: String = "",
+    val startsGroup: Boolean
 )

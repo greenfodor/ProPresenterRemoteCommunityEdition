@@ -41,31 +41,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
 import com.greenfodor.ppremotece.core.designsystem.ui.CueCell
 import com.greenfodor.ppremotece.core.designsystem.ui.CueMark
 import com.greenfodor.ppremotece.core.designsystem.ui.CueRow
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
-import com.greenfodor.ppremotece.core.designsystem.ui.SyntheticThumbnails
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.model.CueSource
-import com.greenfodor.ppremotece.core.domain.model.GroupColor
-import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
-import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.R
 import com.greenfodor.ppremotece.feature.playlist.text
 import kotlinx.coroutines.flow.Flow
@@ -76,7 +69,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
-private const val PREVIEW_LIBRARY_CUES = 15
 private val GridPadding = 8.dp
 private val GridBottomPadding = 88.dp
 private const val HEADER_KEY = "header"
@@ -178,7 +170,7 @@ fun SlideGridScreen(
                 )
             )
         },
-        bottomBar = { StepButtons(enabled = state.stepsEnabled, wide = wideSteps, onAction = onAction) }
+        bottomBar = { StepButtons(steps = state.steps, wide = wideSteps, onAction = onAction) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             ReconnectingStrip(visible = reconnecting)
@@ -289,7 +281,8 @@ private fun CueGrid(
                     label = cue.label,
                     enabled = cue.enabled,
                     thumbnailGeneration = state.thumbnailGeneration,
-                    mark = cue.mark(state)
+                    mark = cue.mark(state),
+                    showGroupName = cue.startsGroup
                 )
             }
         }
@@ -343,7 +336,8 @@ private fun CueList(
                     onClick = { onAction(SlideGridAction.OnCueClick(cue.index)) },
                     label = cue.label,
                     enabled = cue.enabled,
-                    mark = cue.mark(state)
+                    mark = cue.mark(state),
+                    showGroupName = cue.startsGroup
                 )
             }
         }
@@ -352,8 +346,8 @@ private fun CueList(
 
 private fun CueUi.mark(state: SlideGridState): CueMark =
     when (index) {
-        state.liveCueIndex -> CueMark.LIVE
-        state.nextCueIndex -> CueMark.NEXT
+        state.marked?.index -> if (state.marked.cleared) CueMark.CLEARED else CueMark.LIVE
+        state.marked?.next -> CueMark.NEXT
         else -> CueMark.NONE
     }
 
@@ -369,6 +363,7 @@ private fun GridHeader(state: SlideGridState, horizontalPadding: Dp, onAction: (
         if (state.groupSequence.pills.isNotEmpty()) {
             GroupStrip(
                 sequence = state.groupSequence,
+                cleared = state.marked?.cleared == true,
                 onPillClick = { onAction(SlideGridAction.OnGroupPillClick(it)) },
                 horizontalPadding = horizontalPadding
             )
@@ -397,65 +392,6 @@ private fun CountMismatchLine() {
             text = stringResource(R.string.grid_count_mismatch),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun SlideGridScreenPreview() {
-    val chorus = GroupColor(red = 0f, green = 0.47f, blue = 0.8f, alpha = 1f)
-
-    fun thumbnail(cue: Int) = ThumbnailRequest(
-        "http://192.0.2.14:60113/v1/playlist/p/6/thumbnail/$cue?quality=400",
-        "k$cue"
-    )
-    PPRemoteTheme {
-        SyntheticThumbnails {
-            SlideGridScreen(
-                state = SlideGridState(
-                    title = "Song C",
-                    label = ArrangementLabel.Named("A"),
-                    cues = listOf(
-                        CueUi(0, "Verse 1", null, "Verse 1 · 1", label = "", enabled = true, thumbnail = thumbnail(0)),
-                        CueUi(1, "Verse 1", null, "Verse 1 · 2", label = "", enabled = false, thumbnail = thumbnail(1)),
-                        CueUi(2, "Verse 1", null, "Verse 1 · 3", label = "", enabled = true, thumbnail = thumbnail(2)),
-                        CueUi(3, "Chorus", chorus, "Chorus · 1", label = "Label 01", enabled = true),
-                        CueUi(4, "Chorus", chorus, "", label = "", enabled = true)
-                    ),
-                    aspect = 1920f / 858f,
-                    countMismatch = true,
-                    liveCueIndex = 0,
-                    nextCueIndex = 2,
-                    stepsEnabled = true,
-                    isLoading = false
-                ),
-                onAction = {},
-                onBack = {}
-            )
-        }
-    }
-}
-
-@Preview
-@Composable
-private fun LibraryGridScreenPreview() {
-    PPRemoteTheme {
-        SlideGridScreen(
-            state = SlideGridState(
-                title = "Song A",
-                label = null,
-                cues = List(PREVIEW_LIBRARY_CUES) {
-                    CueUi(it, "Verse 1", null, "Verse 1 · ${it + 1}", label = "", enabled = true)
-                },
-                aspect = 1920f / 858f,
-                liveCueIndex = 3,
-                nextCueIndex = 4,
-                stepsEnabled = true,
-                isLoading = false
-            ),
-            onAction = {},
-            onBack = {}
         )
     }
 }

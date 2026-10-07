@@ -48,7 +48,8 @@ enum class BoxMark {
     NONE,
     LIVE,
     NEXT,
-    CUED
+    CUED,
+    CLEARED
 }
 
 /** The content of the current or the next box. */
@@ -159,7 +160,7 @@ data class RemoteDisplay(
          * What the Remote tab shows for [inputs], given the [playlist] and [presentations] read so far.
          *
          * The base is the media item this app triggered, else the live slide, else the last live
-         * cue. A live slide of another presentation than its item's shows the `status/slide` text
+         * cue, which is marked cleared. A live slide of another presentation than its item's shows the `status/slide` text
          * and steps with trigger next and previous. A live slide without a playlist item is shown
          * with the cues of its presentation's current arrangement once it is read and when their count
          * is the live cue count, and as the text otherwise. A cued item other than the base item is shown in place
@@ -168,7 +169,7 @@ data class RemoteDisplay(
         fun reduce(inputs: RemoteInputs, playlist: Playlist?, presentations: Map<String, Presentation>): RemoteDisplay =
             when (val base = baseOf(inputs)) {
                 Base.None -> RemoteDisplay(status = RemoteStatus.NOTHING_LIVE)
-                is Base.Presentation -> presentationDisplay(base, presentations, inputs.live.slideText)
+                is Base.Presentation -> presentationDisplay(inputs, base, presentations)
                 is Base.Cue, is Base.Media -> when {
                     playlist == null -> RemoteDisplay(status = RemoteStatus.LOADING)
                     !base.matches(playlist) -> textDisplay(inputs.live.slideText)

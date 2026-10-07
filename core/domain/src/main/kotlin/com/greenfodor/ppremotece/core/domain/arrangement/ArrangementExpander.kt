@@ -52,7 +52,8 @@ object ArrangementExpander {
                     slideText = slide.text,
                     enabled = slide.enabled,
                     size = slide.size,
-                    slideLabel = slide.label
+                    slideLabel = slide.label,
+                    startsGroup = slideIndex == 0
                 )
             }
 }

@@ -16,8 +16,10 @@ import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
+import com.greenfodor.ppremotece.core.domain.live.CueStep
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.live.cueSteps
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
@@ -60,10 +62,11 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
 /**
  * Slide grid for one [source]: a playlist item's cues in the item's arrangement, or a library
  * presentation's cues in its current arrangement, read through the [ContentRepository], with the
- * live and next cues while ProPresenter shows that source. A playlist item triggers by item and
- * cue index; a presentation triggers by presentation and cue index. Next and previous send
- * `trigger/next|previous`, always for a playlist item and for a presentation only while it is live
- * outside a playlist. Disabled cues are not triggered. Each cue carries its thumbnail request,
+ * live and next cues while ProPresenter shows that source, and the last live cue marked cleared
+ * after a clear. A playlist item triggers by item and cue index; a presentation triggers by
+ * presentation and cue index. Next and previous send what [cueSteps] says: `trigger/next|previous`
+ * while a slide is live, the enabled cues around the cleared cue after a clear. Disabled cues are
+ * not triggered. Each cue carries its thumbnail request,
  * except in List mode or when the arrangement did not fully resolve; a successful "Reload slides"
  * also evicts the thumbnails and loads them again, as does each new host connection. The slide
  * size step and the view mode are read for the window's width class; a step being dragged is shown
@@ -98,7 +101,7 @@ class SlideGridViewModel(
         ) : Content
     }
 
-    private val alwaysSteps = source is CueSource.PlaylistItem
+    private val idleSteps = cueSteps(marked = null, source, cues = emptyList())
     private val retries = MutableStateFlow(0)
     private val thumbnailGeneration = MutableStateFlow(0)
     private val widthClass = MutableStateFlow<WidthClass?>(null)
@@ -114,6 +117,7 @@ class SlideGridViewModel(
         widthClass.flatMapLatest { it?.let(gridPreferences::viewMode) ?: flowOf(null) }
     private var loaded: Content.Loaded? = null
     private val live = liveStateRepository.liveState
+    private val lastLive = liveStateRepository.lastLive
 
     /**
      * Another live playlist item than this grid's, with its presentation ref once its playlist is
@@ -168,9 +172,9 @@ class SlideGridViewModel(
             mode
             ->
             when (content) {
-                Content.Loading -> SlideGridState(stepsEnabled = alwaysSteps, isLoading = true) to null
+                Content.Loading -> SlideGridState(steps = idleSteps, isLoading = true) to null
                 is Content.Failed ->
-                    SlideGridState(stepsEnabled = alwaysSteps, isLoading = false, error = content.error) to null
+                    SlideGridState(steps = idleSteps, isLoading = false, error = content.error) to null
                 is Content.Loaded -> gridState(
                     source,
                     content.title,
@@ -183,7 +187,7 @@ class SlideGridViewModel(
         }
 
     val state: StateFlow<SlideGridState> =
-        combine(grid, live, gridStep, liveItemRef) { (state, loaded), live, step, liveItem ->
+        combine(grid, live, lastLive, gridStep, liveItemRef) { (state, loaded), live, last, step, liveItem ->
             val read = liveItem?.takeIf { it.key == live.item }
             val liveItemLoading = live.item != null &&
                 live.item != (source as? CueSource.PlaylistItem)?.key &&
@@ -191,20 +195,14 @@ class SlideGridViewModel(
             if (loaded == null) {
                 state.copy(gridStep = step)
             } else {
-                val withLive = state.withLive(
-                    source,
-                    loaded.presentation,
-                    loaded.cueList,
-                    live,
-                    read?.ref,
-                    liveItemLoading
-                )
-                withLive.copy(stepsEnabled = alwaysSteps || withLive.liveCueIndex != null, gridStep = step)
+                state
+                    .withLive(source, loaded.presentation, loaded.cueList, live, last, read?.ref, liveItemLoading)
+                    .copy(gridStep = step)
             }
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            SlideGridState(stepsEnabled = alwaysSteps)
+            SlideGridState(steps = idleSteps)
         )
 
     /** The index of the first cue shown, as last reported by [SlideGridAction.OnFirstVisibleCueChange]. */
@@ -218,8 +216,8 @@ class SlideGridViewModel(
         when (action) {
             is SlideGridAction.OnCueClick ->
                 if (loaded?.cueList.isEnabled(action.index)) send { client.trigger(source, action.index) }
-            SlideGridAction.OnNextClick -> step { client.triggerNext() }
-            SlideGridAction.OnPreviousClick -> step { client.triggerPrevious() }
+            SlideGridAction.OnNextClick -> step(state.value.steps.next) { client.triggerNext() }
+            SlideGridAction.OnPreviousClick -> step(state.value.steps.previous) { client.triggerPrevious() }
             SlideGridAction.OnResyncClick -> resync()
             is SlideGridAction.OnGroupPillClick -> viewModelScope.launch {
                 _events.send(SlideGridEvent.ScrollToCue(action.firstCueIndex))
@@ -322,8 +320,12 @@ class SlideGridViewModel(
         _events.send(SlideGridEvent.ShowError(error.toUiText()))
     }
 
-    private fun step(trigger: suspend () -> EmptyResult<DataError.Network>) {
-        if (state.value.stepsEnabled) send(trigger)
+    private fun step(step: CueStep, relative: suspend () -> EmptyResult<DataError.Network>) {
+        when (step) {
+            CueStep.Disabled -> Unit
+            CueStep.Relative -> send(relative)
+            is CueStep.Explicit -> send { client.trigger(source, step.cueIndex) }
+        }
     }
 
     private fun send(trigger: suspend () -> EmptyResult<DataError.Network>) {

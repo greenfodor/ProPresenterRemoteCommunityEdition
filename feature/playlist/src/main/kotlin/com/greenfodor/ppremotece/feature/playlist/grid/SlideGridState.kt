@@ -7,6 +7,9 @@ import com.greenfodor.ppremotece.core.domain.arrangement.ResyncTarget
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
+import com.greenfodor.ppremotece.core.domain.live.CueStep
+import com.greenfodor.ppremotece.core.domain.live.CueSteps
+import com.greenfodor.ppremotece.core.domain.live.MarkedCue
 import com.greenfodor.ppremotece.core.domain.model.GroupColor
 import com.greenfodor.ppremotece.core.domain.thumbnail.DEFAULT_SLIDE_ASPECT
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
@@ -21,10 +24,9 @@ data class SlideGridState(
     val banner: ArrangementBanner? = null,
     val resync: ResyncTarget? = null,
     val groupSequence: GroupSequence = GroupSequence(emptyList(), livePill = null),
-    val liveCueIndex: Int? = null,
-    val nextCueIndex: Int? = null,
+    val marked: MarkedCue? = null,
     val thumbnailGeneration: Int = 0,
-    val stepsEnabled: Boolean = false,
+    val steps: CueSteps = CueSteps(next = CueStep.Disabled, previous = CueStep.Disabled),
     val gridStep: GridStep? = null,
     val viewMode: ViewMode? = null,
     val isLoading: Boolean = true,
@@ -38,7 +40,8 @@ data class CueUi(
     val text: String,
     val label: String,
     val enabled: Boolean,
-    val thumbnail: ThumbnailRequest? = null
+    val thumbnail: ThumbnailRequest? = null,
+    val startsGroup: Boolean = true
 )
 
 sealed interface SlideGridAction {

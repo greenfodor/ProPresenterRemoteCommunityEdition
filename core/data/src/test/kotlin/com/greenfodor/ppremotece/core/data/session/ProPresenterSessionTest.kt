@@ -394,7 +394,18 @@ class ProPresenterSessionTest {
         cache.gate.complete(Unit)
 
         val requests = withTimeout(2.seconds) { session.thumbnailRequests.filterNotNull().first() }
-        val cue = Cue(3, "g-1", "Chorus", null, 0, "Chorus · 1", enabled = true, size = SlideSize(1920, 858))
+        val cue =
+            Cue(
+                3,
+                "g-1",
+                "Chorus",
+                null,
+                0,
+                "Chorus · 1",
+                enabled = true,
+                size = SlideSize(1920, 858),
+                startsGroup = true
+            )
         val item = CueSource.PlaylistItem(PlaylistItemKey("pl-1", 1))
         val request = requests.request(item, "p-1", cue, ThumbnailQuality.Grid)
         assertThat(
