@@ -12,6 +12,7 @@ import com.greenfodor.ppremotece.core.data.dto.VersionDto
 import com.greenfodor.ppremotece.core.data.mapper.toDomain
 import com.greenfodor.ppremotece.core.data.mapper.toLibrary
 import com.greenfodor.ppremotece.core.data.mapper.toTracks
+import com.greenfodor.ppremotece.core.domain.live.PlaylistNotFoundException
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.AudioTrack
 import com.greenfodor.ppremotece.core.domain.model.ClearGroup
@@ -37,10 +38,13 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeoutConfig
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
+import io.ktor.client.request.prepareGet
 import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLPathPart
 import io.ktor.http.isSuccess
@@ -57,8 +61,8 @@ import java.util.concurrent.ConcurrentHashMap
  * [ProPresenterClient] for the ProPresenter HTTP API at [baseUrl], plus the `status/updates`
  * stream. Sends only GET reads (including clear-group and macro icons, each read once per route as
  * PNG, JPEG or SVG of at most 256 KB), the item-cue, item, presentation-cue, next and previous
- * triggers, the layer and clear-group clears, the timer operations, the macro trigger, and the
- * stream POST.
+ * triggers, the layer and clear-group clears, the timer operations, the macro trigger, the
+ * stream POST, and the long-lived `playlist/{uuid}/updates` read.
  */
 @Suppress("TooManyFunctions")
 class KtorProPresenterClient(
@@ -133,9 +137,11 @@ class KtorProPresenterClient(
         safeCall<AudioPlaylistDto> { httpClient.get("$baseUrl/v1/audio/playlist/${uuid.encodeURLPathPart()}") }
             .map { it.toTracks() }
 
-    override suspend fun triggerAudioTrack(playlistUuid: String, index: Int): EmptyResult<DataError.Network> =
+    override suspend fun triggerAudioTrack(playlistUuid: String, trackUuid: String): EmptyResult<DataError.Network> =
         safeEmptyCall {
-            httpClient.get("$baseUrl/v1/audio/playlist/${playlistUuid.encodeURLPathPart()}/$index/trigger")
+            httpClient.get(
+                "$baseUrl/v1/audio/playlist/${playlistUuid.encodeURLPathPart()}/${trackUuid.encodeURLPathPart()}/trigger"
+            )
         }
 
     override suspend fun audioNext(): EmptyResult<DataError.Network> =
@@ -210,6 +216,35 @@ class KtorProPresenterClient(
             }
         }
 
+    /**
+     * `GET playlist/{uuid}/updates?chunked=true`, kept open without a request or socket timeout:
+     * one emission per `"change"` chunk of the body, the chunks separated by a blank line.
+     */
+    override fun playlistChanges(uuid: String): Flow<Unit> =
+        flow {
+            httpClient.prepareGet("$baseUrl/v1/playlist/${uuid.encodeURLPathPart()}/updates") {
+                parameter("chunked", true)
+                timeout {
+                    requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                    socketTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                }
+            }.execute { response ->
+                if (response.status == HttpStatusCode.NotFound) throw PlaylistNotFoundException()
+                if (!response.status.isSuccess()) throw IOException("playlist updates rejected: ${response.status}")
+                val channel = response.bodyAsChannel()
+                val buffer = ByteArray(READ_BUFFER_SIZE)
+                var pending = ""
+                var read = channel.readAvailable(buffer)
+                while (read >= 0) {
+                    val chunks = (pending + buffer.decodeToString(0, read)).split(CHUNK_SEPARATOR)
+                    pending = chunks.last()
+                    repeat(chunks.dropLast(1).count { it.trim() == CHANGE_CHUNK }) { emit(Unit) }
+                    read = channel.readAvailable(buffer)
+                }
+                if (pending.trim() == CHANGE_CHUNK) emit(Unit)
+            }
+        }
+
     private fun iconOf(bytes: ByteArray): ServerIcon? =
         if (IMAGE_SIGNATURES.any { signature -> bytes.take(signature.size) == signature }) {
             ServerIcon.Image(bytes)
@@ -220,6 +255,8 @@ class KtorProPresenterClient(
     private companion object {
         const val READ_BUFFER_SIZE = 8 * 1024
         const val MAX_ICON_BYTES = 256 * 1024
+        const val CHUNK_SEPARATOR = "\r\n\r\n"
+        const val CHANGE_CHUNK = "\"change\""
         val IMAGE_SIGNATURES = listOf(
             listOf(0x89, 0x50, 0x4E, 0x47).map { it.toByte() },
             listOf(0xFF, 0xD8, 0xFF).map { it.toByte() }

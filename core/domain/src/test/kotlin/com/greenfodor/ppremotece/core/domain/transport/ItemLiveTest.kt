@@ -1,8 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.transport
 
 import assertk.assertThat
-import assertk.assertions.isFalse
-import assertk.assertions.isTrue
+import assertk.assertions.isEqualTo
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
@@ -32,54 +31,74 @@ class ItemLiveTest {
 
     @Test
     fun `a media item is live while the presentation transport plays its target`() {
-        assertThat(itemLive(item(PlaylistItemType.MEDIA), presentation = playing(TARGET), audio = null)).isTrue()
+        assertThat(
+            itemLive(item(PlaylistItemType.MEDIA), presentation = playing(TARGET), audio = null)
+        ).isEqualTo(ItemLive.LIVE)
     }
 
     @Test
     fun `an audio item is live while the audio transport plays its target`() {
-        assertThat(itemLive(item(PlaylistItemType.AUDIO), presentation = null, audio = playing(TARGET))).isTrue()
+        assertThat(
+            itemLive(item(PlaylistItemType.AUDIO), presentation = null, audio = playing(TARGET))
+        ).isEqualTo(ItemLive.LIVE)
     }
 
     @Test
     fun `an item is matched on its own layer only`() {
-        assertThat(itemLive(item(PlaylistItemType.MEDIA), presentation = null, audio = playing(TARGET))).isFalse()
-        assertThat(itemLive(item(PlaylistItemType.AUDIO), presentation = playing(TARGET), audio = null)).isFalse()
+        assertThat(
+            itemLive(item(PlaylistItemType.MEDIA), presentation = null, audio = playing(TARGET))
+        ).isEqualTo(ItemLive.NONE)
+        assertThat(
+            itemLive(item(PlaylistItemType.AUDIO), presentation = playing(TARGET), audio = null)
+        ).isEqualTo(ItemLive.NONE)
     }
 
     @Test
-    fun `a transport that is not playing marks nothing live`() {
+    fun `an item is paused while its transport names it and does not play`() {
         val paused = playing(TARGET, isPlaying = false)
 
-        assertThat(itemLive(item(PlaylistItemType.MEDIA), presentation = paused, audio = null)).isFalse()
-        assertThat(itemLive(item(PlaylistItemType.AUDIO), presentation = null, audio = paused)).isFalse()
+        assertThat(itemLive(item(PlaylistItemType.MEDIA), presentation = paused, audio = null))
+            .isEqualTo(ItemLive.PAUSED)
+        assertThat(itemLive(item(PlaylistItemType.AUDIO), presentation = null, audio = paused))
+            .isEqualTo(ItemLive.PAUSED)
+        assertThat(itemLive(item(PlaylistItemType.AUDIO), presentation = paused, audio = null))
+            .isEqualTo(ItemLive.NONE)
     }
 
     @Test
     fun `a transport playing another uuid marks nothing live`() {
-        assertThat(itemLive(item(PlaylistItemType.MEDIA), presentation = playing("other"), audio = null)).isFalse()
-        assertThat(itemLive(item(PlaylistItemType.AUDIO), presentation = null, audio = playing("other"))).isFalse()
+        assertThat(
+            itemLive(item(PlaylistItemType.MEDIA), presentation = playing("other"), audio = null)
+        ).isEqualTo(ItemLive.NONE)
+        assertThat(
+            itemLive(item(PlaylistItemType.AUDIO), presentation = null, audio = playing("other"))
+        ).isEqualTo(ItemLive.NONE)
     }
 
     @Test
     fun `an item without a target is never live`() {
         val empty = playing("")
 
-        assertThat(itemLive(item(PlaylistItemType.MEDIA, target = null), presentation = empty, audio = null)).isFalse()
-        assertThat(itemLive(item(PlaylistItemType.MEDIA, target = ""), presentation = empty, audio = null)).isFalse()
+        assertThat(
+            itemLive(item(PlaylistItemType.MEDIA, target = null), presentation = empty, audio = null)
+        ).isEqualTo(ItemLive.NONE)
+        assertThat(
+            itemLive(item(PlaylistItemType.MEDIA, target = ""), presentation = empty, audio = null)
+        ).isEqualTo(ItemLive.NONE)
     }
 
     @Test
     fun `a live video item is never live`() {
         val item = item(PlaylistItemType.LIVE_VIDEO)
 
-        assertThat(itemLive(item, presentation = playing(TARGET), audio = playing(TARGET))).isFalse()
+        assertThat(itemLive(item, presentation = playing(TARGET), audio = playing(TARGET))).isEqualTo(ItemLive.NONE)
     }
 
     @Test
     fun `a presentation item is never live by a transport`() {
         val item = item(PlaylistItemType.PRESENTATION).copy(presentation = PresentationRef(TARGET, "", ""))
 
-        assertThat(itemLive(item, presentation = playing(TARGET), audio = playing(TARGET))).isFalse()
+        assertThat(itemLive(item, presentation = playing(TARGET), audio = playing(TARGET))).isEqualTo(ItemLive.NONE)
     }
 
     private companion object {

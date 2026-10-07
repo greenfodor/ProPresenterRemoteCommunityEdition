@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.feature.playlist.items
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,9 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
+import com.greenfodor.ppremotece.core.designsystem.ui.OutlinedBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
+import com.greenfodor.ppremotece.core.domain.transport.ItemLive
 import com.greenfodor.ppremotece.feature.playlist.R
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -52,6 +55,8 @@ private val CardMaxWidth = 480.dp
 private val CardCorner = 16.dp
 private val CardIconSize = 48.dp
 private val LiveRingWidth = 4.dp
+private val PausedRingWidth = 2.dp
+private val BadgeInset = 8.dp
 
 /**
  * The detail pane of the media, audio or live-video playlist item [key]; with [closesPane] its
@@ -145,13 +150,15 @@ fun PlaylistItemScreen(
 
 /**
  * The item's card on black, at most 480 dp wide: its type icon, name and duration, with the LIVE
- * mark while it is live. A tap triggers the item.
+ * mark while it is live, and a 2 dp `secondary` ring with an outlined `PAUSED` badge while it is
+ * paused. A tap triggers the item.
  */
 @Composable
 private fun ItemCard(state: PlaylistItemState, type: PlaylistItemType, onClick: () -> Unit) {
     val shape = RoundedCornerShape(CardCorner)
+    val paused = state.live == ItemLive.PAUSED
     LiveMark(
-        live = state.live,
+        live = state.live == ItemLive.LIVE,
         shape = shape,
         ringWidth = LiveRingWidth,
         modifier = Modifier
@@ -159,8 +166,20 @@ private fun ItemCard(state: PlaylistItemState, type: PlaylistItemType, onClick: 
             .fillMaxWidth()
             .clip(shape)
             .background(Color.Black)
-            .clickable(role = Role.Button, onClick = onClick)
+            .then(
+                if (paused) {
+                    Modifier.border(PausedRingWidth, MaterialTheme.colorScheme.secondary, shape)
+                } else {
+                    Modifier
+                }
+            ).clickable(role = Role.Button, onClick = onClick)
     ) {
+        if (paused) {
+            OutlinedBadge(
+                text = stringResource(R.string.playlist_item_paused),
+                modifier = Modifier.align(Alignment.TopStart).padding(BadgeInset)
+            )
+        }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -198,7 +217,13 @@ private fun ItemCard(state: PlaylistItemState, type: PlaylistItemType, onClick: 
 private fun PlaylistItemScreenLivePreview() {
     PPRemoteTheme {
         PlaylistItemScreen(
-            state = PlaylistItemState("Track 01", PlaylistItemType.AUDIO, "3:03", live = true, isLoading = false),
+            state = PlaylistItemState(
+                "Track 01",
+                PlaylistItemType.AUDIO,
+                "3:03",
+                live = ItemLive.LIVE,
+                isLoading = false
+            ),
             onAction = {},
             onBack = {}
         )
@@ -239,7 +264,19 @@ private fun PlaylistItemScreenNoDurationPreview() {
 private fun PlaylistItemScreenLiveNoDurationPreview() {
     PPRemoteTheme {
         PlaylistItemScreen(
-            state = PlaylistItemState("Media 02", PlaylistItemType.MEDIA, live = true, isLoading = false),
+            state = PlaylistItemState("Media 02", PlaylistItemType.MEDIA, live = ItemLive.LIVE, isLoading = false),
+            onAction = {},
+            onBack = {}
+        )
+    }
+}
+
+@Preview(heightDp = 420)
+@Composable
+private fun PlaylistItemScreenPausedPreview() {
+    PPRemoteTheme {
+        PlaylistItemScreen(
+            state = PlaylistItemState("Track 01", PlaylistItemType.AUDIO, "3:03", ItemLive.PAUSED, isLoading = false),
             onAction = {},
             onBack = {}
         )

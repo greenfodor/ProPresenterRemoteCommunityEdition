@@ -20,6 +20,7 @@
     <string name="grid_count_mismatch">Arrangement partly unresolved; cue numbers may differ from ProPresenter</string>
     <string name="grid_item_has_no_slides">This playlist item has no slides.</string>
     <string name="playlist_item_error_start">Couldn\'t start %1$s</string>
+    <string name="playlist_item_paused">PAUSED</string>
     <string name="playlist_item_not_found">This playlist item is no longer in the playlist.</string>
     <string name="playlists_open">Open playlist</string>
     <string name="mode_playlists">Playlists</string>

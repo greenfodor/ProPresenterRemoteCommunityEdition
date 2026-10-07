@@ -18,6 +18,9 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 
 /**
  * [ProPresenterClient] that forwards to [current]; calls fail with [DataError.Network.NO_CONNECTION]
@@ -35,6 +38,11 @@ internal class CurrentHostClient(
 
     override suspend fun playlist(uuid: String): Result<Playlist, DataError.Network> =
         current()?.playlist(uuid) ?: notConnected()
+
+    /** The current host's changes of playlist [uuid]; completes at once while no host is connected. */
+    override fun playlistChanges(
+        uuid: String
+    ): Flow<Unit> = flow { current()?.playlistChanges(uuid)?.let { emitAll(it) } }
 
     override suspend fun libraries(): Result<List<Library>, DataError.Network> =
         current()?.libraries() ?: notConnected()
@@ -82,8 +90,8 @@ internal class CurrentHostClient(
     override suspend fun audioPlaylist(uuid: String): Result<List<AudioTrack>, DataError.Network> =
         current()?.audioPlaylist(uuid) ?: notConnected()
 
-    override suspend fun triggerAudioTrack(playlistUuid: String, index: Int): EmptyResult<DataError.Network> =
-        current()?.triggerAudioTrack(playlistUuid, index) ?: notConnected()
+    override suspend fun triggerAudioTrack(playlistUuid: String, trackUuid: String): EmptyResult<DataError.Network> =
+        current()?.triggerAudioTrack(playlistUuid, trackUuid) ?: notConnected()
 
     override suspend fun audioNext(): EmptyResult<DataError.Network> = current()?.audioNext() ?: notConnected()
 

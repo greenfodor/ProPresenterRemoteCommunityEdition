@@ -83,12 +83,20 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   macro trigger `GET /v1/macro/{uuid}/trigger`, the look trigger `GET /v1/look/{uuid}/trigger`, the prop
   trigger and clear `GET /v1/prop/{uuid}/trigger` and `GET /v1/prop/{uuid}/clear`, and the prop thumbnail
   `GET /v1/prop/{uuid}/thumbnail?quality=200|400|600` (kept in memory only), and the audio calls
-  `GET /v1/audio/playlist/{uuid}` (a playlist's tracks), `GET /v1/audio/playlist/{uuid}/{index}/trigger`,
+  `GET /v1/audio/playlist/{uuid}` (a playlist's tracks), the track trigger by the track's own uuid
+  `GET /v1/audio/playlist/{playlist uuid}/{track uuid}/trigger` (never by index),
   `GET /v1/audio/playlist/active/next/trigger`, `GET /v1/audio/playlist/active/previous/trigger`,
   `GET /v1/transport/audio/play` and `GET /v1/transport/audio/pause`;
 - the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode (a cue
   tap, and the library grid's Prev/Next while the slide is cleared, never for a playlist item) and
   when a presentation is live outside a playlist (or remembered from one after a clear);
+- `GET /v1/playlist/{uuid}/updates?chunked=true`, a long-lived read with no request or socket timeout,
+  one per playlist that a screen is collecting (in practice the live playlist while the Remote is open
+  and the playlist open in the Presentation tab). Each `"change"` chunk is followed by one
+  `GET /v1/playlist/{uuid}`, and then by `GET /v1/playlist/active` and `GET /v1/presentation/slide_index`.
+  It is opened with a read of the playlist, reopened when the status stream returns from reconnecting,
+  retried 2 s after it ends while the stream is connected, not retried after a 404, and closed when the
+  last collector leaves. The status stream is therefore not the app's only long-lived connection;
 - one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
   "playlist/active", "status/layers", "timers", "timers/current", "macro_collections", "looks",
   "look/current", "prop_collections", "transport/presentation/current", "transport/audio/current",
@@ -100,7 +108,9 @@ Every other method (any `DELETE`, any `PUT`/`POST` that edits stored content, su
 bounds, as are `timer/{id}/increment/…`, `timers/{op}`, any `/focus` route, `PUT /v1/transport/{layer}/time`,
 `transport/{layer}/skip_backward|skip_forward|go_to_end`, play or pause on the `presentation` or
 `announcement` layer, `audio/playlist/focused/…`, `trigger/audio/…`, `trigger/media/…`, the stream URLs
-`transport/presentation/time` and `audio/playlist/focused`, any `/v1/media/…` route and a thumbnail request
+`transport/presentation/time`, `audio/playlist/focused`, `playlists`, `playlist/focused`, `playlist/{uuid}`
+(it ends the stream) and `playlist/{uuid}/updates` (read only over its own route), the `updates` routes of
+audio playlists, media playlists and libraries, any `/v1/media/…` route and a thumbnail request
 for a media or audio playlist item (neither thumbnail route serves one).
 Inside a playlist, trigger by `(playlist uuid, item index, cue index)`, or by
 `(playlist uuid, item index)` for the item trigger, only;

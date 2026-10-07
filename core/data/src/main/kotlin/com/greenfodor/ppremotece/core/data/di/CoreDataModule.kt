@@ -64,7 +64,9 @@ val coreDataModule = module {
             session = session.sessionKey,
             staleSignals = session.streamReconnects,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
-            restore = session::restore
+            restore = session::restore,
+            onPlaylistChanged = session::requestLiveRead,
+            isStreamConnected = session::isStreamConnected
         )
     }
 }

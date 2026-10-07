@@ -21,7 +21,9 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 
 /** Records the clears it is sent; groups in [failingGroups] fail with a server error. */
 class FakeClearClient : ProPresenterClient {
@@ -96,7 +98,9 @@ class FakeClearClient : ProPresenterClient {
 
     override suspend fun audioPlaylist(uuid: String): Result<List<AudioTrack>, DataError.Network> = notServed()
 
-    override suspend fun triggerAudioTrack(playlistUuid: String, index: Int): EmptyResult<DataError.Network> =
+    override fun playlistChanges(uuid: String): Flow<Unit> = emptyFlow()
+
+    override suspend fun triggerAudioTrack(playlistUuid: String, trackUuid: String): EmptyResult<DataError.Network> =
         notServed()
 
     override suspend fun audioNext(): EmptyResult<DataError.Network> = notServed()

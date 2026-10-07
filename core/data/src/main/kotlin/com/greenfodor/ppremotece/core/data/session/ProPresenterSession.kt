@@ -15,6 +15,7 @@ import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
 import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
 import com.greenfodor.ppremotece.core.domain.model.ConnectedHost
+import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
 import com.greenfodor.ppremotece.core.domain.model.LiveState
@@ -80,7 +81,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * [Loadable.NotLoaded] and null while disconnected; [propCollections] its prop collections and
  * [propThumbnailRequests] its prop thumbnail requests, keyed by the host's name and null until the
  * thumbnail cache is cleared; [presentationTransport] and [audioTransport] what its transport layers
- * have loaded, null while disconnected; [audioPlaylists], [activeAudio] and [audioPosition] its audio
+ * have loaded, not loaded while disconnected; [audioPlaylists], [activeAudio] and [audioPosition] its audio
  * bin, the track it plays and the audio position, not loaded and null while disconnected.
  */
 class ProPresenterSession(
@@ -171,16 +172,25 @@ class ProPresenterSession(
             .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override val presentationTransport: StateFlow<Transport?> =
+    override val presentationTransport: StateFlow<Loadable<Transport>> =
         connection
-            .flatMapLatest { it?.live?.presentationTransport ?: flowOf(null) }
-            .stateIn(sessionScope, SharingStarted.Eagerly, null)
+            .flatMapLatest { it?.live?.presentationTransport ?: flowOf(Loadable.NotLoaded) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override val audioTransport: StateFlow<Transport?> =
+    override val audioTransport: StateFlow<Loadable<Transport>> =
         connection
-            .flatMapLatest { it?.live?.audioTransport ?: flowOf(null) }
-            .stateIn(sessionScope, SharingStarted.Eagerly, null)
+            .flatMapLatest { it?.live?.audioTransport ?: flowOf(Loadable.NotLoaded) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
+
+    /** Whether the current connection's status stream is connected. */
+    fun isStreamConnected(): Boolean =
+        connection.value?.live?.liveState?.value?.connection == ConnectionStatus.CONNECTED
+
+    /** Makes the current connection read its live slide and item again. */
+    fun requestLiveRead() {
+        connection.value?.live?.requestLiveRead()
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val audioPlaylists: StateFlow<Loadable<List<AudioPlaylist>>> =

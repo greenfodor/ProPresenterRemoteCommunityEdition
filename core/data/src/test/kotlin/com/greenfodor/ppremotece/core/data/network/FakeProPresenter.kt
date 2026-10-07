@@ -50,6 +50,9 @@ class FakeProPresenter(
     @Volatile
     var liveBodies: (() -> LiveBodies)? = null
 
+    /** The answers to the next `playlist/{uuid}/updates` reads, in order; 404 when none is left. */
+    val playlistUpdates = LinkedBlockingQueue<MockResponse>()
+
     private val streams = LinkedBlockingQueue<MockResponse>()
     private val lastPlaylistActive = AtomicReference(NO_PLAYLIST_ACTIVE)
     private val slideReads = Semaphore(0)
@@ -137,6 +140,7 @@ class FakeProPresenter(
 
     private fun dispatchContent(path: String): MockResponse =
         when {
+            PLAYLIST_UPDATES.matches(path) -> playlistUpdates.poll() ?: status(404)
             path.startsWith("/v1/playlist/") -> fixture("playlist", path.removePrefix("/v1/playlist/"))
             path.startsWith("/v1/presentation/") -> fixture("presentation", path.removePrefix("/v1/presentation/"))
             else -> status(404)
@@ -219,9 +223,10 @@ class FakeProPresenter(
         const val SLIDE_INDEX = """{"presentation_index":{"index":3,"presentation_id":""" +
             """{"uuid":"$SONG_A_UUID","name":"Song A","index":0},"total_cues":7,"remaining_cues":3}}"""
         private val AUDIO_COMMAND = Regex(
-            "^/v1/(audio/playlist/[0-9a-f-]+/\\d+/trigger|audio/playlist/active/(next|previous)/trigger|" +
+            "^/v1/(audio/playlist/[0-9a-f-]+/[0-9a-f-]{36}/trigger|audio/playlist/active/(next|previous)/trigger|" +
                 "transport/audio/(play|pause))$"
         )
+        private val PLAYLIST_UPDATES = Regex("^/v1/playlist/[0-9a-f-]+/updates$")
         private val CUE_TRIGGER = Regex("^/v1/playlist/[0-9a-f-]+/\\d+/(\\d+)/trigger$")
         private val ITEM_TRIGGER = Regex("^/v1/playlist/[0-9a-f-]+/\\d+/trigger$")
         private val PRESENTATION_TRIGGER = Regex("^/v1/presentation/[0-9a-f-]+/\\d+/trigger$")
@@ -266,6 +271,7 @@ class FakeProPresenter(
             "GET" to Regex("^/v1/library/[0-9a-f-]+$"),
             "GET" to Regex("^/v1/presentation/[0-9a-f-]+/\\d+/trigger$"),
             "GET" to Regex("^/v1/playlist/[0-9a-f-]+$"),
+            "GET" to Regex("^/v1/playlist/[0-9a-f-]+/updates$"),
             "GET" to Regex("^/v1/presentation/[0-9a-f-]+$"),
             "GET" to Regex("^/v1/presentation/slide_index$"),
             "GET" to Regex("^/v1/playlist/active$"),

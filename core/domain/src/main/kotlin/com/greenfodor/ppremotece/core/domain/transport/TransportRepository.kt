@@ -1,5 +1,6 @@
 package com.greenfodor.ppremotece.core.domain.transport
 
+import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
 import com.greenfodor.ppremotece.core.domain.model.Transport
@@ -7,25 +8,35 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * What the connected host's presentation and audio transport layers have loaded, from the status
- * stream; null until the first frame and while disconnected.
+ * stream: [Loadable.NotLoaded] until the first frame and while disconnected, and
+ * [Loadable.Unavailable] when ProPresenter rejected the subscription that feeds it.
  */
 interface TransportRepository {
-    val presentationTransport: StateFlow<Transport?>
-    val audioTransport: StateFlow<Transport?>
+    val presentationTransport: StateFlow<Loadable<Transport>>
+    val audioTransport: StateFlow<Loadable<Transport>>
+}
+
+/** How a transport holds a media or audio playlist item. */
+enum class ItemLive {
+    NONE,
+    LIVE,
+    PAUSED
 }
 
 /**
- * Whether [item] is live: a media item while the [presentation] transport plays its target, an
- * audio item while the [audio] transport plays its target, any other item never.
+ * How [item] is held by its transport: a media item by the [presentation] transport and an audio
+ * item by the [audio] transport, [ItemLive.LIVE] while that transport names the item's target and
+ * plays, [ItemLive.PAUSED] while it names it and does not play. Any other item is never held.
  */
-fun itemLive(item: PlaylistItem, presentation: Transport?, audio: Transport?): Boolean {
+fun itemLive(item: PlaylistItem, presentation: Transport?, audio: Transport?): ItemLive {
     val transport = when (item.type) {
         PlaylistItemType.MEDIA -> presentation
         PlaylistItemType.AUDIO -> audio
         else -> null
     }
-    return transport != null &&
-        transport.isPlaying &&
-        !item.targetUuid.isNullOrEmpty() &&
-        transport.uuid == item.targetUuid
+    return when {
+        transport == null || item.targetUuid.isNullOrEmpty() || transport.uuid != item.targetUuid -> ItemLive.NONE
+        transport.isPlaying -> ItemLive.LIVE
+        else -> ItemLive.PAUSED
+    }
 }

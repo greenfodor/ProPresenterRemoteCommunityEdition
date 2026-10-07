@@ -1,6 +1,7 @@
 package com.greenfodor.ppremotece.core.data.content
 
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
+import com.greenfodor.ppremotece.core.domain.live.PlaylistNotFoundException
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
@@ -15,7 +16,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +35,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 private typealias Read<T> = Result<T, DataError.Network>
 
@@ -42,14 +47,23 @@ private typealias Read<T> = Result<T, DataError.Network>
  * A read that throws counts as a failed read with [DataError.Network.UNKNOWN].
  * Concurrent reads of one value share one request, and at most [MAX_PARALLEL_READS] run at once.
  * Each [staleSignals] emission re-reads every value that currently has a collector.
+ *
+ * A playlist that has a collector also keeps its change connection open
+ * ([ProPresenterClient.playlistChanges]): each change re-reads the playlist and then calls
+ * [onPlaylistChanged]. The connection is reopened, with a re-read, on each [staleSignals] emission
+ * and [changesRetryDelay] after it ended while [isStreamConnected]; it is not reopened for a
+ * playlist ProPresenter does not know, and it is closed when the last collector leaves.
  */
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LongParameterList")
 class CachingContentRepository(
     private val client: ProPresenterClient,
     private val session: StateFlow<String?>,
     staleSignals: Flow<Unit>,
     private val scope: CoroutineScope,
-    private val restore: suspend () -> Unit
+    private val restore: suspend () -> Unit,
+    private val onPlaylistChanged: () -> Unit = {},
+    private val isStreamConnected: () -> Boolean = { true },
+    private val changesRetryDelay: Duration = 2.seconds
 ) : ContentRepository {
     private enum class Kind { PLAYLISTS, PLAYLIST, PRESENTATION, LIBRARIES, LIBRARY }
 
@@ -68,14 +82,19 @@ class CachingContentRepository(
         }
         scope.launch {
             staleSignals.collect {
-                entries.values.filter { it.collectors.get() > 0 }.forEach { entry -> scope.launch { entry.read() } }
+                entries.values.filter { it.collectors.get() > 0 }.forEach { entry ->
+                    if (!entry.rewatch()) scope.launch { entry.read() }
+                }
             }
         }
     }
 
     override fun playlists(): Flow<Read<List<PlaylistTreeNode>>> = observe(Kind.PLAYLISTS, "") { client.playlists() }
 
-    override fun playlist(uuid: String): Flow<Read<Playlist>> = observe(Kind.PLAYLIST, uuid) { client.playlist(uuid) }
+    override fun playlist(uuid: String): Flow<Read<Playlist>> =
+        observe(Kind.PLAYLIST, uuid, watch = { readFirst -> watchPlaylist(uuid, this, readFirst) }) {
+            client.playlist(uuid)
+        }
 
     override fun presentation(uuid: String): Flow<Read<Presentation>> =
         observe(Kind.PRESENTATION, uuid) { client.presentation(uuid) }
@@ -103,22 +122,49 @@ class CachingContentRepository(
     internal fun cachedEntries(): Int = entries.size
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun <T : Any> observe(kind: Kind, uuid: String, read: suspend () -> Read<T>): Flow<Read<T>> =
+    private fun <T : Any> observe(
+        kind: Kind,
+        uuid: String,
+        watch: (suspend Entry<T>.(readFirst: Boolean) -> Unit)? = null,
+        read: suspend () -> Read<T>
+    ): Flow<Read<T>> =
         session.flatMapLatest { current ->
             if (current == null) return@flatMapLatest flow { restore() }
             val entry = entry(Key(current, kind, uuid), read)
             entry.value
                 .filterNotNull()
                 .onStart {
-                    entry.collectors.incrementAndGet()
+                    entry.join(watch)
                     entry.dropFailure()
                     scope.launch { entry.read() }
-                }.onCompletion { entry.collectors.decrementAndGet() }
+                }.onCompletion { entry.leave() }
         }
 
     @Suppress("UNCHECKED_CAST")
     private fun <T : Any> entry(key: Key, read: suspend () -> Read<T>): Entry<T> =
         entries.getOrPut(key) { Entry(read) } as Entry<T>
+
+    /**
+     * Keeps the change connection of playlist [uuid] open: each change re-reads [entry] and calls
+     * [onPlaylistChanged]. With [readFirst], and at each reopening, the playlist is read again.
+     */
+    private suspend fun watchPlaylist(uuid: String, entry: Entry<Playlist>, readFirst: Boolean) {
+        var read = readFirst
+        while (true) {
+            if (read) scope.launch { entry.read() }
+            val failure = runCatching {
+                client.playlistChanges(uuid).collect {
+                    entry.read()
+                    onPlaylistChanged()
+                }
+            }.exceptionOrNull()
+            if (failure is CancellationException) throw failure
+            if (failure is PlaylistNotFoundException) return
+            delay(changesRetryDelay)
+            if (!isStreamConnected()) return
+            read = true
+        }
+    }
 
     /**
      * One cached value; a failed read replaces it only while no successful read is cached. A read
@@ -131,6 +177,36 @@ class CachingContentRepository(
         val collectors = AtomicInteger()
         private val mutex = Mutex()
         private var inFlight: Deferred<Read<T>>? = null
+        private var watch: (suspend Entry<T>.(readFirst: Boolean) -> Unit)? = null
+        private var watcher: Job? = null
+
+        /** Counts a new collector; the first one starts [watching], when given. */
+        @Synchronized
+        fun join(watching: (suspend Entry<T>.(readFirst: Boolean) -> Unit)?) {
+            if (collectors.incrementAndGet() == 1 && watching != null) {
+                watch = watching
+                watcher = scope.launch { watching(false) }
+            }
+        }
+
+        /** Counts a collector that left; the last one stops the watch. */
+        @Synchronized
+        fun leave() {
+            if (collectors.decrementAndGet() == 0) {
+                watcher?.cancel()
+                watcher = null
+            }
+        }
+
+        /** Starts the watch again, reading first; false when this entry has none running. */
+        @Synchronized
+        fun rewatch(): Boolean {
+            val watching = watch
+            if (watcher == null || watching == null) return false
+            watcher?.cancel()
+            watcher = scope.launch { watching(true) }
+            return true
+        }
 
         suspend fun read(): Read<T> =
             mutex

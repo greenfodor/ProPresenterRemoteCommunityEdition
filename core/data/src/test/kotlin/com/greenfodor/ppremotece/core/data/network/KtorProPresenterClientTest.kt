@@ -302,11 +302,13 @@ class KtorProPresenterClientTest {
     }
 
     @Test
-    fun `an audio track is triggered by its playlist and index`() = runBlocking<Unit> {
-        assertThat(client.triggerAudioTrack(Fixtures.AUDIO_PLAYLIST_UUID, 2)).isEqualTo(Result.Success(Unit))
+    fun `an audio track is triggered by its playlist and its own uuid`() = runBlocking<Unit> {
+        val track = "0ff5ae8f-74ff-437e-bf1b-f3e6e4492ccf"
+
+        assertThat(client.triggerAudioTrack(Fixtures.AUDIO_PLAYLIST_UUID, track)).isEqualTo(Result.Success(Unit))
 
         assertThat(fake.requests.map { "${it.method} ${it.url.encodedPath}" })
-            .containsExactly("GET /v1/audio/playlist/${Fixtures.AUDIO_PLAYLIST_UUID}/2/trigger")
+            .containsExactly("GET /v1/audio/playlist/${Fixtures.AUDIO_PLAYLIST_UUID}/$track/trigger")
     }
 
     @Test

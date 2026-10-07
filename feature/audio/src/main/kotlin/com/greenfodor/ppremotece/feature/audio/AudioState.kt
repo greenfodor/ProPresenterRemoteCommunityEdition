@@ -50,7 +50,7 @@ sealed interface AudioAction {
     ) : AudioAction
 
     data class OnTrackClick(
-        val index: Int
+        val trackUuid: String
     ) : AudioAction
 
     data object OnPlayPauseClick : AudioAction

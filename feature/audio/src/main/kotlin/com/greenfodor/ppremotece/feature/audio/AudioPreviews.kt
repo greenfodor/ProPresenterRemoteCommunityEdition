@@ -31,6 +31,7 @@ private fun tracks(mark: TrackMark) =
 
 private fun bar(button: TransportButton) =
     NowPlaying(
+        available = true,
         loaded = true,
         name = "Media 04",
         button = button,
@@ -74,6 +75,23 @@ private fun AudioPausedReconnectingPreview() {
 private fun AudioNothingPlayingPreview() {
     PPRemoteTheme {
         AudioScreen(state = AudioState(PreviewPlaylists, "p-1", tracks(TrackMark.NONE)), onAction = {})
+    }
+}
+
+@Preview(widthDp = 527, heightDp = 600)
+@Composable
+private fun AudioBarUnavailablePreview() {
+    PPRemoteTheme {
+        AudioScreen(
+            state = AudioState(
+                PreviewPlaylists,
+                "p-0",
+                tracks(TrackMark.NONE),
+                bar = NowPlaying.Unavailable
+            ),
+            onAction = {
+            }
+        )
     }
 }
 
