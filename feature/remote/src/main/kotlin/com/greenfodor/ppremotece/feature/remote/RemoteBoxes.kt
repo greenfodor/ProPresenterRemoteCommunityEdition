@@ -48,7 +48,8 @@ private val RingWidthLive = 4.dp
 
 /**
  * One box, as large as fits in its space at the slide's [aspect]; [onClick] null makes it not
- * clickable. [onImageWidth] receives the width of a slide box's image in px whenever it changes.
+ * clickable. [onImageWidth], when given, receives the width of a slide box's image in px whenever
+ * it changes.
  */
 @Composable
 internal fun LiveBox(
@@ -56,14 +57,16 @@ internal fun LiveBox(
     thumbnail: ThumbnailRequest?,
     aspect: Float,
     onClick: (() -> Unit)?,
-    onImageWidth: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onImageWidth: ((Int) -> Unit)? = null
 ) {
     BoxWithConstraints(contentAlignment = Alignment.TopCenter, modifier = modifier) {
         val imageWidth = fittedWidth(maxWidth - CellFrame, maxHeight - CellChrome, aspect)
         val imagePx = with(LocalDensity.current) { imageWidth.roundToPx() }
-        val currentOnImageWidth by rememberUpdatedState(onImageWidth)
-        LaunchedEffect(imagePx) { currentOnImageWidth(imagePx) }
+        if (onImageWidth != null) {
+            val currentOnImageWidth by rememberUpdatedState(onImageWidth)
+            LaunchedEffect(imagePx) { currentOnImageWidth(imagePx) }
+        }
         when (box) {
             is RemoteBox.Slide -> CueCell(
                 number = box.cue.index + 1,

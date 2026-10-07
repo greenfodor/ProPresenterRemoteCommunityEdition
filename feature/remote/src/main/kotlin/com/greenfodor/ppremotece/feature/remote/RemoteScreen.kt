@@ -327,8 +327,8 @@ private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
                 thumbnail = state.currentThumbnail,
                 aspect = display.aspect,
                 onClick = display.tapCurrent?.let { { onAction(RemoteAction.OnCurrentClick) } },
-                onImageWidth = { onAction(RemoteAction.OnBoxSized(it)) },
-                modifier = boxSpace
+                modifier = boxSpace,
+                onImageWidth = { onAction(RemoteAction.OnBoxSized(it)) }
             )
             if (display.next == RemoteBox.Empty) {
                 LiveBox(
@@ -336,7 +336,6 @@ private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
                     thumbnail = null,
                     aspect = display.aspect,
                     onClick = null,
-                    onImageWidth = {},
                     modifier = boxSpace.alpha(0f).clearAndSetSemantics {}
                 )
             } else {
@@ -345,7 +344,6 @@ private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
                     thumbnail = state.nextThumbnail,
                     aspect = display.aspect,
                     onClick = display.tapNext?.let { { onAction(RemoteAction.OnNextBoxClick) } },
-                    onImageWidth = {},
                     modifier = boxSpace
                 )
             }

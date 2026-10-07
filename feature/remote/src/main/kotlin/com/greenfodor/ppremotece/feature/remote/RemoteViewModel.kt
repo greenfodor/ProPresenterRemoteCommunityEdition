@@ -12,7 +12,6 @@ import com.greenfodor.ppremotece.core.domain.model.Playlist
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.Presentation
 import com.greenfodor.ppremotece.core.domain.remote.BoxMark
-import com.greenfodor.ppremotece.core.domain.remote.BoxWidths
 import com.greenfodor.ppremotece.core.domain.remote.RemoteBox
 import com.greenfodor.ppremotece.core.domain.remote.RemoteCommand
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
@@ -148,7 +147,7 @@ class RemoteViewModel(
                 currentThumbnail = display.current.thumbnail(requests, width),
                 nextThumbnail = display.next.thumbnail(requests, width),
                 prefetch = requests?.let { builder ->
-                    remotePrefetch(display, BoxWidths(current = width, next = width)).map { builder.request(it) }
+                    remotePrefetch(display, width).map { builder.request(it) }
                 }.orEmpty(),
                 error = failure?.toUiText(),
                 sidebar = display.sidebar?.rows(requests).orEmpty(),
