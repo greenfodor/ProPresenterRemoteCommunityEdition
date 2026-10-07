@@ -4,14 +4,13 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.yield
 import org.junit.jupiter.api.Test
-import java.util.concurrent.CopyOnWriteArrayList
 
 class UiMessagesTest {
     private val messages = UiMessages()
@@ -43,14 +42,15 @@ class UiMessagesTest {
         val first = UiText.DynamicString("first")
         val second = UiText.DynamicString("second")
 
-        val received = CopyOnWriteArrayList<UiText>()
-        val collector = launch { messages.messages.collect { received += it } }
-        messages.post(first)
-        withTimeout(1_000) { while (received.size < 1) delay(5) }
-        messages.post(second)
-        withTimeout(1_000) { while (received.size < 2) delay(5) }
-        collector.cancel()
+        val received = mutableListOf<UiText>()
+        val collector = launch(Dispatchers.Unconfined) { messages.messages.collect { received += it } }
 
+        messages.post(first)
+        yield()
+        assertThat(received.toList()).containsExactly(first)
+        messages.post(second)
+        yield()
         assertThat(received.toList()).containsExactly(first, second)
+        collector.cancel()
     }
 }

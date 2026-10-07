@@ -274,15 +274,16 @@ private fun navigationSpace(layout: NavigationLayout, maxWidth: Dp, maxHeight: D
 private fun rememberShellEntryDecorators(): List<NavEntryDecorator<NavKey>> =
     listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator())
 
-/** Shows each of the app's failure [messages] in [snackbars], in place of the one it was showing. */
+/** Shows each of the app's failure [messages] in [snackbars], in place of whatever snackbar is on screen. */
 @Composable
 private fun ShellMessages(messages: UiMessages, snackbars: SnackbarHostState) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val showing = remember { mutableStateOf<Job?>(null) }
+    val showing = remember { arrayOfNulls<Job>(1) }
     ObserveAsEvents(messages.messages) { message ->
-        showing.value?.cancel()
-        showing.value = scope.launch { snackbars.showSnackbar(message.asString(context)) }
+        showing[0]?.cancel()
+        snackbars.currentSnackbarData?.dismiss()
+        showing[0] = scope.launch { snackbars.showSnackbar(message.asString(context)) }
     }
 }
 
