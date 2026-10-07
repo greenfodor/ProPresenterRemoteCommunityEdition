@@ -52,11 +52,8 @@ sealed interface RemoteAction {
         val index: Int
     ) : RemoteAction
 
-    data class OnCurrentBoxSized(
-        val px: Int
-    ) : RemoteAction
-
-    data class OnNextBoxSized(
+    /** The image width of the boxes, which are always the same width, in px. */
+    data class OnBoxSized(
         val px: Int
     ) : RemoteAction
 }

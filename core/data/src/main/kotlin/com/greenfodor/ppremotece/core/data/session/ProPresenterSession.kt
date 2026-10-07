@@ -199,12 +199,6 @@ class ProPresenterSession(
             .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override val audioPlaylistFrames: StateFlow<Int> =
-        connection
-            .flatMapLatest { it?.live?.audioPlaylistFrames ?: flowOf(0) }
-            .stateIn(sessionScope, SharingStarted.Eagerly, 0)
-
-    @OptIn(ExperimentalCoroutinesApi::class)
     override val activeAudio: StateFlow<ActiveAudio?> =
         connection
             .flatMapLatest { it?.live?.activeAudio ?: flowOf(null) }

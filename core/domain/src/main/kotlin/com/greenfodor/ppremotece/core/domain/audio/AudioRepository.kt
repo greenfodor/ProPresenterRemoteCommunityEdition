@@ -8,8 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * The connected host's audio bin from the status stream: [audioPlaylists] is [Loadable.NotLoaded]
- * until the first frame and while disconnected, and [audioPlaylistFrames] counts the
- * `audio/playlists` frames of this connection; [activeAudio] is the audio playlist track that
+ * until the first frame and while disconnected; [activeAudio] is the audio playlist track that
  * plays, null without one; [audioTransport] is what the audio layer has loaded,
  * not loaded until its first frame and unavailable when ProPresenter rejected its subscription, and
  * [audioPosition] how far into it the audio is, in seconds, null until known; the position is
@@ -17,7 +16,6 @@ import kotlinx.coroutines.flow.StateFlow
  */
 interface AudioRepository {
     val audioPlaylists: StateFlow<Loadable<List<AudioPlaylist>>>
-    val audioPlaylistFrames: StateFlow<Int>
     val activeAudio: StateFlow<ActiveAudio?>
     val audioTransport: StateFlow<Loadable<Transport>>
     val audioPosition: StateFlow<Double?>

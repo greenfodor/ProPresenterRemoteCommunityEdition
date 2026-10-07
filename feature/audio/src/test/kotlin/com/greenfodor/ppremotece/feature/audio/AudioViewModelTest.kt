@@ -47,7 +47,6 @@ class AudioViewModelTest {
     private val audio = object : AudioRepository {
         override val audioPlaylists =
             MutableStateFlow<Loadable<List<AudioPlaylist>>>(Loadable.Loaded(this@AudioViewModelTest.playlists))
-        override val audioPlaylistFrames = MutableStateFlow(1)
         override val activeAudio = MutableStateFlow<ActiveAudio?>(null)
         override val audioTransport = MutableStateFlow<Loadable<Transport>>(Loadable.NotLoaded)
         override val audioPosition = MutableStateFlow<Double?>(null)
@@ -133,13 +132,38 @@ class AudioViewModelTest {
     }
 
     @Test
-    fun `the tracks are read again on each audio playlists frame`() = runTest(dispatcher) {
+    fun `the first audio playlists value causes exactly one track read`() = runTest(dispatcher) {
+        audio.audioPlaylists.value = Loadable.NotLoaded
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            expectMostRecentItem()
+            audio.audioPlaylists.value = Loadable.Loaded(playlists)
+            assertThat(expectMostRecentItem().tracks.map { it.name }).containsExactly("Track 01", "Track 02")
+        }
+        assertThat(client.reads).containsExactly("p-0")
+    }
+
+    @Test
+    fun `an audio playlists value that did not change reads no tracks again`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            expectMostRecentItem()
+            audio.audioPlaylists.value = Loadable.Loaded(playlists.toList())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(client.reads).containsExactly("p-0")
+    }
+
+    @Test
+    fun `the tracks are read again when the audio playlists value changes`() = runTest(dispatcher) {
         val viewModel = viewModel()
 
         viewModel.state.test {
             expectMostRecentItem()
             client.tracks["p-0"] = listOf(track("a-9", "Track 09", 0))
-            audio.audioPlaylistFrames.value = 2
+            audio.audioPlaylists.value = Loadable.Loaded(playlists + AudioPlaylist("p-2", "Audio Playlist 03", 2))
             assertThat(expectMostRecentItem().tracks.map { it.name }).containsExactly("Track 09")
         }
         assertThat(client.reads).containsExactly("p-0", "p-0")
@@ -300,7 +324,7 @@ class AudioViewModelTest {
         viewModel.state.test {
             expectMostRecentItem()
             client.readFailure = DataError.Network.TIMEOUT
-            audio.audioPlaylistFrames.value = 2
+            audio.audioPlaylists.value = Loadable.Loaded(playlists + AudioPlaylist("p-2", "Audio Playlist 03", 2))
             val state = viewModel.state.value
             assertThat(state.tracks.map { it.name }).containsExactly("Track 01", "Track 02")
             assertThat(state.tracksError).isNull()
