@@ -48,7 +48,9 @@ import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ErrorWithRetry
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
+import com.greenfodor.ppremotece.core.designsystem.ui.TabTitle
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
+import com.greenfodor.ppremotece.core.designsystem.ui.scrollInsets
 import com.greenfodor.ppremotece.feature.playlist.R
 import com.greenfodor.ppremotece.feature.playlist.library.LibraryRoot
 import com.greenfodor.ppremotece.feature.playlist.text
@@ -130,7 +132,8 @@ fun PlaylistTreeScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
+                    TabTitle(
+                        DesignR.drawable.ic_slideshow,
                         stringResource(
                             if (mode == ListMode.LIBRARY) R.string.library_title else R.string.playlists_title
                         )
@@ -142,10 +145,11 @@ fun PlaylistTreeScreen(
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        val insets = scrollInsets(padding)
+        Column(modifier = Modifier.fillMaxSize().padding(insets.frame)) {
             ReconnectingStrip(visible = reconnecting)
             ModeSwitch(mode = mode, onModeChange = onModeChange)
-            val bottomPadding = if (floatingActionButton != null) FabClearance else 0.dp
+            val bottomPadding = insets.scrollBottom + if (floatingActionButton != null) FabClearance else 0.dp
             when (mode) {
                 ListMode.PLAYLISTS -> TreeContent(state = state, onAction = onAction, bottomPadding = bottomPadding)
                 ListMode.LIBRARY -> libraryContent(bottomPadding)

@@ -37,6 +37,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.LocalGroupColors
@@ -44,6 +45,8 @@ import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.ServerIconImage
+import com.greenfodor.ppremotece.core.designsystem.ui.TabTitle
+import com.greenfodor.ppremotece.core.designsystem.ui.scrollInsets
 import com.greenfodor.ppremotece.core.designsystem.ui.toColor
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.live.Loadable
@@ -106,20 +109,22 @@ fun MacrosScreen(
         floatingActionButton = { floatingActionButton?.invoke(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.macros_title)) },
+                title = { TabTitle(DesignR.drawable.ic_bolt, stringResource(R.string.macros_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+        val insets = scrollInsets(padding)
+        Column(modifier = Modifier.fillMaxSize().padding(insets.frame)) {
             ReconnectingStrip(visible = reconnecting)
             LoadableList(state.sections, emptyText = stringResource(R.string.macros_empty)) { sections ->
                 MacroGrid(
                     sections = sections,
                     showHeaders = state.showHeaders,
                     widthClass = widthClass,
+                    bottomInset = insets.scrollBottom,
                     onAction = onAction
                 )
             }
@@ -132,6 +137,7 @@ private fun MacroGrid(
     sections: List<MacroSectionUi>,
     showHeaders: Boolean,
     widthClass: WidthClass,
+    bottomInset: Dp,
     onAction: (MacrosAction) -> Unit
 ) {
     LazyVerticalGrid(
@@ -140,7 +146,7 @@ private fun MacroGrid(
             start = GridPadding,
             top = GridPadding,
             end = GridPadding,
-            bottom = BottomClearance
+            bottom = BottomClearance + bottomInset
         ),
         horizontalArrangement = Arrangement.spacedBy(GridGap),
         verticalArrangement = Arrangement.spacedBy(GridGap),

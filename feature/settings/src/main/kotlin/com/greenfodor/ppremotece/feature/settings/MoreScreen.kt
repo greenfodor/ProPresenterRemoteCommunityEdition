@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.feature.settings
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +23,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation3.runtime.NavKey
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.designsystem.ui.TabTitle
+import com.greenfodor.ppremotece.core.designsystem.ui.scrollInsets
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 /** A destination listed under More: its icon, its label and the route a tap opens. */
@@ -39,14 +42,18 @@ fun MoreScreen(entries: List<MoreEntry>, onOpen: (NavKey) -> Unit, modifier: Mod
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.more_title)) },
+                title = { TabTitle(DesignR.drawable.ic_more_horiz, stringResource(R.string.more_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
             )
         }
     ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+        val insets = scrollInsets(padding)
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = insets.scrollBottom),
+            modifier = Modifier.fillMaxSize().padding(insets.frame)
+        ) {
             items(entries, key = { it.route.toString() }) { entry ->
                 ListItem(
                     headlineContent = { Text(stringResource(entry.label)) },

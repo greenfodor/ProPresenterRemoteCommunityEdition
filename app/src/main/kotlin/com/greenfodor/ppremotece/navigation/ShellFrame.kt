@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -42,7 +43,10 @@ import com.greenfodor.ppremotece.feature.clear.ClearRailItem
 
 private val RailItemSpacing = 4.dp
 
-/** The bar or rail of [items] around [content]; the rail ends with the Clear button. */
+/**
+ * The bar or rail of [items] around [content]; the rail ends with the Clear button, and beside the
+ * rail the content stays clear of a display cutout at the end edge.
+ */
 @Composable
 internal fun ShellFrame(
     layout: NavigationLayout,
@@ -79,7 +83,9 @@ internal fun ShellFrame(
                 .weight(1f)
                 .then(
                     if (layout == NavigationLayout.RAIL) {
-                        Modifier.consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Start))
+                        Modifier
+                            .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Start))
+                            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.End))
                     } else {
                         Modifier
                     }
