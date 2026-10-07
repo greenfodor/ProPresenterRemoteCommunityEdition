@@ -48,7 +48,6 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.timeout
-import kotlinx.coroutines.flow.update
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.pow
@@ -132,9 +131,6 @@ class StreamingLiveStateRepository(
     private val audioPlaylistList = MutableStateFlow<Loadable<List<AudioPlaylist>>>(Loadable.NotLoaded)
     override val audioPlaylists: StateFlow<Loadable<List<AudioPlaylist>>> = audioPlaylistList.asStateFlow()
 
-    private val audioFrames = MutableStateFlow(0)
-    override val audioPlaylistFrames: StateFlow<Int> = audioFrames.asStateFlow()
-
     private val activeTrack = MutableStateFlow<ActiveAudio?>(null)
     override val activeAudio: StateFlow<ActiveAudio?> = activeTrack.asStateFlow()
 
@@ -199,10 +195,8 @@ class StreamingLiveStateRepository(
                                 }
                                 is StatusEvent.AudioTime ->
                                     if (AUDIO_TRANSPORT_URLS.none { it in rejected }) audioSeconds.value = event.seconds
-                                is StatusEvent.AudioPlaylists -> {
+                                is StatusEvent.AudioPlaylists ->
                                     audioPlaylistList.load(event.playlists, "audio/playlists")
-                                    audioFrames.update { it + 1 }
-                                }
                                 is StatusEvent.ActiveAudioChanged -> activeTrack.value = event.active
                                 is StatusEvent.Rejected -> event.messages.forEach(::reject)
                                 else -> Unit

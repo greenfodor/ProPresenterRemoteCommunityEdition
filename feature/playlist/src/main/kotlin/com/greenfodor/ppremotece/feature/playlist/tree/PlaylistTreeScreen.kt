@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -46,6 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.designsystem.ui.ErrorWithRetry
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
@@ -213,14 +213,7 @@ private fun ModeSwitch(mode: ListMode, onModeChange: (ListMode) -> Unit) {
 internal fun TreeError(error: UiText, onRetry: () -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
-            Column(
-                modifier = Modifier.fillParentMaxSize().padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(text = error.asString(), color = MaterialTheme.colorScheme.error)
-                Button(onClick = onRetry) { Text(stringResource(R.string.playlists_retry)) }
-            }
+            ErrorWithRetry(error = error, onRetry = onRetry, modifier = Modifier.fillParentMaxSize().padding(16.dp))
         }
     }
 }

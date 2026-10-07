@@ -3,12 +3,11 @@ package com.greenfodor.ppremotece.navigation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
-import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.live.reconnecting
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -29,8 +28,7 @@ class ShellViewModel(
     }
 
     val reconnecting: StateFlow<Boolean> =
-        liveStateRepository.liveState
-            .map { it.connection == ConnectionStatus.RECONNECTING }
+        liveStateRepository.reconnecting
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), false)
 
     val keepAwake: StateFlow<KeepAwake> =

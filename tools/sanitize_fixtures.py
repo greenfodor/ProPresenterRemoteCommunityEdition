@@ -94,12 +94,7 @@ VERBATIM_ALLOWED = {
 }
 CHUNK_LINE = re.compile(r"^# \+(?P<time>[\d.]+)s chunk (?P<n>\d+) \((?P<size>\d+) B\) tail=.*$")
 TOTAL_LINE = re.compile(r"^# total=\d+ B in (?P<rest>.*)$")
-PLACEHOLDER_WORDS = {
-    "presentation", "playlist", "folder", "arrangement", "group", "header", "media", "label",
-    "text", "notes", "item", "host", "song", "full", "chorus", "only", "short", "bridge",
-    "service", "test", "total", "start", "macro", "collection", "timer", "look", "prop", "transition", "fade", "+", "·",
-    "artist", "audio", "track",
-}
+GENERIC_NAMES = {"total", "header", "test", "group", "macro", "start", "fade"}
 TEST_RESOURCES = Path(__file__).resolve().parent.parent / "core" / "data" / "src" / "test" / "resources"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bin"}
 MIN_NAME_SUBSTRING = 4
@@ -547,15 +542,16 @@ def is_allowed_verbatim(sanitizer, value, path, placeholders):
     )
 
 
-def is_placeholder_vocabulary(name):
-    return all(word.lower() in PLACEHOLDER_WORDS or word.isdigit() for word in name.split())
+def is_generic_name(name):
+    """Whether the whole name is one generic word that the placeholders also use, or a number."""
+    return name.lower() in GENERIC_NAMES or name.isdigit()
 
 
 def leak_check(sanitizer, out_dir):
     leaks = []
     substring_names = [
         name for name in sanitizer.leaked_names
-        if len(name) >= MIN_NAME_SUBSTRING and not is_placeholder_vocabulary(name)
+        if len(name) >= MIN_NAME_SUBSTRING and not is_generic_name(name)
     ]
     placeholders = sanitizer.generated_placeholders()
     files = sorted(path for path in out_dir.rglob("*") if path.is_file())

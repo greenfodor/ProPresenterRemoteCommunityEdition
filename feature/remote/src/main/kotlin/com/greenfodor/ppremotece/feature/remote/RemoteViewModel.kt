@@ -45,7 +45,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val STOP_TIMEOUT_MILLIS = 5_000L
@@ -59,7 +58,7 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * the display loading is shown as an error, and retry reads the content again. A tap on an
  * enabled cue of the sidebar sends its item-cue trigger, or its presentation-cue trigger for a
  * presentation played outside a playlist. The current and next boxes ask for
- * thumbnails at their measured widths, and the thumbnails [remotePrefetch] names are loaded
+ * thumbnails at their measured width, and the thumbnails [remotePrefetch] names are loaded
  * ahead; the sidebar asks for grid thumbnails.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -84,7 +83,7 @@ class RemoteViewModel(
     private val cued = MutableStateFlow<Chosen?>(null)
     private val mediaLive = MutableStateFlow<Chosen?>(null)
     private val retries = MutableStateFlow(0)
-    private val boxWidths = MutableStateFlow(BoxWidths())
+    private val boxWidth = MutableStateFlow(0)
 
     private val inputs: Flow<RemoteInputs> =
         combine(liveStateRepository.liveState, liveStateRepository.lastLive, cued, mediaLive) {
@@ -125,12 +124,12 @@ class RemoteViewModel(
         }
 
     val state: StateFlow<RemoteState> =
-        combine(inputs, playlist, presentations, thumbnailSource.thumbnailRequests, boxWidths) {
+        combine(inputs, playlist, presentations, thumbnailSource.thumbnailRequests, boxWidth) {
             inputs,
             playlistRead,
             presentationReads,
             requests,
-            widths
+            width
             ->
             val playlist = playlistRead.playlistFor(inputs)
             val presentations = buildMap {
@@ -146,10 +145,10 @@ class RemoteViewModel(
             }
             RemoteState(
                 display = display,
-                currentThumbnail = display.current.thumbnail(requests, widths.current),
-                nextThumbnail = display.next.thumbnail(requests, widths.next),
+                currentThumbnail = display.current.thumbnail(requests, width),
+                nextThumbnail = display.next.thumbnail(requests, width),
                 prefetch = requests?.let { builder ->
-                    remotePrefetch(display, widths).map { builder.request(it) }
+                    remotePrefetch(display, BoxWidths(current = width, next = width)).map { builder.request(it) }
                 }.orEmpty(),
                 error = failure?.toUiText(),
                 sidebar = display.sidebar?.rows(requests).orEmpty(),
@@ -173,8 +172,7 @@ class RemoteViewModel(
             RemoteAction.OnBackToLiveClick -> cued.value = null
             RemoteAction.OnRetryClick -> retries.value++
             is RemoteAction.OnSidebarCueClick -> sendSidebarCue(action.index, display)
-            is RemoteAction.OnCurrentBoxSized -> boxWidths.update { it.copy(current = action.px) }
-            is RemoteAction.OnNextBoxSized -> boxWidths.update { it.copy(next = action.px) }
+            is RemoteAction.OnBoxSized -> boxWidth.value = action.px
         }
     }
 

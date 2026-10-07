@@ -20,12 +20,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,10 +55,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
+import com.greenfodor.ppremotece.core.designsystem.ui.ErrorWithRetry
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.designsystem.ui.ThumbnailPrefetch
-import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.remote.RemoteBox
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
@@ -272,16 +269,11 @@ private fun ColumnScope.RemoteContent(state: RemoteState, onAction: (RemoteActio
     ) {
         when (display.status) {
             RemoteStatus.LOADING -> state.error?.let { error ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ErrorWithRetry(
+                    error = error,
+                    onRetry = { onAction(RemoteAction.OnRetryClick) },
                     modifier = Modifier.align(Alignment.Center)
-                ) {
-                    Text(text = error.asString(), color = MaterialTheme.colorScheme.error)
-                    Button(onClick = { onAction(RemoteAction.OnRetryClick) }) {
-                        Text(stringResource(R.string.remote_retry))
-                    }
-                }
+                )
             } ?: CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             RemoteStatus.NOTHING_LIVE -> Text(
                 text = stringResource(R.string.remote_nothing_live),
@@ -335,7 +327,7 @@ private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
                 thumbnail = state.currentThumbnail,
                 aspect = display.aspect,
                 onClick = display.tapCurrent?.let { { onAction(RemoteAction.OnCurrentClick) } },
-                onImageWidth = { onAction(RemoteAction.OnCurrentBoxSized(it)) },
+                onImageWidth = { onAction(RemoteAction.OnBoxSized(it)) },
                 modifier = boxSpace
             )
             if (display.next == RemoteBox.Empty) {
@@ -344,7 +336,7 @@ private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
                     thumbnail = null,
                     aspect = display.aspect,
                     onClick = null,
-                    onImageWidth = { onAction(RemoteAction.OnNextBoxSized(it)) },
+                    onImageWidth = {},
                     modifier = boxSpace.alpha(0f).clearAndSetSemantics {}
                 )
             } else {
@@ -353,7 +345,7 @@ private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
                     thumbnail = state.nextThumbnail,
                     aspect = display.aspect,
                     onClick = display.tapNext?.let { { onAction(RemoteAction.OnNextBoxClick) } },
-                    onImageWidth = { onAction(RemoteAction.OnNextBoxSized(it)) },
+                    onImageWidth = {},
                     modifier = boxSpace
                 )
             }
@@ -381,65 +373,20 @@ private fun SideColumn(display: RemoteDisplay, bottomInset: Dp, onAction: (Remot
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             if (display.showsNextUp) SideNextUp(display = display, onAction = onAction)
         }
-        Button(
-            onClick = { onAction(RemoteAction.OnNextClick) },
-            enabled = display.nextButton != null,
-            modifier = Modifier.fillMaxWidth().height(SideStepHeight)
-        ) {
-            Text(stringResource(R.string.remote_next), modifier = Modifier.padding(end = 8.dp))
-            Icon(painterResource(DesignR.drawable.ic_arrow_forward), contentDescription = null)
-        }
-        FilledTonalButton(
-            onClick = { onAction(RemoteAction.OnPreviousClick) },
-            enabled = display.previousButton != null,
-            modifier = Modifier.fillMaxWidth().height(SideStepHeight)
-        ) {
-            Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = null)
-            Text(stringResource(R.string.remote_previous), modifier = Modifier.padding(start = 8.dp))
-        }
+        NextButton(display, onAction, Modifier.fillMaxWidth().height(SideStepHeight))
+        PreviousButton(display, onAction, Modifier.fillMaxWidth().height(SideStepHeight))
     }
 }
 
 @Composable
 private fun SideNextUp(display: RemoteDisplay, onAction: (RemoteAction) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        val nextUp = display.nextUp
-        when {
-            nextUp != null -> {
-                Text(
-                    text = stringResource(R.string.remote_next_up, nextUp.name),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                nextUp.arrangement?.let { ArrangementChip(text = it.label()) }
-            }
-            display.endOfPlaylist -> Text(
-                text = stringResource(R.string.remote_end_of_playlist),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        NextUpLabel(display = display, maxLines = 2)
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            IconButton(
-                onClick = { onAction(RemoteAction.OnPreviousItemClick) },
-                enabled = display.previousItem != null
-            ) {
-                Icon(painterResource(DesignR.drawable.ic_skip_previous), stringResource(R.string.remote_previous_item))
-            }
-            IconButton(
-                onClick = { onAction(RemoteAction.OnNextItemClick) },
-                enabled = display.nextItem != null
-            ) {
-                Icon(painterResource(DesignR.drawable.ic_skip_next), stringResource(R.string.remote_next_item))
-            }
+            PreviousItemButton(display, onAction)
+            NextItemButton(display, onAction)
         }
-        if (display.cued) {
-            AssistChip(
-                onClick = { onAction(RemoteAction.OnBackToLiveClick) },
-                label = { Text(stringResource(R.string.remote_back_to_live)) }
-            )
-        }
+        if (display.cued) BackToLiveChip(onAction)
     }
 }
 
@@ -454,48 +401,16 @@ private fun NextUpRow(display: RemoteDisplay, onAction: (RemoteAction) -> Unit) 
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(horizontal = 4.dp)
     ) {
-        IconButton(
-            onClick = { onAction(RemoteAction.OnPreviousItemClick) },
-            enabled = display.previousItem != null
-        ) {
-            Icon(painterResource(DesignR.drawable.ic_skip_previous), stringResource(R.string.remote_previous_item))
-        }
-        if (display.cued) {
-            AssistChip(
-                onClick = { onAction(RemoteAction.OnBackToLiveClick) },
-                label = { Text(stringResource(R.string.remote_back_to_live)) }
-            )
-        }
+        PreviousItemButton(display, onAction)
+        if (display.cued) BackToLiveChip(onAction)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.weight(1f)
         ) {
-            val nextUp = display.nextUp
-            when {
-                nextUp != null -> {
-                    Text(
-                        text = stringResource(R.string.remote_next_up, nextUp.name),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    nextUp.arrangement?.let { ArrangementChip(text = it.label()) }
-                }
-                display.endOfPlaylist -> Text(
-                    text = stringResource(R.string.remote_end_of_playlist),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            NextUpLabel(display = display, maxLines = 1, nameModifier = Modifier.weight(1f, fill = false))
         }
-        IconButton(
-            onClick = { onAction(RemoteAction.OnNextItemClick) },
-            enabled = display.nextItem != null
-        ) {
-            Icon(painterResource(DesignR.drawable.ic_skip_next), stringResource(R.string.remote_next_item))
-        }
+        NextItemButton(display, onAction)
     }
 }
 
@@ -508,30 +423,7 @@ private fun StepButtons(display: RemoteDisplay, onAction: (RemoteAction) -> Unit
             .navigationBarsPadding()
             .padding(12.dp)
     ) {
-        FilledTonalButton(
-            onClick = { onAction(RemoteAction.OnPreviousClick) },
-            enabled = display.previousButton != null,
-            modifier = Modifier.weight(1f).height(StepButtonHeight)
-        ) {
-            Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = null)
-            Text(stringResource(R.string.remote_previous), modifier = Modifier.padding(start = 8.dp))
-        }
-        Button(
-            onClick = { onAction(RemoteAction.OnNextClick) },
-            enabled = display.nextButton != null,
-            modifier = Modifier.weight(1f).height(StepButtonHeight)
-        ) {
-            Text(stringResource(R.string.remote_next), modifier = Modifier.padding(end = 8.dp))
-            Icon(painterResource(DesignR.drawable.ic_arrow_forward), contentDescription = null)
-        }
+        PreviousButton(display, onAction, Modifier.weight(1f).height(StepButtonHeight))
+        NextButton(display, onAction, Modifier.weight(1f).height(StepButtonHeight))
     }
 }
-
-@Composable
-private fun ArrangementChoice.label(): String =
-    when (this) {
-        is ArrangementChoice.Resolved -> arrangement.name.ifEmpty {
-            stringResource(R.string.remote_unnamed_arrangement)
-        }
-        ArrangementChoice.SongOrder -> ""
-    }

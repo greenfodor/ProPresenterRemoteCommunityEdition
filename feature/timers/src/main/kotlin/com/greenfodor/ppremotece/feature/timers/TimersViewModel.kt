@@ -8,7 +8,7 @@ import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.live.map
 import com.greenfodor.ppremotece.core.domain.live.orEmpty
-import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
+import com.greenfodor.ppremotece.core.domain.live.reconnecting
 import com.greenfodor.ppremotece.core.domain.model.TimerOperation
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
@@ -19,7 +19,6 @@ import com.greenfodor.ppremotece.core.domain.trigger.InFlightTriggers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -47,7 +46,7 @@ class TimersViewModel(
     val state: StateFlow<TimersState> =
         combine(
             timersRepository.timers,
-            liveStateRepository.liveState.map { it.connection == ConnectionStatus.RECONNECTING }.distinctUntilChanged()
+            liveStateRepository.reconnecting
         ) { timers, reconnecting ->
             TimersState(
                 timers = timers.map { list ->

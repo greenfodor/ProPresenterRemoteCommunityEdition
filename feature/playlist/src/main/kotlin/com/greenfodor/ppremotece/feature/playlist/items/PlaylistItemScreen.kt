@@ -40,6 +40,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
+import com.greenfodor.ppremotece.core.designsystem.ui.ErrorWithRetry
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
 import com.greenfodor.ppremotece.core.designsystem.ui.OutlinedBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
@@ -132,15 +133,10 @@ fun PlaylistItemScreen(
                         type = state.type,
                         onClick = { onAction(PlaylistItemAction.OnCardClick) }
                     )
-                    state.error != null -> Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(text = state.error.asString(), color = MaterialTheme.colorScheme.error)
-                        Button(onClick = { onAction(PlaylistItemAction.OnRetryClick) }) {
-                            Text(stringResource(R.string.playlists_retry))
-                        }
-                    }
+                    state.error != null -> ErrorWithRetry(
+                        error = state.error,
+                        onRetry = { onAction(PlaylistItemAction.OnRetryClick) }
+                    )
                     else -> CircularProgressIndicator()
                 }
             }

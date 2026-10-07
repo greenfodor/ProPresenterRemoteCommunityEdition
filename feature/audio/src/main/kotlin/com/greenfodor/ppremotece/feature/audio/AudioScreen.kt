@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -47,12 +46,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.greenfodor.ppremotece.core.designsystem.ui.ErrorWithRetry
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
 import com.greenfodor.ppremotece.core.designsystem.ui.LoadableList
 import com.greenfodor.ppremotece.core.designsystem.ui.OutlinedBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
-import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
@@ -172,9 +171,11 @@ private fun PlaylistPicker(state: AudioState, initiallyOpen: Boolean, onAction: 
 private fun Tracks(state: AudioState, bottomPadding: Dp, onAction: (AudioAction) -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         when {
-            state.tracksError != null -> TracksError(state.tracksError, onRetry = {
-                onAction(AudioAction.OnRetryClick)
-            })
+            state.tracksError != null -> ErrorWithRetry(
+                error = state.tracksError,
+                onRetry = { onAction(AudioAction.OnRetryClick) },
+                modifier = Modifier.fillMaxSize().padding(16.dp)
+            )
             state.tracks.isEmpty() && state.tracksLoading ->
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             state.tracks.isEmpty() -> Text(
@@ -198,18 +199,6 @@ private fun Tracks(state: AudioState, bottomPadding: Dp, onAction: (AudioAction)
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun TracksError(error: UiText, onRetry: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        modifier = Modifier.fillMaxSize().padding(16.dp)
-    ) {
-        Text(text = error.asString(), color = MaterialTheme.colorScheme.error)
-        Button(onClick = onRetry) { Text(stringResource(R.string.audio_retry)) }
     }
 }
 

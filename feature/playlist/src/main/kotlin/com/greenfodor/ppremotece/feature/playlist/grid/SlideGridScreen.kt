@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.layout.NestedPrefetchScope
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -53,6 +52,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
 import com.greenfodor.ppremotece.core.designsystem.ui.CueCell
 import com.greenfodor.ppremotece.core.designsystem.ui.CueMark
 import com.greenfodor.ppremotece.core.designsystem.ui.CueRow
+import com.greenfodor.ppremotece.core.designsystem.ui.ErrorWithRetry
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
@@ -197,16 +197,11 @@ private fun GridContent(
         when {
             state.isLoading || (state.gridStep == null || state.viewMode == null) && state.error == null ->
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            state.error != null -> Column(
-                modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(text = state.error.asString(), color = MaterialTheme.colorScheme.error)
-                Button(onClick = {
-                    onAction(SlideGridAction.OnRetryClick)
-                }) { Text(stringResource(R.string.playlists_retry)) }
-            }
+            state.error != null -> ErrorWithRetry(
+                error = state.error,
+                onRetry = { onAction(SlideGridAction.OnRetryClick) },
+                modifier = Modifier.align(Alignment.Center).padding(16.dp)
+            )
             state.viewMode == ViewMode.LIST -> CueList(
                 state = state,
                 headerScrollsWithList = headerScrollsWithGrid,
