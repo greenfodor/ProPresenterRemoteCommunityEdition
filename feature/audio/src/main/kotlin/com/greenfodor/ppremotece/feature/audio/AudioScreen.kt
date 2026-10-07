@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,6 +62,8 @@ private val RowHeight = 64.dp
 private val PausedRingWidth = 2.dp
 private val BottomClearance = 88.dp
 private val PickerMaxWidth = 220.dp
+private val PickerIndent = 16.dp
+private val PickerRowPadding = 12.dp
 private val ListPadding = 8.dp
 private val NoteSize = 40.dp
 
@@ -137,7 +140,7 @@ fun AudioScreen(
 /** The chosen playlist's name with a drop-down arrow, opening a menu of the playlists. */
 @Composable
 private fun PlaylistPicker(state: AudioState, initiallyOpen: Boolean, onAction: (AudioAction) -> Unit) {
-    val playlists = (state.playlists as? Loadable.Loaded)?.value.orEmpty()
+    val rows = (state.playlists as? Loadable.Loaded)?.value.orEmpty()
     val name = state.selectedName ?: return
     var open by rememberSaveable { mutableStateOf(initiallyOpen) }
     Box(modifier = Modifier.padding(end = 4.dp)) {
@@ -154,17 +157,46 @@ private fun PlaylistPicker(state: AudioState, initiallyOpen: Boolean, onAction: 
             )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            playlists.forEach { playlist ->
-                DropdownMenuItem(
-                    text = { Text(text = playlist.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    onClick = {
-                        open = false
-                        onAction(AudioAction.OnPlaylistSelect(playlist.uuid))
-                    }
-                )
+            rows.forEach { row ->
+                when (row) {
+                    is AudioPickerRowUi.Heading -> PickerHeading(row)
+                    is AudioPickerRowUi.Playlist -> DropdownMenuItem(
+                        text = { Text(text = row.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        onClick = {
+                            open = false
+                            onAction(AudioAction.OnPlaylistSelect(row.uuid))
+                        },
+                        trailingIcon = {
+                            if (row.uuid == state.selectedUuid) {
+                                Icon(painterResource(DesignR.drawable.ic_check), contentDescription = null)
+                            }
+                        },
+                        contentPadding = PaddingValues(
+                            start = PickerRowPadding + PickerIndent * row.depth,
+                            end = PickerRowPadding
+                        ),
+                        modifier = Modifier.semantics { selected = row.uuid == state.selectedUuid }
+                    )
+                }
             }
         }
     }
+}
+
+/** A folder's name in the picker: `labelLarge` in `onSurfaceVariant`, indented by its depth, not clickable. */
+@Composable
+private fun PickerHeading(row: AudioPickerRowUi.Heading) {
+    Text(
+        text = row.name,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .semantics { heading() }
+            .padding(start = PickerIndent * row.depth)
+            .padding(horizontal = PickerRowPadding, vertical = 8.dp)
+    )
 }
 
 /** The chosen playlist's tracks, its read error with Retry, a spinner while first read, or "No tracks". */

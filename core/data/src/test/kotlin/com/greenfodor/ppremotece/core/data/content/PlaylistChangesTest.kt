@@ -89,7 +89,7 @@ class PlaylistChangesTest {
             restore = {},
             onPlaylistChanged = { changesNoted.incrementAndGet() },
             isStreamConnected = { streamConnected },
-            changesRetryDelay = 50.milliseconds
+            retryDelay = { 50.milliseconds }
         )
     }
 

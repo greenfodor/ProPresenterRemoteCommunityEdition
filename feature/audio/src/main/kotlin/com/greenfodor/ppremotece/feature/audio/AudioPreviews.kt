@@ -9,9 +9,12 @@ import com.greenfodor.ppremotece.core.domain.live.Loadable
 
 private val PreviewPlaylists = Loadable.Loaded(
     listOf(
-        AudioPlaylistUi("p-0", "Audio Playlist 01"),
-        AudioPlaylistUi("p-1", "Audio Playlist 02"),
-        AudioPlaylistUi("p-2", "Audio Playlist 03")
+        AudioPickerRowUi.Playlist("p-0", "Audio Playlist 01", depth = 0),
+        AudioPickerRowUi.Playlist("p-1", "Audio Playlist 02", depth = 0),
+        AudioPickerRowUi.Heading("f-0", "Folder A", depth = 0),
+        AudioPickerRowUi.Playlist("p-2", "Audio Playlist 03", depth = 1),
+        AudioPickerRowUi.Heading("f-1", "Folder B", depth = 1),
+        AudioPickerRowUi.Playlist("p-3", "Audio Playlist 04", depth = 2)
     )
 )
 

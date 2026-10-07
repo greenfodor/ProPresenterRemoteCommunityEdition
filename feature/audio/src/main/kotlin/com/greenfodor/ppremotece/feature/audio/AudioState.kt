@@ -5,11 +5,12 @@ import com.greenfodor.ppremotece.core.domain.audio.NowPlaying
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 
 /**
- * The audio bin: its [playlists], not loaded until the stream's first `audio/playlists` frame, the
+ * The audio bin: the picker's rows for its [playlists], not loaded until the stream's first
+ * `audio/playlists` frame, the
  * chosen playlist's [tracks], the now-playing [bar], and whether its readout is [dimmed].
  */
 data class AudioState(
-    val playlists: Loadable<List<AudioPlaylistUi>> = Loadable.NotLoaded,
+    val playlists: Loadable<List<AudioPickerRowUi>> = Loadable.NotLoaded,
     val selectedUuid: String? = null,
     val tracks: List<AudioTrackUi> = emptyList(),
     val tracksLoading: Boolean = false,
@@ -19,13 +20,31 @@ data class AudioState(
 ) {
     /** The chosen playlist's name; null without one. */
     val selectedName: String?
-        get() = (playlists as? Loadable.Loaded)?.value?.firstOrNull { it.uuid == selectedUuid }?.name
+        get() = (playlists as? Loadable.Loaded)
+            ?.value
+            ?.firstOrNull { it is AudioPickerRowUi.Playlist && it.uuid == selectedUuid }
+            ?.name
 }
 
-data class AudioPlaylistUi(
-    val uuid: String,
+/** A row of the playlist picker, [depth] folders deep. */
+sealed interface AudioPickerRowUi {
+    val uuid: String
     val name: String
-)
+    val depth: Int
+
+    /** A folder's name above its playlists; it cannot be picked. */
+    data class Heading(
+        override val uuid: String,
+        override val name: String,
+        override val depth: Int
+    ) : AudioPickerRowUi
+
+    data class Playlist(
+        override val uuid: String,
+        override val name: String,
+        override val depth: Int
+    ) : AudioPickerRowUi
+}
 
 /** How a track row is marked. */
 enum class TrackMark {

@@ -3,6 +3,7 @@ package com.greenfodor.ppremotece.core.data.content
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.live.PlaylistNotFoundException
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
+import com.greenfodor.ppremotece.core.domain.live.changeConnectionRetryDelay
 import com.greenfodor.ppremotece.core.domain.model.Library
 import com.greenfodor.ppremotece.core.domain.model.LibraryEntry
 import com.greenfodor.ppremotece.core.domain.model.Playlist
@@ -37,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 private typealias Read<T> = Result<T, DataError.Network>
 
@@ -51,8 +53,9 @@ private typealias Read<T> = Result<T, DataError.Network>
  * A playlist that has a collector also keeps its change connection open
  * ([ProPresenterClient.playlistChanges]): each change re-reads the playlist and then calls
  * [onPlaylistChanged]; that read starts after any read already in flight. The connection is
- * reopened, with a re-read, on each [staleSignals] emission and [changesRetryDelay] after it ended,
- * once [isStreamConnected]; it is not reopened for a playlist ProPresenter does not know, and it is
+ * reopened, with a re-read, on each [staleSignals] emission and [retryDelay] after it ended, once
+ * [isStreamConnected], the attempts counted from the last connection that delivered a change or
+ * stayed open for 30 s; it is not reopened for a playlist ProPresenter does not know, and it is
  * closed when the last collector leaves.
  */
 @Suppress("TooManyFunctions", "LongParameterList")
@@ -64,7 +67,8 @@ class CachingContentRepository(
     private val restore: suspend () -> Unit,
     private val onPlaylistChanged: () -> Unit = {},
     private val isStreamConnected: () -> Boolean = { true },
-    private val changesRetryDelay: Duration = 2.seconds
+    private val retryDelay: (attempt: Int) -> Duration = ::changeConnectionRetryDelay,
+    private val timeSource: TimeSource = TimeSource.Monotonic
 ) : ContentRepository {
     private enum class Kind { PLAYLISTS, PLAYLIST, PRESENTATION, LIBRARIES, LIBRARY }
 
@@ -151,18 +155,23 @@ class CachingContentRepository(
      */
     private suspend fun watchPlaylist(uuid: String, entry: Entry<Playlist>, readFirst: Boolean) {
         var read = readFirst
+        var attempt = 0
         while (true) {
             if (read) scope.launch { entry.read() }
+            val opened = timeSource.markNow()
+            var delivered = false
             val failure = runCatching {
                 client.playlistChanges(uuid).collect {
+                    delivered = true
                     entry.readAgain()
                     onPlaylistChanged()
                 }
             }.exceptionOrNull()
             if (failure is CancellationException) throw failure
             if (failure is PlaylistNotFoundException) return
-            delay(changesRetryDelay)
-            while (!isStreamConnected()) delay(changesRetryDelay)
+            if (delivered || opened.elapsedNow() >= STABLE_CONNECTION) attempt = 0
+            delay(retryDelay(attempt++))
+            while (!isStreamConnected()) delay(retryDelay(0))
             read = true
         }
     }
@@ -246,5 +255,6 @@ class CachingContentRepository(
 
     private companion object {
         const val MAX_PARALLEL_READS = 4
+        val STABLE_CONNECTION = 30.seconds
     }
 }

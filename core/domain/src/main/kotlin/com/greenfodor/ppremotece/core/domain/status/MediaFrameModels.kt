@@ -1,6 +1,8 @@
 package com.greenfodor.ppremotece.core.domain.status
 
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
+import com.greenfodor.ppremotece.core.domain.model.AudioFolder
+import com.greenfodor.ppremotece.core.domain.model.AudioNode
 import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
 import com.greenfodor.ppremotece.core.domain.model.Transport
 import kotlinx.serialization.json.JsonArray
@@ -16,7 +18,7 @@ internal fun mediaEventOf(url: String?, data: JsonElement?): StatusEvent? =
         "transport/presentation/current" -> data.toTransport()?.let(StatusEvent::PresentationTransport)
         "transport/audio/current" -> data.toTransport()?.let(StatusEvent::AudioTransport)
         "transport/audio/time" -> (data as? JsonPrimitive)?.doubleOrNull?.let(StatusEvent::AudioTime)
-        "audio/playlists" -> (data as? JsonArray)?.let { StatusEvent.AudioPlaylists(it.toAudioPlaylists()) }
+        "audio/playlists" -> (data as? JsonArray)?.let { StatusEvent.AudioPlaylists(it.toAudioNodes()) }
         "audio/playlist/active" -> (data as? JsonObject)?.let { StatusEvent.ActiveAudioChanged(it.toActiveAudio()) }
         else -> null
     }
@@ -34,17 +36,20 @@ internal fun JsonElement?.toTransport(): Transport? =
         )
     }
 
-/** The playlists of an audio bin tree, in tree order; folders are left out and their children kept. */
-internal fun JsonArray.toAudioPlaylists(): List<AudioPlaylist> =
-    flatMap { node ->
+/**
+ * The audio bin's tree: a `playlist` node with a uuid is a playlist, and any other node a folder
+ * with the nodes of its `children`.
+ */
+internal fun JsonArray.toAudioNodes(): List<AudioNode> =
+    mapNotNull { node ->
         val id = node.child("id")
         val uuid = id.child("uuid").stringOrNull()
-        val own = if (node.child("type").stringOrNull() == "playlist" && uuid != null) {
-            listOf(AudioPlaylist(uuid, id.child("name").stringOrNull().orEmpty(), id.child("index").intOrNull() ?: 0))
+        val name = id.child("name").stringOrNull().orEmpty()
+        if (node.child("type").stringOrNull() == "playlist") {
+            uuid?.let { AudioPlaylist(it, name) }
         } else {
-            emptyList()
+            AudioFolder(uuid.orEmpty(), name, (node.child("children") as? JsonArray)?.toAudioNodes().orEmpty())
         }
-        own + ((node.child("children") as? JsonArray)?.toAudioPlaylists() ?: emptyList())
     }
 
 /** The active audio playlist track; null unless both the playlist and its item are named. */

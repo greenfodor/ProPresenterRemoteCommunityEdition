@@ -6,7 +6,8 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * The app's settings: keep-awake ([KeepAwake.Default] by default), the orientation
- * ([AppOrientation.Default] by default) and auto-connect (on by default); a failed write is reported.
+ * ([AppOrientation.Default] by default, and [AppOrientation.SYSTEM] for as long as it cannot be
+ * read) and auto-connect (on by default); a failed write is reported.
  */
 interface AppPreferences {
     fun keepAwake(): Flow<KeepAwake>

@@ -15,7 +15,7 @@ import com.greenfodor.ppremotece.core.domain.audio.nowPlaying
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.orNull
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
-import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
+import com.greenfodor.ppremotece.core.domain.model.AudioNode
 import com.greenfodor.ppremotece.core.domain.model.Transport
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
 import com.greenfodor.ppremotece.core.domain.status.StatusFrameParser
@@ -52,7 +52,7 @@ class AudioReplayTest {
 
     /** What the audio side of the repository holds. */
     private data class Audio(
-        val playlists: List<AudioPlaylist>,
+        val playlists: List<AudioNode>,
         val active: ActiveAudio?,
         val transport: Transport?,
         val position: Double?
@@ -83,7 +83,6 @@ class AudioReplayTest {
             "Audio Playlist 05",
             "Audio Playlist 06"
         )
-        assertThat(audio.playlists.map { it.index }).isEqualTo((0..5).toList())
         assertThat(audio.active).isNull()
     }
 
@@ -184,7 +183,7 @@ class AudioReplayTest {
             val collector = launch { repository.liveState.collect {} }
             val audio = withTimeout(5.seconds) {
                 Audio(
-                    playlists = repository.audioPlaylists.filterIsInstance<Loadable.Loaded<List<AudioPlaylist>>>()
+                    playlists = repository.audioPlaylists.filterIsInstance<Loadable.Loaded<List<AudioNode>>>()
                         .first().value,
                     active = repository.activeAudio.first { it == expectedActive },
                     transport = repository.audioTransport.map { it.orNull() }.first { it == expectedTransport },

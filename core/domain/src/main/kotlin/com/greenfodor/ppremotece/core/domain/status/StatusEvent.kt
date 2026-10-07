@@ -1,7 +1,7 @@
 package com.greenfodor.ppremotece.core.domain.status
 
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
-import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
+import com.greenfodor.ppremotece.core.domain.model.AudioNode
 import com.greenfodor.ppremotece.core.domain.model.LiveSlide
 import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
@@ -88,9 +88,9 @@ sealed interface StatusEvent {
         val seconds: Double
     ) : StatusEvent
 
-    /** The audio bin's playlists, flattened in tree order, from an `audio/playlists` frame. */
+    /** The audio bin's tree of folders and playlists, from an `audio/playlists` frame. */
     data class AudioPlaylists(
-        val playlists: List<AudioPlaylist>
+        val nodes: List<AudioNode>
     ) : StatusEvent
 
     /** The audio playlist track that plays, null without one, from an `audio/playlist/active` frame. */

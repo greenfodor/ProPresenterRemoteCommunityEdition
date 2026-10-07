@@ -16,9 +16,12 @@ import com.greenfodor.ppremotece.core.domain.live.orEmpty
 import com.greenfodor.ppremotece.core.domain.live.orNull
 import com.greenfodor.ppremotece.core.domain.live.reconnecting
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
-import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
+import com.greenfodor.ppremotece.core.domain.model.AudioNode
+import com.greenfodor.ppremotece.core.domain.model.AudioPickerRow
 import com.greenfodor.ppremotece.core.domain.model.AudioTrack
 import com.greenfodor.ppremotece.core.domain.model.Transport
+import com.greenfodor.ppremotece.core.domain.model.pickerRows
+import com.greenfodor.ppremotece.core.domain.model.playlists
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
@@ -39,10 +42,12 @@ import kotlinx.coroutines.launch
 private const val STOP_TIMEOUT_MILLIS = 5_000L
 
 /**
- * Audio: the audio bin's playlists of the [AudioRepository], as loaded, with the tracks of the
- * chosen one and the now-playing bar ([nowPlaying]). The chosen playlist is the one picked from the
- * menu or by a track tap, else the active one, else the one already shown, else the first; its
- * tracks are read when it is chosen, when the audio playlists change and on Retry, and a failed
+ * Audio: the picker's rows for the audio bin's tree of the [AudioRepository], as loaded (a folder
+ * is a heading and a folder without playlists is left out), with the tracks of the chosen playlist
+ * and the now-playing bar ([nowPlaying]). The chosen playlist is the one picked from the menu or by
+ * a track tap, else the active one, else the one already shown, else the first of the tree; only a
+ * playlist can be chosen. Its tracks are read by its uuid when it is chosen, when the audio tree
+ * changes, when the same tree arrives after the stream reconnected and on Retry, and a failed
  * re-read keeps the tracks already shown and posts its error. A tap plays a track by its uuid; taps
  * on a track are ignored while its request is in flight, and a failure posts "Couldn't play {track}". The
  * track that the active audio names is marked playing, or paused while the loaded audio is not
@@ -86,7 +91,7 @@ class AudioViewModel(
 
     /** Everything on the screen that does not move with the audio position. */
     private data class Rows(
-        val playlists: Loadable<List<AudioPlaylistUi>>,
+        val playlists: Loadable<List<AudioPickerRowUi>>,
         val selected: String?,
         val tracks: List<AudioTrackUi>,
         val loading: Boolean,
@@ -95,7 +100,7 @@ class AudioViewModel(
 
     /** The audio playlists as last reported and the one chosen among them. */
     private data class Selection(
-        val playlists: Loadable<List<AudioPlaylist>>,
+        val playlists: Loadable<List<AudioNode>>,
         val uuid: String?
     )
 
@@ -104,7 +109,7 @@ class AudioViewModel(
 
     private val selection: StateFlow<Selection> =
         combine(audioRepository.audioPlaylists, picked, audioRepository.activeAudio) { playlists, picked, active ->
-            val uuids = playlists.orEmpty().map { it.uuid }
+            val uuids = playlists.orEmpty().playlists().map { it.uuid }
             val next = picked?.takeIf { it in uuids }
                 ?: active?.playlistUuid?.takeIf { it in uuids }
                 ?: shown?.takeIf { it in uuids }
@@ -133,7 +138,7 @@ class AudioViewModel(
             val selected = selection.uuid
             val read = list.takeIf { it.playlistUuid == selected }
             Rows(
-                playlists = selection.playlists.map { all -> all.map { AudioPlaylistUi(it.uuid, it.name) } },
+                playlists = selection.playlists.map { tree -> tree.pickerRows().map { it.toUi() } },
                 selected = selected,
                 tracks = read?.tracks.orEmpty().map { it.toUi(selected, marked) },
                 loading = if (read == null) selected != null else read.loading,
@@ -156,7 +161,8 @@ class AudioViewModel(
 
     init {
         viewModelScope.launch {
-            combine(selection, retries) { selection, _ -> selection.uuid }.collectLatest(::readTracks)
+            combine(selection, retries, audioRepository.audioPlaylistsRepeats) { selection, _, _ -> selection.uuid }
+                .collectLatest(::readTracks)
         }
     }
 
@@ -191,6 +197,12 @@ class AudioViewModel(
             }
         }
     }
+
+    private fun AudioPickerRow.toUi(): AudioPickerRowUi =
+        when (this) {
+            is AudioPickerRow.Heading -> AudioPickerRowUi.Heading(uuid, name, depth)
+            is AudioPickerRow.Playlist -> AudioPickerRowUi.Playlist(playlist.uuid, playlist.name, depth)
+        }
 
     private fun AudioTrack.toUi(playlistUuid: String?, marked: Marked): AudioTrackUi {
         val active = marked.active?.takeIf { it.playlistUuid == playlistUuid && it.trackUuid == uuid }
