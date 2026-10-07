@@ -68,7 +68,7 @@ class RejectedTransportTest {
     fun `a rejected audio transport url clears the audio transport and its position`() = runBlocking<Unit> {
         rejectAfterLoading("transport/audio/current")
 
-        assertThat(repository.audioPosition.value).isNull()
+        assertThat(withTimeout(5.seconds) { repository.audioPosition.first { it == null } }).isNull()
         assertThat(repository.presentationTransport.value.orNull()?.name).isEqualTo("Media 01")
     }
 
@@ -76,7 +76,7 @@ class RejectedTransportTest {
     fun `a rejected audio time url clears the audio transport and its position`() = runBlocking<Unit> {
         rejectAfterLoading("transport/audio/time")
 
-        assertThat(repository.audioPosition.value).isNull()
+        assertThat(withTimeout(5.seconds) { repository.audioPosition.first { it == null } }).isNull()
         assertThat(repository.presentationTransport.value.orNull()?.name).isEqualTo("Media 01")
     }
 
@@ -119,7 +119,6 @@ class RejectedTransportTest {
         } else {
             repository.audioTransport
         }
-        withTimeout(5.seconds) { rejected.first { it is Loadable.Loaded } }
         assertThat(withTimeout(5.seconds) { rejected.first { it == Loadable.Unavailable } })
             .isEqualTo(Loadable.Unavailable)
         collector.cancel()

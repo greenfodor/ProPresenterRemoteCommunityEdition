@@ -269,8 +269,8 @@ class StreamingLiveStateRepository(
             "audio/playlists" -> audioPlaylistList.value = Loadable.Unavailable
             "transport/presentation/current" -> presentationLoaded.value = Loadable.Unavailable
             in AUDIO_TRANSPORT_URLS -> {
-                audioLoaded.value = Loadable.Unavailable
                 audioSeconds.value = null
+                audioLoaded.value = Loadable.Unavailable
             }
             "audio/playlist/active" -> activeTrack.value = null
         }

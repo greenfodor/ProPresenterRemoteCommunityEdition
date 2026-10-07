@@ -21,6 +21,13 @@ the release build `com.greenfodor.ppremotece`. `assembleRelease` signs the relea
 `storePassword`, `keyAlias` and `keyPassword`; without it (as on CI) the release APK is unsigned. The
 keystore and that file stay outside the repo.
 
+The release build is minified by R8 with resource shrinking (keep rules go in `app/proguard-rules.pro`,
+which needs none today; the debug build is not minified). A stack trace from a release build has obfuscated names: read
+it with the mapping file of that exact build, `app/build/outputs/mapping/release/mapping.txt`, for
+example with `retrace <mapping.txt> <trace.txt>` from the Android SDK command-line tools or with
+Android Studio's Analyze Stack Trace. Keep the mapping file of every build that is installed or
+released.
+
 ## Comments
 
 Comments describe **what** the code does, not **why** a decision was made. Do not record

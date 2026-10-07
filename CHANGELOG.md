@@ -23,6 +23,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   scrolls clear of it.
 - The Audio destination uses a double-note icon.
 - A playlist's change connection is retried after 2, 4, 8, 16, then 30 s instead of every 2 s.
+- The release build is minified with R8 and its resources are shrunk.
 
 ### Removed
 - The back arrow on Settings; the system Back and the More tab leave it.
