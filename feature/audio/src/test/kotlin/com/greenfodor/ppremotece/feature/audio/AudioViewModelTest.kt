@@ -18,6 +18,8 @@ import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
+import com.greenfodor.ppremotece.core.domain.model.AudioFolder
+import com.greenfodor.ppremotece.core.domain.model.AudioNode
 import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
 import com.greenfodor.ppremotece.core.domain.model.AudioTrack
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
@@ -42,11 +44,15 @@ import java.lang.reflect.Proxy
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AudioViewModelTest {
-    private val playlists =
-        listOf(AudioPlaylist("p-0", "Audio Playlist 01", 0), AudioPlaylist("p-1", "Audio Playlist 02", 1))
+    private val playlists: List<AudioNode> =
+        listOf(AudioPlaylist("p-0", "Audio Playlist 01"), AudioPlaylist("p-1", "Audio Playlist 02"))
+    private val nested = AudioFolder("f-1", "Folder B", listOf(AudioPlaylist("p-3", "Audio Playlist 04")))
+    private val folder = AudioFolder("f-0", "Folder A", listOf(AudioPlaylist("p-2", "Audio Playlist 03"), nested))
+    private val emptyFolder = AudioFolder("f-2", "Folder B", emptyList())
     private val audio = object : AudioRepository {
         override val audioPlaylists =
-            MutableStateFlow<Loadable<List<AudioPlaylist>>>(Loadable.Loaded(this@AudioViewModelTest.playlists))
+            MutableStateFlow<Loadable<List<AudioNode>>>(Loadable.Loaded(this@AudioViewModelTest.playlists))
+        override val audioPlaylistsRepeats = MutableStateFlow(0)
         override val activeAudio = MutableStateFlow<ActiveAudio?>(null)
         override val audioTransport = MutableStateFlow<Loadable<Transport>>(Loadable.NotLoaded)
         override val audioPosition = MutableStateFlow<Double?>(null)
@@ -157,13 +163,86 @@ class AudioViewModelTest {
     }
 
     @Test
+    fun `the same audio playlists after a reconnect read the tracks once more`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            expectMostRecentItem()
+            client.tracks["p-0"] = listOf(track("a-9", "Track 09", 0))
+            audio.audioPlaylistsRepeats.value = 1
+            assertThat(expectMostRecentItem().tracks.map { it.name }).containsExactly("Track 09")
+        }
+        assertThat(client.reads).containsExactly("p-0", "p-0")
+    }
+
+    @Test
+    fun `folders become headings, their playlists are indented and an empty folder is left out`() = runTest(
+        dispatcher
+    ) {
+        audio.audioPlaylists.value = Loadable.Loaded(playlists + folder + emptyFolder)
+
+        viewModel().state.test {
+            assertThat((expectMostRecentItem().playlists as Loadable.Loaded).value).containsExactly(
+                AudioPickerRowUi.Playlist("p-0", "Audio Playlist 01", depth = 0),
+                AudioPickerRowUi.Playlist("p-1", "Audio Playlist 02", depth = 0),
+                AudioPickerRowUi.Heading("f-0", "Folder A", depth = 0),
+                AudioPickerRowUi.Playlist("p-2", "Audio Playlist 03", depth = 1),
+                AudioPickerRowUi.Heading("f-1", "Folder B", depth = 1),
+                AudioPickerRowUi.Playlist("p-3", "Audio Playlist 04", depth = 2)
+            )
+        }
+    }
+
+    @Test
+    fun `a playlist picked inside a nested folder is read by its uuid`() = runTest(dispatcher) {
+        client.tracks["p-3"] = listOf(track("c-0", "Track 06", 0))
+        audio.audioPlaylists.value = Loadable.Loaded(playlists + folder)
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            expectMostRecentItem()
+            viewModel.onAction(AudioAction.OnPlaylistSelect("p-3"))
+            val state = expectMostRecentItem()
+            assertThat(state.selectedName).isEqualTo("Audio Playlist 04")
+            assertThat(state.tracks.map { it.name }).containsExactly("Track 06")
+        }
+        assertThat(client.reads).containsExactly("p-0", "p-3")
+    }
+
+    @Test
+    fun `a folder is never picked or read`() = runTest(dispatcher) {
+        client.tracks["p-2"] = listOf(track("c-1", "Track 07", 0))
+        audio.audioPlaylists.value = Loadable.Loaded(listOf(folder))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().selectedUuid).isEqualTo("p-2")
+            viewModel.onAction(AudioAction.OnPlaylistSelect("f-0"))
+            assertThat(viewModel.state.value.selectedUuid).isEqualTo("p-2")
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(client.reads).containsExactly("p-2")
+    }
+
+    @Test
+    fun `the active playlist is found inside a folder`() = runTest(dispatcher) {
+        client.tracks["p-3"] = listOf(track("c-0", "Track 06", 0))
+        audio.audioPlaylists.value = Loadable.Loaded(playlists + folder)
+        audio.activeAudio.value = ActiveAudio("p-3", "c-0", 0)
+
+        viewModel().state.test {
+            assertThat(expectMostRecentItem().selectedUuid).isEqualTo("p-3")
+        }
+    }
+
+    @Test
     fun `the tracks are read again when the audio playlists value changes`() = runTest(dispatcher) {
         val viewModel = viewModel()
 
         viewModel.state.test {
             expectMostRecentItem()
             client.tracks["p-0"] = listOf(track("a-9", "Track 09", 0))
-            audio.audioPlaylists.value = Loadable.Loaded(playlists + AudioPlaylist("p-2", "Audio Playlist 03", 2))
+            audio.audioPlaylists.value = Loadable.Loaded(playlists + AudioPlaylist("p-2", "Audio Playlist 03"))
             assertThat(expectMostRecentItem().tracks.map { it.name }).containsExactly("Track 09")
         }
         assertThat(client.reads).containsExactly("p-0", "p-0")
@@ -324,7 +403,7 @@ class AudioViewModelTest {
         viewModel.state.test {
             expectMostRecentItem()
             client.readFailure = DataError.Network.TIMEOUT
-            audio.audioPlaylists.value = Loadable.Loaded(playlists + AudioPlaylist("p-2", "Audio Playlist 03", 2))
+            audio.audioPlaylists.value = Loadable.Loaded(playlists + AudioPlaylist("p-2", "Audio Playlist 03"))
             val state = viewModel.state.value
             assertThat(state.tracks.map { it.name }).containsExactly("Track 01", "Track 02")
             assertThat(state.tracksError).isNull()

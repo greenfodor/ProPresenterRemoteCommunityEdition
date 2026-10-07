@@ -83,7 +83,9 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   macro trigger `GET /v1/macro/{uuid}/trigger`, the look trigger `GET /v1/look/{uuid}/trigger`, the prop
   trigger and clear `GET /v1/prop/{uuid}/trigger` and `GET /v1/prop/{uuid}/clear`, and the prop thumbnail
   `GET /v1/prop/{uuid}/thumbnail?quality=200|400|600` (kept in memory only), and the audio calls
-  `GET /v1/audio/playlist/{uuid}` (a playlist's tracks), the track trigger by the track's own uuid
+  `GET /v1/audio/playlist/{uuid}` (a playlist's tracks, read when the playlist is chosen, when the audio
+  tree changes and once when the same tree arrives after the status stream reconnected; only ever with a
+  playlist's uuid, never a folder's, which returns 404), the track trigger by the track's own uuid
   `GET /v1/audio/playlist/{playlist uuid}/{track uuid}/trigger` (never by index),
   `GET /v1/audio/playlist/active/next/trigger`, `GET /v1/audio/playlist/active/previous/trigger`,
   `GET /v1/transport/audio/play` and `GET /v1/transport/audio/pause`;
@@ -95,8 +97,9 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   and the playlist open in the Presentation tab). Each `"change"` chunk is followed by one
   `GET /v1/playlist/{uuid}`, and then by `GET /v1/playlist/active` and `GET /v1/presentation/slide_index`.
   It is opened with a read of the playlist, reopened when the status stream returns from reconnecting,
-  retried 2 s after it ends, once the stream is connected, not retried after a 404, and closed when the
-  last collector leaves. The status stream is therefore not the app's only long-lived connection;
+  retried after it ends, once the stream is connected, with a delay of 2, 4, 8, 16, then 30 s (2 s again
+  after a connection that delivered a change or stayed open for 30 s), not retried after a 404, and
+  closed when the last collector leaves. The status stream is therefore not the app's only long-lived connection;
 - one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
   "playlist/active", "status/layers", "timers", "timers/current", "macro_collections", "looks",
   "look/current", "prop_collections", "transport/presentation/current", "transport/audio/current",

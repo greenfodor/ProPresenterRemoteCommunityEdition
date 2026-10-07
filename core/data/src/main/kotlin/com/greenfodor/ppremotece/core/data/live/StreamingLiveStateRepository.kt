@@ -10,7 +10,7 @@ import com.greenfodor.ppremotece.core.domain.live.orNull
 import com.greenfodor.ppremotece.core.domain.looks.LooksRepository
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
-import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
+import com.greenfodor.ppremotece.core.domain.model.AudioNode
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CueSource
 import com.greenfodor.ppremotece.core.domain.model.LiveCue
@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.timeout
+import kotlinx.coroutines.flow.update
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.pow
@@ -77,7 +78,8 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * `macro_collections` frames set [collections], `looks` frames [looks] and `look/current` frames
  * [currentLook], and `prop_collections` frames [propCollections], and `transport/presentation/current`
  * and `transport/audio/current` frames [presentationTransport] and [audioTransport], and
- * `audio/playlists`, `audio/playlist/active` and `transport/audio/time` frames [audioPlaylists],
+ * `audio/playlists`, `audio/playlist/active` and `transport/audio/time` frames [audioPlaylists]
+ * (and [audioPlaylistsRepeats] when the first such frame after a reconnect repeats the tree held),
  * [activeAudio] and [audioPosition], the position starting again as unknown whenever the audio
  * transport changes what it has loaded; the lists are
  * [Loadable.NotLoaded] until their first frame and keep their content across reconnects. An error
@@ -128,8 +130,11 @@ class StreamingLiveStateRepository(
     private val audioLoaded = MutableStateFlow<Loadable<Transport>>(Loadable.NotLoaded)
     override val audioTransport: StateFlow<Loadable<Transport>> = audioLoaded.asStateFlow()
 
-    private val audioPlaylistList = MutableStateFlow<Loadable<List<AudioPlaylist>>>(Loadable.NotLoaded)
-    override val audioPlaylists: StateFlow<Loadable<List<AudioPlaylist>>> = audioPlaylistList.asStateFlow()
+    private val audioPlaylistList = MutableStateFlow<Loadable<List<AudioNode>>>(Loadable.NotLoaded)
+    override val audioPlaylists: StateFlow<Loadable<List<AudioNode>>> = audioPlaylistList.asStateFlow()
+
+    private val audioRepeats = MutableStateFlow(0)
+    override val audioPlaylistsRepeats: StateFlow<Int> = audioRepeats.asStateFlow()
 
     private val activeTrack = MutableStateFlow<ActiveAudio?>(null)
     override val activeAudio: StateFlow<ActiveAudio?> = activeTrack.asStateFlow()
@@ -159,6 +164,7 @@ class StreamingLiveStateRepository(
             while (true) {
                 val parser = StatusFrameParser()
                 var slideReadNeeded = true
+                var audioTreeAwaited = state.connection == ConnectionStatus.RECONNECTING
                 val failure = runCatching {
                     streamChunks().collect { chunk ->
                         attempt = 0
@@ -195,8 +201,12 @@ class StreamingLiveStateRepository(
                                 }
                                 is StatusEvent.AudioTime ->
                                     if (AUDIO_TRANSPORT_URLS.none { it in rejected }) audioSeconds.value = event.seconds
-                                is StatusEvent.AudioPlaylists ->
-                                    audioPlaylistList.load(event.playlists, "audio/playlists")
+                                is StatusEvent.AudioPlaylists -> {
+                                    val repeated = audioPlaylistList.value == Loadable.Loaded(event.nodes)
+                                    if (audioTreeAwaited && repeated) audioRepeats.update { it + 1 }
+                                    audioTreeAwaited = false
+                                    audioPlaylistList.load(event.nodes, "audio/playlists")
+                                }
                                 is StatusEvent.ActiveAudioChanged -> activeTrack.value = event.active
                                 is StatusEvent.Rejected -> event.messages.forEach(::reject)
                                 else -> Unit

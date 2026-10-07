@@ -178,7 +178,7 @@ private fun appVersion(context: Context): String {
 @Composable
 private fun SettingsScreenPreview() {
     PPRemoteTheme {
-        SettingsScreen(state = PreviewState, onAction = {}, appVersion = "0.1.0", onOpenSource = {})
+        SettingsScreen(state = PreviewState, onAction = {}, appVersion = "0.3.0", onOpenSource = {})
     }
 }
 

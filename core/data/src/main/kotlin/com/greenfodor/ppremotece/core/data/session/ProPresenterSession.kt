@@ -13,7 +13,7 @@ import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
 import com.greenfodor.ppremotece.core.domain.looks.LooksRepository
 import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.model.ActiveAudio
-import com.greenfodor.ppremotece.core.domain.model.AudioPlaylist
+import com.greenfodor.ppremotece.core.domain.model.AudioNode
 import com.greenfodor.ppremotece.core.domain.model.ConnectedHost
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CueSource
@@ -82,7 +82,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * [propThumbnailRequests] its prop thumbnail requests, keyed by the host's name and null until the
  * thumbnail cache is cleared; [presentationTransport] and [audioTransport] what its transport layers
  * have loaded, not loaded while disconnected; [audioPlaylists], [activeAudio] and [audioPosition] its audio
- * bin, the track it plays and the audio position, not loaded and null while disconnected.
+ * bin, the track it plays and the audio position, not loaded and null while disconnected, and
+ * [audioPlaylistsRepeats] its count of audio trees repeated after a reconnect.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,
@@ -193,10 +194,16 @@ class ProPresenterSession(
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    override val audioPlaylists: StateFlow<Loadable<List<AudioPlaylist>>> =
+    override val audioPlaylists: StateFlow<Loadable<List<AudioNode>>> =
         connection
             .flatMapLatest { it?.live?.audioPlaylists ?: flowOf(Loadable.NotLoaded) }
             .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val audioPlaylistsRepeats: StateFlow<Int> =
+        connection
+            .flatMapLatest { it?.live?.audioPlaylistsRepeats ?: flowOf(0) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, 0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val activeAudio: StateFlow<ActiveAudio?> =

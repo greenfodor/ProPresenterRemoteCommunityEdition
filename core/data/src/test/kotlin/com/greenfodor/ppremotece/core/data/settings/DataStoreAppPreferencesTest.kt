@@ -17,10 +17,12 @@ import com.greenfodor.ppremotece.core.domain.settings.AppOrientation
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -88,6 +90,32 @@ class DataStoreAppPreferencesTest {
         DataStoreAppPreferences(dataStore).keepAwake().test {
             assertThat(awaitItem()).isEqualTo(KeepAwake.REMOTE_ONLY)
             assertThat(awaitItem()).isEqualTo(KeepAwake.ALWAYS)
+        }
+    }
+
+    @Test
+    fun `a failed orientation read follows the system, then the saved orientation is read again`() = runTest {
+        val dataStore =
+            FlakyDataStore(preferencesOf(stringPreferencesKey("orientation") to "LANDSCAPE"), readFailures = 1)
+
+        DataStoreAppPreferences(dataStore).orientation().test {
+            assertThat(awaitItem()).isEqualTo(AppOrientation.SYSTEM)
+            assertThat(awaitItem()).isEqualTo(AppOrientation.LANDSCAPE)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `an orientation that cannot be read at all stays on follow system`() = runTest {
+        val dataStore = FlakyDataStore(
+            preferencesOf(stringPreferencesKey("orientation") to "LANDSCAPE"),
+            readFailures = Int.MAX_VALUE
+        )
+
+        DataStoreAppPreferences(dataStore).orientation().test {
+            assertThat(awaitItem()).isEqualTo(AppOrientation.SYSTEM)
+            advanceTimeBy(60_000)
+            expectNoEvents()
         }
     }
 
