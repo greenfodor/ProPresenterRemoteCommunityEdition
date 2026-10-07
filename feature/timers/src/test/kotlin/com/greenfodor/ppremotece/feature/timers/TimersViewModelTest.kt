@@ -6,6 +6,7 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isTrue
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.Loadable
@@ -68,7 +69,9 @@ class TimersViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = TimersViewModel(repository, live, client)
+    private val messages = UiMessages()
+
+    private fun viewModel() = TimersViewModel(repository, live, client, messages)
 
     private val TimersState.loaded: List<TimerUi> get() = (timers as Loadable.Loaded).value
 
@@ -194,13 +197,13 @@ class TimersViewModelTest {
         client.result = Result.Failure(DataError.Network.TIMEOUT)
         val viewModel = viewModel()
 
-        viewModel.events.test {
+        messages.messages.test {
             viewModel.onAction(TimersAction.OnToggleClick("t-1"))
-            val stop = (awaitItem() as TimersEvent.ShowError).message as UiText.StringResource
+            val stop = awaitItem() as UiText.StringResource
             viewModel.onAction(TimersAction.OnToggleClick("t-0"))
-            val start = (awaitItem() as TimersEvent.ShowError).message as UiText.StringResource
+            val start = awaitItem() as UiText.StringResource
             viewModel.onAction(TimersAction.OnResetClick("t-0"))
-            val reset = (awaitItem() as TimersEvent.ShowError).message as UiText.StringResource
+            val reset = awaitItem() as UiText.StringResource
 
             assertThat(listOf(stop.id, start.id, reset.id))
                 .containsExactly(R.string.timers_error_stop, R.string.timers_error_start, R.string.timers_error_reset)

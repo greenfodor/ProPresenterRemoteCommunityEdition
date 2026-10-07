@@ -232,4 +232,75 @@ class TabStacksTest {
 
         assertThat(remote.withoutMore()).isEqualTo(remote)
     }
+
+    @Test
+    fun `with two panes back from a playlist under an open detail removes the playlist and keeps the detail`() {
+        val stacks = initial.openPlaylist(playlist).openDetail(grid1)
+
+        val onTree = stacks.back(noneInMore, twoPanes = true)
+
+        assertThat(onTree.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute, grid1)
+        assertThat(onTree.detail).isEqualTo(grid1)
+    }
+
+    @Test
+    fun `with two panes back at the tree closes the open detail and then stops`() {
+        val onTree = initial.openPlaylist(playlist).openDetail(grid1).back(noneInMore, twoPanes = true)
+
+        val closed = onTree.back(noneInMore, twoPanes = true)
+
+        assertThat(closed.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute)
+        assertThat(closed.back(noneInMore, twoPanes = true)).isEqualTo(closed)
+    }
+
+    @Test
+    fun `with two panes back from a playlist without a detail returns to the tree`() {
+        val onTree = initial.openPlaylist(playlist).back(noneInMore, twoPanes = true)
+
+        assertThat(onTree.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute)
+    }
+
+    @Test
+    fun `with two panes opening a playlist keeps the open detail`() {
+        val other = PlaylistRoute(playlistUuid = "q")
+        val fromTree = initial.openDetail(library).openPlaylist(playlist, twoPanes = true)
+        val fromPlaylist = initial.openPlaylist(playlist).openDetail(grid1).openPlaylist(other, twoPanes = true)
+
+        assertThat(fromTree.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute, playlist, library)
+        assertThat(fromPlaylist.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute, other, grid1)
+    }
+
+    @Test
+    fun `closing the detail removes only the detail`() {
+        val stacks = initial.openPlaylist(playlist).openDetail(grid1)
+
+        assertThat(stacks.closeDetail().stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute, playlist)
+        assertThat(initial.openDetail(grid1).closeDetail().stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute)
+        assertThat(initial.openPlaylist(playlist).closeDetail()).isEqualTo(initial.openPlaylist(playlist))
+    }
+
+    @Test
+    fun `back on another tab is the same with two panes`() {
+        val remote = initial.openPlaylist(playlist).openDetail(grid1).select(ShellTab.REMOTE)
+
+        assertThat(remote.back(noneInMore, twoPanes = true)).isEqualTo(remote.back(noneInMore))
+    }
+
+    @Test
+    fun `the more list is kept while nothing fits under more for a moment`() {
+        val moreList = initial.select(ShellTab.MORE)
+
+        assertThat(moreList.fitting(noneInMore).current).isEqualTo(ShellTab.PRESENTATION)
+        assertThat(moreList.fitting(noneInMore).stacks).isEqualTo(moreList.stacks)
+        assertThat(moreList.fitting(remoteInMore)).isEqualTo(moreList)
+        assertThat(moreList.current).isEqualTo(ShellTab.MORE)
+    }
+
+    @Test
+    fun `a tab that is not the more list is shown whatever is under more`() {
+        val remote = initial.select(ShellTab.REMOTE)
+
+        assertThat(remote.fitting(noneInMore)).isEqualTo(remote)
+        assertThat(remote.fitting(remoteInMore)).isEqualTo(remote)
+    }
 }

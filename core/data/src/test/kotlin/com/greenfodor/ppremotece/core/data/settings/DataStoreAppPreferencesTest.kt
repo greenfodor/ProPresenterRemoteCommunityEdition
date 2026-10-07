@@ -13,6 +13,7 @@ import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.data.FlakyDataStore
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
+import com.greenfodor.ppremotece.core.domain.settings.AppOrientation
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +47,20 @@ class DataStoreAppPreferencesTest {
     fun `keep awake is remote only and auto-connect is on until saved`() = runBlocking {
         assertThat(preferences.keepAwake().first()).isEqualTo(KeepAwake.REMOTE_ONLY)
         assertThat(preferences.autoConnect().first()).isTrue()
+    }
+
+    @Test
+    fun `the orientation follows the system until saved`() = runBlocking<Unit> {
+        assertThat(preferences.orientation().first()).isEqualTo(AppOrientation.SYSTEM)
+    }
+
+    @Test
+    fun `each orientation is saved and read back`() = runBlocking<Unit> {
+        listOf(AppOrientation.LANDSCAPE, AppOrientation.PORTRAIT, AppOrientation.SYSTEM).forEach { orientation ->
+            assertThat(preferences.setOrientation(orientation)).isEqualTo(Result.Success(Unit))
+
+            assertThat(preferences.orientation().first()).isEqualTo(orientation)
+        }
     }
 
     @Test

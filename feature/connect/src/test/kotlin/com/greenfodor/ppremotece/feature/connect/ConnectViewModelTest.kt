@@ -16,6 +16,7 @@ import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
+import com.greenfodor.ppremotece.core.domain.settings.AppOrientation
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 import kotlinx.coroutines.CompletableDeferred
@@ -65,6 +66,11 @@ class ConnectViewModelTest {
         override fun keepAwake(): Flow<KeepAwake> = flowOf(KeepAwake.REMOTE_ONLY)
 
         override suspend fun setKeepAwake(mode: KeepAwake): EmptyResult<DataError.Local> = Result.Success(Unit)
+
+        override fun orientation(): Flow<AppOrientation> = flowOf(AppOrientation.SYSTEM)
+
+        override suspend fun setOrientation(orientation: AppOrientation): EmptyResult<DataError.Local> =
+            Result.Success(Unit)
 
         override fun autoConnect(): Flow<Boolean> = autoConnect
 

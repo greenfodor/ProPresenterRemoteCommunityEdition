@@ -5,11 +5,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 
 /**
- * The app's failure messages: each posted message is delivered once, in order, to whoever collects
- * [messages]; a message posted while nothing collects waits for the next collector.
+ * The app's failure messages: each posted message is delivered once to whoever collects [messages].
+ * At most one message waits to be delivered: a newer one replaces it.
  */
 class UiMessages {
-    private val channel = Channel<UiText>(Channel.UNLIMITED)
+    private val channel = Channel<UiText>(Channel.CONFLATED)
 
     val messages: Flow<UiText> = channel.receiveAsFlow()
 

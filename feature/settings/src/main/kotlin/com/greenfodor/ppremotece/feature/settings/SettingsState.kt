@@ -1,14 +1,16 @@
 package com.greenfodor.ppremotece.feature.settings
 
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
+import com.greenfodor.ppremotece.core.domain.settings.AppOrientation
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 
 /**
- * The Settings screen: the keep-awake mode, the auto-connect switch, the connected host's name,
+ * The Settings screen: the keep-awake mode, the orientation, the auto-connect switch, the connected host's name,
  * `address:port` and description (empty while disconnected), and whether the Disconnect dialog is shown.
  */
 data class SettingsState(
     val keepAwake: KeepAwake = KeepAwake.Default,
+    val orientation: AppOrientation = AppOrientation.Default,
     val autoConnect: Boolean = true,
     val hostName: String = "",
     val hostAddress: String = "",
@@ -19,6 +21,10 @@ data class SettingsState(
 sealed interface SettingsAction {
     data class OnKeepAwakeChange(
         val mode: KeepAwake
+    ) : SettingsAction
+
+    data class OnOrientationChange(
+        val orientation: AppOrientation
     ) : SettingsAction
 
     data class OnAutoConnectChange(
