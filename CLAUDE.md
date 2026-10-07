@@ -95,7 +95,7 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   and the playlist open in the Presentation tab). Each `"change"` chunk is followed by one
   `GET /v1/playlist/{uuid}`, and then by `GET /v1/playlist/active` and `GET /v1/presentation/slide_index`.
   It is opened with a read of the playlist, reopened when the status stream returns from reconnecting,
-  retried 2 s after it ends while the stream is connected, not retried after a 404, and closed when the
+  retried 2 s after it ends, once the stream is connected, not retried after a 404, and closed when the
   last collector leaves. The status stream is therefore not the app's only long-lived connection;
 - one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
   "playlist/active", "status/layers", "timers", "timers/current", "macro_collections", "looks",

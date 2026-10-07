@@ -33,6 +33,7 @@ import mockwebserver3.junit5.StartStop
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -169,7 +170,7 @@ class PlaylistChangesTest {
     }
 
     @Test
-    fun `a connection that ends is not reopened while the stream is not connected`() = runBlocking<Unit> {
+    fun `a connection that ends is reopened only once the stream is connected`() = runBlocking<Unit> {
         ends = listOf(End.COMPLETES)
         streamConnected = false
 
@@ -177,9 +178,27 @@ class PlaylistChangesTest {
         withTimeout(5.seconds) { repository.playlist(PLAYLIST).first() }
         awaitCondition { closed.get() == 1 }
         delay(300.milliseconds)
-
         assertThat(opened.get()).isEqualTo(1)
+
+        streamConnected = true
+
+        awaitCondition { opened.get() == 2 }
         collector.cancel()
+    }
+
+    @Test
+    fun `a change signal is followed by a read that starts after it`() = runBlocking<Unit> {
+        host.delayMillis = 300
+        repository.playlist(PLAYLIST).test(timeout = 5.seconds) {
+            awaitCondition { opened.get() == 1 && host.reads.get() == 1 }
+            host.playlistName = "Renamed"
+
+            signals.emit(Unit)
+
+            assertThat(awaitItem().name()).isEqualTo(ORIGINAL_NAME)
+            assertThat(awaitItem().name()).isEqualTo("Renamed")
+        }
+        assertThat(host.reads.get()).isEqualTo(2)
     }
 
     @Test
@@ -206,6 +225,9 @@ class PlaylistChangesTest {
         @Volatile
         var playlistName = ORIGINAL_NAME
 
+        @Volatile
+        var delayMillis = 0L
+
         val reads = AtomicInteger()
 
         override fun dispatch(request: RecordedRequest): MockResponse =
@@ -213,6 +235,7 @@ class PlaylistChangesTest {
                 reads.incrementAndGet()
                 MockResponse.Builder()
                     .addHeader("Content-Type", "application/json")
+                    .headersDelay(delayMillis, TimeUnit.MILLISECONDS)
                     .body(
                         Fixtures.text(Fixtures.ARRANGEMENT_TEST_PLAYLIST)
                             .replace("\"$ORIGINAL_NAME\"", "\"$playlistName\"")

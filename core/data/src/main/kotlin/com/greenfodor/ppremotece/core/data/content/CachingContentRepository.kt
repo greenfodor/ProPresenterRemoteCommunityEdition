@@ -50,9 +50,10 @@ private typealias Read<T> = Result<T, DataError.Network>
  *
  * A playlist that has a collector also keeps its change connection open
  * ([ProPresenterClient.playlistChanges]): each change re-reads the playlist and then calls
- * [onPlaylistChanged]. The connection is reopened, with a re-read, on each [staleSignals] emission
- * and [changesRetryDelay] after it ended while [isStreamConnected]; it is not reopened for a
- * playlist ProPresenter does not know, and it is closed when the last collector leaves.
+ * [onPlaylistChanged]; that read starts after any read already in flight. The connection is
+ * reopened, with a re-read, on each [staleSignals] emission and [changesRetryDelay] after it ended,
+ * once [isStreamConnected]; it is not reopened for a playlist ProPresenter does not know, and it is
+ * closed when the last collector leaves.
  */
 @Suppress("TooManyFunctions", "LongParameterList")
 class CachingContentRepository(
@@ -154,14 +155,14 @@ class CachingContentRepository(
             if (read) scope.launch { entry.read() }
             val failure = runCatching {
                 client.playlistChanges(uuid).collect {
-                    entry.read()
+                    entry.readAgain()
                     onPlaylistChanged()
                 }
             }.exceptionOrNull()
             if (failure is CancellationException) throw failure
             if (failure is PlaylistNotFoundException) return
             delay(changesRetryDelay)
-            if (!isStreamConnected()) return
+            while (!isStreamConnected()) delay(changesRetryDelay)
             read = true
         }
     }
@@ -221,6 +222,12 @@ class CachingContentRepository(
                             result
                         }.also { inFlight = it }
                 }.await()
+
+        /** A read that starts after the one in flight, if any, has finished. */
+        suspend fun readAgain(): Read<T> {
+            mutex.withLock { inFlight }?.join()
+            return read()
+        }
 
         private suspend fun fetchOrFailure(): Read<T> =
             runCatching { fetch() }.getOrElse { error ->
