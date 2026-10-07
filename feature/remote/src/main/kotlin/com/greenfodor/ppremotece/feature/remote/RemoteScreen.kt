@@ -358,8 +358,9 @@ private fun Boxes(state: RemoteState, onAction: (RemoteAction) -> Unit) {
 
 /**
  * The 200 dp column at the end edge of the expanded layout, its background running down behind
- * [bottomInset]: the Next Up card at the top, scrolling in the height left above Next over Prev
- * at the bottom.
+ * [bottomInset]: the Next Up card at the top, shown while there is a next item or the playlist has
+ * ended, scrolling in the height left above Next over Prev at the bottom and back at its top
+ * whenever an item is cued or the cue is dropped.
  */
 @Composable
 private fun SideColumn(display: RemoteDisplay, bottomInset: Dp, onAction: (RemoteAction) -> Unit) {
@@ -372,8 +373,11 @@ private fun SideColumn(display: RemoteDisplay, bottomInset: Dp, onAction: (Remot
             .padding(bottom = bottomInset)
             .padding(SideColumnPadding)
     ) {
-        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            if (display.showsNextUp) NextUpCard(display = display, onAction = onAction)
+        val cardScroll = rememberScrollState()
+        LaunchedEffect(display.cued) { cardScroll.scrollTo(0) }
+        Column(modifier = Modifier.weight(1f).verticalScroll(cardScroll)) {
+            val hasNextUp = display.nextUp != null || display.endOfPlaylist
+            if (display.showsNextUp && hasNextUp) NextUpCard(display = display, onAction = onAction)
         }
         NextButton(display, onAction, Modifier.fillMaxWidth().height(SideStepHeight))
         PreviousButton(display, onAction, Modifier.fillMaxWidth().height(SideStepHeight))
@@ -419,7 +423,7 @@ private fun NextUpCard(display: RemoteDisplay, onAction: (RemoteAction) -> Unit)
                     overflow = TextOverflow.Ellipsis
                 )
                 nextUp.arrangement?.let { ArrangementChip(text = it.label()) }
-                NextItemLabelButton(display, onAction, Modifier.fillMaxWidth())
+                NextItemButton(display, onAction, Modifier.fillMaxWidth(), labelled = true)
             } else if (display.endOfPlaylist) {
                 Text(
                     text = stringResource(R.string.remote_end_of_playlist),
@@ -428,7 +432,7 @@ private fun NextUpCard(display: RemoteDisplay, onAction: (RemoteAction) -> Unit)
                     textAlign = TextAlign.Center
                 )
             }
-            PreviousItemLabelButton(display, onAction, Modifier.fillMaxWidth())
+            PreviousItemButton(display, onAction, Modifier.fillMaxWidth(), labelled = true)
             if (display.cued) BackToLiveButton(onAction, Modifier.fillMaxWidth())
         }
     }

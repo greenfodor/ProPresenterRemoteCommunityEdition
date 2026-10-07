@@ -51,69 +51,75 @@ internal fun PreviousButton(display: RemoteDisplay, onAction: (RemoteAction) -> 
     }
 }
 
-/** The previous-item button, enabled while [display] has an item before the shown one. */
+/**
+ * The previous-item button, enabled while [display] has an item before the shown one: an icon
+ * button, or, when [labelled], an outlined "Previous item" button at least 48 dp high.
+ */
 @Composable
-internal fun PreviousItemButton(display: RemoteDisplay, onAction: (RemoteAction) -> Unit) {
-    IconButton(
-        onClick = { onAction(RemoteAction.OnPreviousItemClick) },
-        enabled = display.previousItem != null
-    ) {
-        Icon(painterResource(DesignR.drawable.ic_skip_previous), stringResource(R.string.remote_previous_item))
-    }
-}
-
-/** The next-item button, enabled while [display] has an item after the shown one. */
-@Composable
-internal fun NextItemButton(display: RemoteDisplay, onAction: (RemoteAction) -> Unit) {
-    IconButton(
-        onClick = { onAction(RemoteAction.OnNextItemClick) },
-        enabled = display.nextItem != null
-    ) {
-        Icon(painterResource(DesignR.drawable.ic_skip_next), stringResource(R.string.remote_next_item))
-    }
-}
-
-/** The labelled previous-item button, the width it is given and 48 dp high, enabled as [PreviousItemButton] is. */
-@Composable
-internal fun PreviousItemLabelButton(
+internal fun PreviousItemButton(
     display: RemoteDisplay,
     onAction: (RemoteAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    labelled: Boolean = false
 ) {
-    OutlinedButton(
-        onClick = { onAction(RemoteAction.OnPreviousItemClick) },
-        enabled = display.previousItem != null,
-        contentPadding = LabelButtonPadding,
-        modifier = modifier.heightIn(min = LabelButtonHeight)
-    ) {
-        Icon(painterResource(DesignR.drawable.ic_skip_previous), contentDescription = null)
-        Text(
-            text = stringResource(R.string.remote_previous_item),
-            maxLines = 1,
-            modifier = Modifier.padding(start = 4.dp)
-        )
+    val onClick = { onAction(RemoteAction.OnPreviousItemClick) }
+    val enabled = display.previousItem != null
+    val label = stringResource(R.string.remote_previous_item)
+    if (labelled) {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            contentPadding = LabelButtonPadding,
+            modifier = modifier.heightIn(min = LabelButtonHeight)
+        ) {
+            Icon(painterResource(DesignR.drawable.ic_skip_previous), contentDescription = null)
+            ButtonLabel(label, Modifier.weight(1f, fill = false).padding(start = 4.dp))
+        }
+    } else {
+        IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
+            Icon(painterResource(DesignR.drawable.ic_skip_previous), label)
+        }
     }
 }
 
-/** The labelled next-item button, the width it is given and 48 dp high, enabled as [NextItemButton] is. */
+/**
+ * The next-item button, enabled while [display] has an item after the shown one: an icon button,
+ * or, when [labelled], an outlined "Next item" button at least 48 dp high.
+ */
 @Composable
-internal fun NextItemLabelButton(
+internal fun NextItemButton(
     display: RemoteDisplay,
     onAction: (RemoteAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    labelled: Boolean = false
 ) {
-    OutlinedButton(
-        onClick = { onAction(RemoteAction.OnNextItemClick) },
-        enabled = display.nextItem != null,
-        contentPadding = LabelButtonPadding,
-        modifier = modifier.heightIn(min = LabelButtonHeight)
-    ) {
-        Text(text = stringResource(R.string.remote_next_item), maxLines = 1, modifier = Modifier.padding(end = 4.dp))
-        Icon(painterResource(DesignR.drawable.ic_skip_next), contentDescription = null)
+    val onClick = { onAction(RemoteAction.OnNextItemClick) }
+    val enabled = display.nextItem != null
+    val label = stringResource(R.string.remote_next_item)
+    if (labelled) {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            contentPadding = LabelButtonPadding,
+            modifier = modifier.heightIn(min = LabelButtonHeight)
+        ) {
+            ButtonLabel(label, Modifier.weight(1f, fill = false).padding(end = 4.dp))
+            Icon(painterResource(DesignR.drawable.ic_skip_next), contentDescription = null)
+        }
+    } else {
+        IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
+            Icon(painterResource(DesignR.drawable.ic_skip_next), label)
+        }
     }
 }
 
-/** The tonal "Back to live" button, the width it is given and 48 dp high, shown while an item is cued. */
+/** A button's [text] on one line, cut short with an ellipsis. */
+@Composable
+private fun ButtonLabel(text: String, modifier: Modifier = Modifier) {
+    Text(text = text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
+}
+
+/** The tonal "Back to live" button, at least 48 dp high, shown while an item is cued. */
 @Composable
 internal fun BackToLiveButton(onAction: (RemoteAction) -> Unit, modifier: Modifier = Modifier) {
     FilledTonalButton(
@@ -121,7 +127,7 @@ internal fun BackToLiveButton(onAction: (RemoteAction) -> Unit, modifier: Modifi
         contentPadding = LabelButtonPadding,
         modifier = modifier.heightIn(min = LabelButtonHeight)
     ) {
-        Text(text = stringResource(R.string.remote_back_to_live), maxLines = 1)
+        ButtonLabel(stringResource(R.string.remote_back_to_live))
     }
 }
 
