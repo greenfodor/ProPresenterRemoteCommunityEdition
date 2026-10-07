@@ -4,12 +4,14 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CopyOnWriteArrayList
 
 class UiMessagesTest {
     private val messages = UiMessages()
@@ -25,13 +27,30 @@ class UiMessagesTest {
     }
 
     @Test
-    fun `messages are delivered in the order they were posted`() = runBlocking<Unit> {
+    fun `of two messages posted with no collector the next collector receives the second only`() = runBlocking<Unit> {
         val first = UiText.DynamicString("first")
         val second = UiText.DynamicString("second")
 
         messages.post(first)
         messages.post(second)
 
-        assertThat(messages.messages.take(2).toList()).containsExactly(first, second)
+        assertThat(messages.messages.first()).isEqualTo(second)
+        assertThat(withTimeoutOrNull(100) { messages.messages.first() }).isNull()
+    }
+
+    @Test
+    fun `a message posted while one collects is delivered`() = runBlocking<Unit> {
+        val first = UiText.DynamicString("first")
+        val second = UiText.DynamicString("second")
+
+        val received = CopyOnWriteArrayList<UiText>()
+        val collector = launch { messages.messages.collect { received += it } }
+        messages.post(first)
+        withTimeout(1_000) { while (received.size < 1) delay(5) }
+        messages.post(second)
+        withTimeout(1_000) { while (received.size < 2) delay(5) }
+        collector.cancel()
+
+        assertThat(received.toList()).containsExactly(first, second)
     }
 }

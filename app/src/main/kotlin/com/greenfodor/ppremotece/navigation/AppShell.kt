@@ -14,6 +14,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
@@ -86,6 +87,7 @@ import com.greenfodor.ppremotece.feature.settings.SettingsRoot
 import com.greenfodor.ppremotece.feature.settings.SettingsRoute
 import com.greenfodor.ppremotece.feature.timers.TimersRoot
 import com.greenfodor.ppremotece.feature.timers.TimersRoute
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -142,7 +144,8 @@ private const val RAIL_PADDING_DP = 12
 /**
  * The connected app: its destinations in a bottom bar below 600 dp and a rail from 600 dp, over one
  * [NavDisplay] of the tabs' [TabStacks]. Destinations that do not fit ([navigationSlots]) are listed
- * under More, whose rows select their own tabs. The rail ends with the Clear button in a pinned
+ * under More, whose rows select their own tabs; while nothing is listed there, Presentation is shown
+ * in place of a selected More list ([TabStacks.fitting]) and the selection is kept. The rail ends with the Clear button in a pinned
  * 64 dp footer and no screen shows the Clear FAB; with the bar, each screen shows the Clear FAB.
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -175,16 +178,17 @@ fun AppShell(
     val clearShown = layout == NavigationLayout.RAIL || tab in ClearFabTabs
     LaunchedEffect(clearShown) { if (!clearShown) clearOpen = false }
     val fab = remember(layout, clearOpen) { clearFab(layout, clearOpen) { clearOpen = it } }
-    val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(directive = directive)
+    val listDetailStrategy = rememberListDetailSceneStrategy<NavKey>(
+        backNavigationBehavior = BackNavigationBehavior.PopLatest,
+        directive = directive
+    )
     val currentListMode by rememberUpdatedState(listMode)
     val currentWidthClass by rememberUpdatedState(widthClass)
     val currentCompactHeight by rememberUpdatedState(
         !windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)
     )
-    val currentClosesPane by rememberUpdatedState(paneCount(windowSizeClass.minWidthDp) == 2)
+    val currentTwoPanes by rememberUpdatedState(paneCount(windowSizeClass.minWidthDp) == 2)
     val currentFab by rememberUpdatedState(fab)
-    val onSelect = { selected: ShellTab -> update(stacks().select(selected)) }
-    val onOpenFromMore = { route: NavKey -> onSelect(ShellDestination.entries.first { it.route == route }.item.tab) }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val availableDp = navigationSpace(layout, maxWidth, maxHeight, WindowInsets.safeDrawing.asPaddingValues())
@@ -194,22 +198,24 @@ fun AppShell(
         val currentMoreEntries by rememberUpdatedState(
             slots.more.map { MoreEntry(it.item.icon, it.item.label, it.route) }
         )
-        LaunchedEffect(inMore.isEmpty()) {
-            if (inMore.isEmpty()) stacks().withoutMore().takeIf { it != stacks() }?.let(update)
-        }
         val currentInMore by rememberUpdatedState(inMore)
-        val onBack = { update(stacks().back(currentInMore)) }
+        val shown = { stacks().fitting(currentInMore) }
+        val onSelect = { selected: ShellTab -> update(shown().select(selected)) }
+        val onOpenFromMore = { route: NavKey ->
+            onSelect(ShellDestination.entries.first { it.route == route }.item.tab)
+        }
+        val onBack = { update(shown().back(currentInMore, twoPanes = currentTwoPanes)) }
         ShellFrame(
             layout = layout,
             items = items,
-            current = stacks().highlighted(inMore),
+            current = shown().highlighted(inMore),
             onSelect = onSelect,
             snackbars = shellSnackbars,
             clearOpen = clearOpen,
             onClearOpenChange = { clearOpen = it }
         ) { padding ->
             NavDisplay(
-                backStack = stacks().displayed,
+                backStack = shown().displayed,
                 modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
                 onBack = onBack,
                 entryDecorators = rememberShellEntryDecorators(),
@@ -217,12 +223,15 @@ fun AppShell(
                 entryProvider = entryProvider {
                     presentationEntries(
                         values = { PresentationValues(currentListMode, shellStacks.detail, currentFab) },
-                        detailValues = { DetailValues(currentWidthClass, currentCompactHeight, currentClosesPane) },
+                        detailValues = { DetailValues(currentWidthClass, currentCompactHeight, currentTwoPanes) },
                         reconnecting = reconnecting,
                         onModeChange = { listMode = it },
-                        onOpenPlaylist = { uuid -> update(stacks().openPlaylist(PlaylistRoute(uuid))) },
-                        onOpenDetail = { key -> update(stacks().openDetail(key)) },
-                        onBack = onBack
+                        onOpenPlaylist = { uuid ->
+                            update(shown().openPlaylist(PlaylistRoute(uuid), twoPanes = currentTwoPanes))
+                        },
+                        onOpenDetail = { key -> update(shown().openDetail(key)) },
+                        onBack = onBack,
+                        onCloseDetail = { update(shown().closeDetail()) }
                     )
                     tabEntries(
                         widthClass = { currentWidthClass },
@@ -265,13 +274,15 @@ private fun navigationSpace(layout: NavigationLayout, maxWidth: Dp, maxHeight: D
 private fun rememberShellEntryDecorators(): List<NavEntryDecorator<NavKey>> =
     listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator())
 
-/** Shows each of the app's failure [messages] in [snackbars]. */
+/** Shows each of the app's failure [messages] in [snackbars], in place of the one it was showing. */
 @Composable
 private fun ShellMessages(messages: UiMessages, snackbars: SnackbarHostState) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val showing = remember { mutableStateOf<Job?>(null) }
     ObserveAsEvents(messages.messages) { message ->
-        scope.launch { snackbars.showSnackbar(message.asString(context)) }
+        showing.value?.cancel()
+        showing.value = scope.launch { snackbars.showSnackbar(message.asString(context)) }
     }
 }
 
@@ -317,7 +328,8 @@ private class DetailValues(
 /**
  * The playlist tree or library list, the playlist screen opened from the tree, and the slide grid
  * or item screen opened from them. [values], [detailValues] and [reconnecting] are read while an
- * entry composes.
+ * entry composes. The playlist screen's back arrow is [onBack]; a detail's own back or close
+ * button is [onCloseDetail].
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Suppress("LongParameterList")
@@ -328,7 +340,8 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
     onModeChange: (ListMode) -> Unit,
     onOpenPlaylist: (String) -> Unit,
     onOpenDetail: (NavKey) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onCloseDetail: () -> Unit
 ) {
     entry<PlaylistsRoute>(
         metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = { SelectItemPlaceholder(values().listMode) }) +
@@ -365,7 +378,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
         PlaylistItemRoot(
             key = PlaylistItemKey(route.playlistUuid, route.itemIndex),
             reconnecting = reconnecting(),
-            onBack = onBack,
+            onBack = onCloseDetail,
             closesPane = detailValues().closesPane,
             floatingActionButton = values().fab ?: {}
         )
@@ -377,7 +390,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
             widthClass = detail.widthClass,
             headerScrollsWithGrid = detail.compactHeight,
             reconnecting = reconnecting(),
-            onBack = onBack,
+            onBack = onCloseDetail,
             closesPane = detail.closesPane,
             floatingActionButton = values().fab ?: {}
         )

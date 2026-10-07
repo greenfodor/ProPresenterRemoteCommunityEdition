@@ -4,11 +4,18 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import kotlinx.coroutines.flow.Flow
 
-/** The app's settings: keep-awake ([KeepAwake.Default] by default) and auto-connect (on by default); a failed write is reported. */
+/**
+ * The app's settings: keep-awake ([KeepAwake.Default] by default), the orientation
+ * ([AppOrientation.Default] by default) and auto-connect (on by default); a failed write is reported.
+ */
 interface AppPreferences {
     fun keepAwake(): Flow<KeepAwake>
 
     suspend fun setKeepAwake(mode: KeepAwake): EmptyResult<DataError.Local>
+
+    fun orientation(): Flow<AppOrientation>
+
+    suspend fun setOrientation(orientation: AppOrientation): EmptyResult<DataError.Local>
 
     fun autoConnect(): Flow<Boolean>
 

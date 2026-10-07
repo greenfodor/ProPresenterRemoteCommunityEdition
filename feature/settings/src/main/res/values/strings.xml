@@ -6,6 +6,11 @@
     <string name="settings_keep_awake_off">Never</string>
     <string name="settings_keep_awake_remote_only">On the Remote tab</string>
     <string name="settings_keep_awake_always">Always</string>
+    <string name="settings_orientation">Orientation</string>
+    <string name="settings_orientation_system">Follow system</string>
+    <string name="settings_orientation_portrait">Portrait</string>
+    <string name="settings_orientation_landscape">Landscape</string>
+    <string name="settings_orientation_help">Tablets may ignore this: Android decides the orientation on large screens.</string>
     <string name="settings_connection">Connection</string>
     <string name="settings_auto_connect">Auto-connect</string>
     <string name="settings_auto_connect_description">Connect to the saved host when the app starts</string>

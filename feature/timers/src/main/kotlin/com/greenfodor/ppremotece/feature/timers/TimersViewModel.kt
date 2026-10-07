@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.feature.timers
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
 import com.greenfodor.ppremotece.core.domain.live.ProPresenterClient
@@ -14,14 +15,13 @@ import com.greenfodor.ppremotece.core.domain.result.onSuccess
 import com.greenfodor.ppremotece.core.domain.timers.LiveTimer
 import com.greenfodor.ppremotece.core.domain.timers.TimersRepository
 import com.greenfodor.ppremotece.core.domain.timers.timerCard
-import kotlinx.coroutines.channels.Channel
+import com.greenfodor.ppremotece.core.domain.trigger.InFlightTriggers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -34,17 +34,15 @@ private const val READING_WAIT_MILLIS = 2_000L
  * dimmed while the live stream reconnects. Start/Stop and Reset send
  * the timer operation once per tap; taps on a timer are ignored while its request is in flight
  * and, after a successful Start or Stop, until the timer's next reading or [READING_WAIT_MILLIS].
- * A failure shows "Couldn't {start|stop|reset} {timer}".
+ * A failure posts "Couldn't {start|stop|reset} {timer}".
  */
 class TimersViewModel(
     private val timersRepository: TimersRepository,
     liveStateRepository: LiveStateRepository,
-    private val client: ProPresenterClient
+    private val client: ProPresenterClient,
+    private val messages: UiMessages
 ) : ViewModel() {
-    private val inFlight = mutableSetOf<String>()
-
-    private val _events = Channel<TimersEvent>()
-    val events = _events.receiveAsFlow()
+    private val triggers = InFlightTriggers()
 
     val state: StateFlow<TimersState> =
         combine(
@@ -68,18 +66,16 @@ class TimersViewModel(
 
     private fun operate(uuid: String, operationOf: (LiveTimer) -> TimerOperation) {
         val timer = timersRepository.timers.value.orEmpty().firstOrNull { it.timer.uuid == uuid } ?: return
-        if (!inFlight.add(uuid)) return
-        val operation = operationOf(timer)
         viewModelScope.launch {
-            val result = try {
-                client.timerOperation(uuid, operation).onSuccess {
-                    if (operation != TimerOperation.RESET) awaitNextReading(timer)
-                }
-            } finally {
-                inFlight.remove(uuid)
-            }
-            result.onFailure {
-                _events.send(TimersEvent.ShowError(UiText.StringResource(errorOf(operation), listOf(timer.timer.name))))
+            triggers.run(uuid) {
+                val operation = operationOf(timer)
+                client
+                    .timerOperation(uuid, operation)
+                    .onSuccess {
+                        if (operation != TimerOperation.RESET) awaitNextReading(timer)
+                    }.onFailure {
+                        messages.post(UiText.StringResource(errorOf(operation), listOf(timer.timer.name)))
+                    }
             }
         }
     }

@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 private const val STOP_TIMEOUT_MILLIS = 5_000L
 
 /**
- * Settings: writes the keep-awake mode and the auto-connect switch to [AppPreferences] (a failed
+ * Settings: writes the keep-awake mode, the orientation and the auto-connect switch to [AppPreferences] (a failed
  * write shows a message), shows the connected host, and disconnects after the Disconnect dialog is
  * confirmed.
  */
@@ -36,12 +36,14 @@ class SettingsViewModel(
     val state: StateFlow<SettingsState> =
         combine(
             appPreferences.keepAwake(),
+            appPreferences.orientation(),
             appPreferences.autoConnect(),
             connectionRepository.connectedHost,
             confirmingDisconnect
-        ) { keepAwake, autoConnect, connected, confirming ->
+        ) { keepAwake, orientation, autoConnect, connected, confirming ->
             SettingsState(
                 keepAwake = keepAwake,
+                orientation = orientation,
                 autoConnect = autoConnect,
                 hostName = connected?.host?.name.orEmpty(),
                 hostAddress = connected?.host?.let { "${it.address}:${it.port}" }.orEmpty(),
@@ -53,6 +55,7 @@ class SettingsViewModel(
     fun onAction(action: SettingsAction) {
         when (action) {
             is SettingsAction.OnKeepAwakeChange -> save { appPreferences.setKeepAwake(action.mode) }
+            is SettingsAction.OnOrientationChange -> save { appPreferences.setOrientation(action.orientation) }
             is SettingsAction.OnAutoConnectChange -> save { appPreferences.setAutoConnect(action.enabled) }
             SettingsAction.OnDisconnectClick -> confirmingDisconnect.value = true
             SettingsAction.OnDisconnectDismiss -> confirmingDisconnect.value = false

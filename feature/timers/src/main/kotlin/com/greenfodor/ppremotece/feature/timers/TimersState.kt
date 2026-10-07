@@ -1,6 +1,5 @@
 package com.greenfodor.ppremotece.feature.timers
 
-import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
 import com.greenfodor.ppremotece.core.domain.timers.TimerCard
 
@@ -24,10 +23,4 @@ sealed interface TimersAction {
     data class OnResetClick(
         val uuid: String
     ) : TimersAction
-}
-
-sealed interface TimersEvent {
-    data class ShowError(
-        val message: UiText
-    ) : TimersEvent
 }

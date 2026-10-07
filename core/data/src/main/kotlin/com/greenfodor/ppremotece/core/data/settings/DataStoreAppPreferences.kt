@@ -14,6 +14,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
+import com.greenfodor.ppremotece.core.domain.settings.AppOrientation
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 import kotlinx.coroutines.delay
@@ -31,8 +32,8 @@ internal val Context.appSettingsDataStore by preferencesDataStore(
 )
 
 /**
- * [AppPreferences] in [dataStore] under `keep_awake` and `auto_connect`; [KeepAwake.Default]
- * and auto-connect on when unset.
+ * [AppPreferences] in [dataStore] under `keep_awake`, `orientation` and `auto_connect`;
+ * [KeepAwake.Default], [AppOrientation.Default] and auto-connect on when unset.
  * A corrupt file is replaced with an empty one. A read error gives the defaults, then, unless the
  * file is corrupt, the values are read again after [READ_RETRY_DELAY_MS]; a write error leaves the
  * saved value unchanged and is returned.
@@ -49,6 +50,14 @@ class DataStoreAppPreferences(
         it[KEEP_AWAKE] =
             mode.name
     }
+
+    override fun orientation(): Flow<AppOrientation> =
+        read { preferences ->
+            AppOrientation.entries.firstOrNull { it.name == preferences[ORIENTATION] } ?: AppOrientation.Default
+        }
+
+    override suspend fun setOrientation(orientation: AppOrientation): EmptyResult<DataError.Local> =
+        write { it[ORIENTATION] = orientation.name }
 
     override fun autoConnect(): Flow<Boolean> = read { it[AUTO_CONNECT] ?: true }
 
@@ -76,6 +85,7 @@ class DataStoreAppPreferences(
     private companion object {
         const val READ_RETRY_DELAY_MS = 1_000L
         val KEEP_AWAKE = stringPreferencesKey("keep_awake")
+        val ORIENTATION = stringPreferencesKey("orientation")
         val AUTO_CONNECT = booleanPreferencesKey("auto_connect")
     }
 }

@@ -113,6 +113,10 @@ fun SettingsScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
             KeepAwakeSection(mode = state.keepAwake, onModeChange = { onAction(SettingsAction.OnKeepAwakeChange(it)) })
+            OrientationSection(
+                orientation = state.orientation,
+                onOrientationChange = { onAction(SettingsAction.OnOrientationChange(it)) }
+            )
             ConnectionSection(
                 state = state,
                 onAutoConnectChange = { onAction(SettingsAction.OnAutoConnectChange(it)) },

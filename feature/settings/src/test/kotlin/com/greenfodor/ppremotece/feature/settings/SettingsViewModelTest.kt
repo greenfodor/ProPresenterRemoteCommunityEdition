@@ -13,6 +13,7 @@ import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
+import com.greenfodor.ppremotece.core.domain.settings.AppOrientation
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +61,32 @@ class SettingsViewModelTest {
             assertThat(state.hostAddress).isEqualTo("192.0.2.14:60113")
             assertThat(state.hostDescription).isEqualTo("ProPresenter 21.4.2")
         }
+    }
+
+    @Test
+    fun `an orientation choice is saved and shown`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().orientation).isEqualTo(AppOrientation.SYSTEM)
+            viewModel.onAction(SettingsAction.OnOrientationChange(AppOrientation.LANDSCAPE))
+
+            assertThat(preferences.orientation.value).isEqualTo(AppOrientation.LANDSCAPE)
+            assertThat(expectMostRecentItem().orientation).isEqualTo(AppOrientation.LANDSCAPE)
+        }
+    }
+
+    @Test
+    fun `an orientation that can't be saved shows the setting message`() = runTest(dispatcher) {
+        preferences.failWrites = true
+        val viewModel = viewModel()
+
+        viewModel.events.test {
+            viewModel.onAction(SettingsAction.OnOrientationChange(AppOrientation.PORTRAIT))
+
+            assertThat(awaitItem().messageId()).isEqualTo(DesignR.string.setting_not_saved)
+        }
+        assertThat(preferences.orientation.value).isEqualTo(AppOrientation.SYSTEM)
     }
 
     @Test
@@ -153,6 +180,16 @@ class SettingsViewModelTest {
         override suspend fun setKeepAwake(mode: KeepAwake): EmptyResult<DataError.Local> {
             if (failWrites) return Result.Failure(DataError.Local.WRITE_FAILED)
             keepAwake.value = mode
+            return Result.Success(Unit)
+        }
+
+        val orientation = MutableStateFlow(AppOrientation.SYSTEM)
+
+        override fun orientation(): Flow<AppOrientation> = orientation
+
+        override suspend fun setOrientation(orientation: AppOrientation): EmptyResult<DataError.Local> {
+            if (failWrites) return Result.Failure(DataError.Local.WRITE_FAILED)
+            this.orientation.value = orientation
             return Result.Success(Unit)
         }
 

@@ -14,6 +14,8 @@ import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
  * [highlighted] and back from its root shows the More list. Back pops the selected stack and, from
  * the root of More or of a tab not under More, returns to Presentation. The Presentation stack is
  * the tree, then the open playlist screen, then the open detail, each optional above the tree.
+ * While two panes show, the playlist screen and the detail sit side by side: back takes the list
+ * pane from the playlist to the tree and keeps the open detail, and opening a playlist keeps it too.
  */
 data class TabStacks(
     val stacks: Map<ShellTab, List<NavKey>>,
@@ -34,10 +36,16 @@ data class TabStacks(
     fun select(tab: ShellTab): TabStacks =
         if (tab != current) copy(current = tab) else withStack(tab, stack(tab).take(1))
 
-    /** Back while [inMore] are listed under More. */
-    fun back(inMore: Set<ShellTab>): TabStacks {
+    /**
+     * Back while [inMore] are listed under More. With [twoPanes], back on a Presentation stack
+     * holding a playlist screen under a detail removes the playlist screen and keeps the detail.
+     */
+    fun back(inMore: Set<ShellTab>, twoPanes: Boolean = false): TabStacks {
         val stack = stack(current)
+        val detail = detailOf(stack)
         return when {
+            twoPanes && current == ShellTab.PRESENTATION && detail != null && stack.size > 2 ->
+                withStack(current, stack.take(1) + detail)
             stack.size > 1 -> withStack(current, stack.dropLast(1))
             current == ShellTab.PRESENTATION -> this
             current in inMore -> copy(current = ShellTab.MORE)
@@ -48,13 +56,23 @@ data class TabStacks(
     /** Presentation in place of a selected More list once nothing is listed under More; every stack is kept. */
     fun withoutMore(): TabStacks = if (current == ShellTab.MORE) copy(current = ShellTab.PRESENTATION) else this
 
+    /** What is shown while [inMore] are listed under More: [withoutMore] when nothing is, else this. */
+    fun fitting(inMore: Set<ShellTab>): TabStacks = if (inMore.isEmpty()) withoutMore() else this
+
     /** The detail open on the Presentation stack ([detailOf]). */
     val detail: NavKey?
         get() = detailOf(stack(ShellTab.PRESENTATION))
 
-    /** Shows the playlist screen [key] on the Presentation root, closing any open detail. */
-    fun openPlaylist(key: NavKey): TabStacks =
-        withStack(ShellTab.PRESENTATION, stack(ShellTab.PRESENTATION).take(1) + key)
+    /** Shows the playlist screen [key] on the Presentation root, closing any open detail unless [twoPanes]. */
+    fun openPlaylist(key: NavKey, twoPanes: Boolean = false): TabStacks =
+        withStack(
+            ShellTab.PRESENTATION,
+            stack(ShellTab.PRESENTATION).take(1) + key + listOfNotNull(detail.takeIf { twoPanes })
+        )
+
+    /** Closes the open detail, keeping the tree and any open playlist screen. */
+    fun closeDetail(): TabStacks =
+        withStack(ShellTab.PRESENTATION, stack(ShellTab.PRESENTATION).filterNot { it.isDetail() })
 
     /** Shows the detail [key] on the Presentation root or the open playlist screen, in place of any open detail. */
     fun openDetail(key: NavKey): TabStacks =
