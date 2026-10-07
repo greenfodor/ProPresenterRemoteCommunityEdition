@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
@@ -20,7 +21,10 @@ import org.koin.android.ext.android.inject
 
 private val NAVIGATION_BAR_SCRIM = Color.argb(0x80, 0x17, 0x17, 0x17)
 
-/** The app's one activity; it is oriented as the saved [AppOrientation] says. */
+/**
+ * The app's one activity; it is oriented as the saved [AppOrientation] says, and the build's
+ * overlay is drawn over its content.
+ */
 class MainActivity : ComponentActivity() {
     private val appPreferences: AppPreferences by inject()
 
@@ -35,8 +39,11 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             PPRemoteTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    PPRemoteNavDisplay()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        PPRemoteNavDisplay()
+                    }
+                    BuildOverlay()
                 }
             }
         }
