@@ -76,6 +76,22 @@ class AudioPlaylistsRepeatTest {
     }
 
     @Test
+    fun `the same tree on a stream opened again after its collectors left is counted once`() = runBlocking<Unit> {
+        fake.enqueueStream(fake.frames(listOf(TREE_FRAME)))
+        fake.enqueueStream(fake.frames(listOf(TREE_FRAME)))
+        val first = launch { repository.liveState.collect {} }
+        awaitTree(TREE)
+        first.cancel()
+        first.join()
+        assertThat(repository.audioPlaylistsRepeats.value).isEqualTo(0)
+
+        val second = launch { repository.liveState.collect {} }
+
+        assertThat(withTimeout(5.seconds) { repository.audioPlaylistsRepeats.first { it > 0 } }).isEqualTo(1)
+        second.cancel()
+    }
+
+    @Test
     fun `the same tree twice without a reconnect is not counted`() = runBlocking<Unit> {
         fake.enqueueStream(fake.frames(listOf(TREE_FRAME), listOf(TREE_FRAME), listOf(OTHER_TREE_FRAME)))
         val collector = launch { repository.liveState.collect {} }

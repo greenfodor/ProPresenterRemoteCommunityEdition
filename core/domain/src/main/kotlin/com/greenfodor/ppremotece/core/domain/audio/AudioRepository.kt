@@ -9,8 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * The connected host's audio bin from the status stream: [audioPlaylists], its tree of folders and
  * playlists, is [Loadable.NotLoaded] until the first frame and while disconnected;
- * [audioPlaylistsRepeats] counts the `audio/playlists` frames that were the first after the stream
- * returned from reconnecting and carried the tree already held; [activeAudio] is the audio playlist track that
+ * [audioPlaylistsRepeats] counts the `audio/playlists` frames that were the first of a stream
+ * opened again, after reconnecting or after its collectors left, and carried the tree already
+ * held; [activeAudio] is the audio playlist track that
  * plays, null without one; [audioTransport] is what the audio layer has loaded,
  * not loaded until its first frame and unavailable when ProPresenter rejected its subscription, and
  * [audioPosition] how far into it the audio is, in seconds, null until known; the position is

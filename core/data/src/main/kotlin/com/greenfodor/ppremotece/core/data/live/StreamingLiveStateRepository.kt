@@ -79,7 +79,8 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * [currentLook], and `prop_collections` frames [propCollections], and `transport/presentation/current`
  * and `transport/audio/current` frames [presentationTransport] and [audioTransport], and
  * `audio/playlists`, `audio/playlist/active` and `transport/audio/time` frames [audioPlaylists]
- * (and [audioPlaylistsRepeats] when the first such frame after a reconnect repeats the tree held),
+ * (and [audioPlaylistsRepeats] when the first such frame of a stream opened again repeats the tree
+ * held),
  * [activeAudio] and [audioPosition], the position starting again as unknown whenever the audio
  * transport changes what it has loaded; the lists are
  * [Loadable.NotLoaded] until their first frame and keep their content across reconnects. An error
@@ -164,7 +165,7 @@ class StreamingLiveStateRepository(
             while (true) {
                 val parser = StatusFrameParser()
                 var slideReadNeeded = true
-                var audioTreeAwaited = state.connection == ConnectionStatus.RECONNECTING
+                var audioTreeAwaited = audioPlaylistList.value is Loadable.Loaded
                 val failure = runCatching {
                     streamChunks().collect { chunk ->
                         attempt = 0

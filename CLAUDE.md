@@ -83,8 +83,8 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   macro trigger `GET /v1/macro/{uuid}/trigger`, the look trigger `GET /v1/look/{uuid}/trigger`, the prop
   trigger and clear `GET /v1/prop/{uuid}/trigger` and `GET /v1/prop/{uuid}/clear`, and the prop thumbnail
   `GET /v1/prop/{uuid}/thumbnail?quality=200|400|600` (kept in memory only), and the audio calls
-  `GET /v1/audio/playlist/{uuid}` (a playlist's tracks, read when the playlist is chosen, when the audio
-  tree changes and once when the same tree arrives after the status stream reconnected; only ever with a
+  `GET /v1/audio/playlist/{uuid}` (a playlist's tracks, read when the playlist is chosen, on Retry, when the
+  audio tree changes and once when the same tree arrives on a status stream opened again; only ever with a
   playlist's uuid, never a folder's, which returns 404), the track trigger by the track's own uuid
   `GET /v1/audio/playlist/{playlist uuid}/{track uuid}/trigger` (never by index),
   `GET /v1/audio/playlist/active/next/trigger`, `GET /v1/audio/playlist/active/previous/trigger`,

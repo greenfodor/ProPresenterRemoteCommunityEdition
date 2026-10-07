@@ -63,6 +63,7 @@ private val PausedRingWidth = 2.dp
 private val BottomClearance = 88.dp
 private val PickerMaxWidth = 220.dp
 private val PickerIndent = 16.dp
+private val PickerRowPadding = 12.dp
 private val ListPadding = 8.dp
 private val NoteSize = 40.dp
 
@@ -170,7 +171,11 @@ private fun PlaylistPicker(state: AudioState, initiallyOpen: Boolean, onAction: 
                                 Icon(painterResource(DesignR.drawable.ic_check), contentDescription = null)
                             }
                         },
-                        modifier = Modifier.padding(start = PickerIndent * row.depth)
+                        contentPadding = PaddingValues(
+                            start = PickerRowPadding + PickerIndent * row.depth,
+                            end = PickerRowPadding
+                        ),
+                        modifier = Modifier.semantics { selected = row.uuid == state.selectedUuid }
                     )
                 }
             }
@@ -190,7 +195,7 @@ private fun PickerHeading(row: AudioPickerRowUi.Heading) {
         modifier = Modifier
             .semantics { heading() }
             .padding(start = PickerIndent * row.depth)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = PickerRowPadding, vertical = 8.dp)
     )
 }
 

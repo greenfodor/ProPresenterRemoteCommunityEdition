@@ -20,6 +20,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -28,10 +29,16 @@ import kotlin.time.Duration.Companion.seconds
 /** When the playlist's change connection is reopened after it ended, in virtual time. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaylistChangesBackoffTest {
-    private val unused = KtorProPresenterClient(HttpClientFactory.create(), "http://localhost:1/")
+    private val http = HttpClientFactory.create()
+    private val unused = KtorProPresenterClient(http, "http://localhost:1/")
     private val openedAt = mutableListOf<Long>()
     private var connections: List<suspend (emit: suspend () -> Unit) -> Unit> = emptyList()
     private var streamConnected = true
+
+    @AfterEach
+    fun tearDown() {
+        http.close()
+    }
 
     private fun TestScope.repository(): CachingContentRepository {
         val client = object : ProPresenterClient by unused {
