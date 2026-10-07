@@ -40,8 +40,8 @@ data class CueUi(
     val text: String,
     val label: String,
     val enabled: Boolean,
-    val thumbnail: ThumbnailRequest? = null,
-    val startsGroup: Boolean = true
+    val startsGroup: Boolean,
+    val thumbnail: ThumbnailRequest? = null
 )
 
 sealed interface SlideGridAction {

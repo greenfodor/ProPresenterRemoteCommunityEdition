@@ -131,7 +131,7 @@ private fun liveDisplay(
     withCues(item, presentations) { presentation, cueList ->
         val source = CueSource.PlaylistItem(item.key)
         val marked = markedCue(inputs.live, inputs.lastLive, source, presentation.uuid, cueList.cues)
-        if (marked == null || cueList.cues.none { it.index == marked.index }) {
+        if (marked == null) {
             textDisplay(inputs.live.slideText)
         } else {
             val cueIndex = marked.index
@@ -175,9 +175,7 @@ internal fun presentationDisplay(
     val presentation = presentations[base.presentationUuid]
     val cueList = presentation?.let(::currentCueList)
     val source = CueSource.Presentation(base.presentationUuid)
-    val marked = cueList
-        ?.let { markedCue(inputs.live, inputs.lastLive, source, base.presentationUuid, it.cues) }
-        ?.takeIf { cue -> cueList.cues.any { it.index == cue.index } }
+    val marked = cueList?.let { markedCue(inputs.live, inputs.lastLive, source, base.presentationUuid, it.cues) }
     return if (presentation != null && cueList != null && marked != null) {
         matchDisplay(presentation, cueList, marked)
     } else {

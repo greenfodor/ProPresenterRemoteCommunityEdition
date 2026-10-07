@@ -42,8 +42,8 @@ internal fun gridState(
                 text = cue.slideText,
                 label = cue.slideLabel,
                 enabled = cue.enabled,
-                thumbnail = thumbnails?.request(source, presentation.uuid, cue, ThumbnailQuality.Grid),
-                startsGroup = cue.startsGroup
+                startsGroup = cue.startsGroup,
+                thumbnail = thumbnails?.request(source, presentation.uuid, cue, ThumbnailQuality.Grid)
             )
         },
         aspect = slideAspect(presentation),
@@ -75,7 +75,7 @@ internal fun SlideGridState.withLive(
     val banner = slide?.let { arrangementBanner(source, cueList, live, presentation, liveCues) }
     return copy(
         marked = marked,
-        steps = cueSteps(marked, source, cueList.cues),
+        steps = cueSteps(marked, source, cueList.cues, cueList.countMismatch),
         banner = banner,
         resync = banner
             ?.takeUnless { liveItemLoading }

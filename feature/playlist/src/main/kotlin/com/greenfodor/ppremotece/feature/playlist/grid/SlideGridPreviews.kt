@@ -28,7 +28,7 @@ private fun GridPreview(cleared: Boolean, steps: CueSteps) {
                     title = "Song C",
                     label = ArrangementLabel.Named("A"),
                     cues = listOf(
-                        CueUi(0, "Verse 1", null, "Verse 1 · 1", label = "", enabled = true, thumbnail = thumbnail(0)),
+                        CueUi(0, "Verse 1", null, "Verse 1 · 1", "", enabled = true, startsGroup = true, thumbnail(0)),
                         CueUi(
                             1,
                             "Verse 1",
@@ -36,11 +36,19 @@ private fun GridPreview(cleared: Boolean, steps: CueSteps) {
                             "Verse 1 · 2",
                             "",
                             enabled = false,
-                            thumbnail(1),
-                            startsGroup = false
+                            startsGroup = false,
+                            thumbnail(1)
                         ),
-                        CueUi(2, "Verse 1", null, "Verse 1 · 3", "", enabled = true, thumbnail(2), startsGroup = false),
-                        CueUi(3, "Chorus", chorus, "Chorus · 1", label = "Label 01", enabled = true),
+                        CueUi(2, "Verse 1", null, "Verse 1 · 3", "", enabled = true, startsGroup = false, thumbnail(2)),
+                        CueUi(
+                            3,
+                            "Chorus",
+                            chorus,
+                            "Chorus · 1",
+                            label = "Label 01",
+                            enabled = true,
+                            startsGroup = true
+                        ),
                         CueUi(4, "Chorus", chorus, "", label = "", enabled = true, startsGroup = false)
                     ),
                     aspect = 1920f / 858f,

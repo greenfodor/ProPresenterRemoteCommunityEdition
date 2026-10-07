@@ -66,33 +66,56 @@ class CueMarksTest {
     }
 
     @Test
+    fun `before the first report of a connection the remembered cue keeps its live mark`() {
+        val marked = markedCue(LiveState.Initial, remembered(source, 5), source, "p-1", cues)
+
+        assertThat(marked).isEqualTo(MarkedCue(index = 5, cleared = false, next = 7))
+    }
+
+    @Test
+    fun `a remembered cue that is not in the cue list marks nothing`() {
+        assertThat(markedCue(cleared, remembered(source, 8), source, "p-1", cues)).isNull()
+    }
+
+    @Test
+    fun `a cleared cue of a list with a count mismatch steps with trigger next and previous`() {
+        val steps = cueSteps(MarkedCue(index = 2, cleared = true, next = 3), source, cues, countMismatch = true)
+
+        assertThat(steps).isEqualTo(CueSteps(next = CueStep.Relative, previous = CueStep.Relative))
+    }
+
+    @Test
     fun `a live cue steps with trigger next and previous`() {
-        val steps = cueSteps(MarkedCue(index = 3, cleared = false, next = 4), source, cues)
+        val steps = cueSteps(MarkedCue(index = 3, cleared = false, next = 4), source, cues, countMismatch = false)
 
         assertThat(steps).isEqualTo(CueSteps(next = CueStep.Relative, previous = CueStep.Relative))
     }
 
     @Test
     fun `a cleared cue steps to the enabled cues around it`() {
-        assertThat(cueSteps(MarkedCue(index = 2, cleared = true, next = 3), source, cues))
+        assertThat(cueSteps(MarkedCue(index = 2, cleared = true, next = 3), source, cues, countMismatch = false))
             .isEqualTo(CueSteps(next = CueStep.Explicit(3), previous = CueStep.Explicit(0)))
-        assertThat(cueSteps(MarkedCue(index = 5, cleared = true, next = 7), source, cues))
+        assertThat(cueSteps(MarkedCue(index = 5, cleared = true, next = 7), source, cues, countMismatch = false))
             .isEqualTo(CueSteps(next = CueStep.Explicit(7), previous = CueStep.Explicit(4)))
     }
 
     @Test
     fun `a cleared first or last cue has no step past the end`() {
-        assertThat(cueSteps(MarkedCue(index = 0, cleared = true, next = 2), source, cues).previous)
+        assertThat(
+            cueSteps(MarkedCue(index = 0, cleared = true, next = 2), source, cues, countMismatch = false).previous
+        )
             .isEqualTo(CueStep.Disabled)
-        assertThat(cueSteps(MarkedCue(index = 7, cleared = true, next = null), source, cues).next)
+        assertThat(
+            cueSteps(MarkedCue(index = 7, cleared = true, next = null), source, cues, countMismatch = false).next
+        )
             .isEqualTo(CueStep.Disabled)
     }
 
     @Test
     fun `with nothing marked a playlist item steps with trigger next and previous and a presentation not at all`() {
-        assertThat(cueSteps(marked = null, source, cues))
+        assertThat(cueSteps(marked = null, source, cues, countMismatch = false))
             .isEqualTo(CueSteps(next = CueStep.Relative, previous = CueStep.Relative))
-        assertThat(cueSteps(marked = null, library, cues))
+        assertThat(cueSteps(marked = null, library, cues, countMismatch = false))
             .isEqualTo(CueSteps(next = CueStep.Disabled, previous = CueStep.Disabled))
     }
 

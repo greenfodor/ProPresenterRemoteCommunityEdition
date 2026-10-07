@@ -101,7 +101,7 @@ class SlideGridViewModel(
         ) : Content
     }
 
-    private val idleSteps = cueSteps(marked = null, source, cues = emptyList())
+    private val idleSteps = cueSteps(marked = null, source, cues = emptyList(), countMismatch = false)
     private val retries = MutableStateFlow(0)
     private val thumbnailGeneration = MutableStateFlow(0)
     private val widthClass = MutableStateFlow<WidthClass?>(null)
