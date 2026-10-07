@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-07
+
 ### Added
 - The root screen of every tab shows its destination's icon before the title.
 - Audio: playlist folders in the playlist picker, as headings with their playlists indented beneath
@@ -67,4 +69,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A navigation bar or rail that fits the destinations to the screen, with a More list.
 - A `.debug` application id for debug builds and optional release signing.
 
-[Unreleased]: https://github.com/greenfodor/ProPresenterRemoteCommunityEdition/compare/6bf196e...HEAD
+[Unreleased]: https://github.com/greenfodor/ProPresenterRemoteCommunityEdition/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/greenfodor/ProPresenterRemoteCommunityEdition/releases/tag/v0.3.0
