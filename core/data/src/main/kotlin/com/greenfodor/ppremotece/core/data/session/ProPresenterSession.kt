@@ -89,13 +89,15 @@ import java.util.concurrent.atomic.AtomicInteger
  * [thumbnailRequests] are null until that clear has finished. [timers] and [collections] are the connection's
  * timers and macro collections, and [looks] and [currentLook] its looks and live look,
  * [Loadable.NotLoaded] and null while disconnected; [propCollections] its prop collections and
- * [screens], [layouts] and [layoutMap] its stage screens, stage layouts and the layout each screen
- * shows, with [stageLayoutThumbnailRequests] and [setLayout];
  * [propThumbnailRequests] its prop thumbnail requests, keyed by the host's name and null until the
  * thumbnail cache is cleared; [presentationTransport] and [audioTransport] what its transport layers
  * have loaded, not loaded while disconnected; [audioPlaylists], [activeAudio] and [audioPosition] its audio
  * bin, the track it plays and the audio position, not loaded and null while disconnected, and
- * [audioPlaylistsRepeats] its count of audio trees repeated after a reconnect.
+ * [audioPlaylistsRepeats] its count of audio trees repeated after a reconnect. [screens], [layouts]
+ * and [layoutMap] are its stage screens, its stage layouts and the layout each screen shows, not
+ * loaded while disconnected; [stageLayoutThumbnailRequests] its stage layout thumbnail requests,
+ * keyed by the host's name and null until the thumbnail cache is cleared; [setLayout] fails with
+ * no connection while disconnected.
  */
 class ProPresenterSession(
     private val httpClient: HttpClient,

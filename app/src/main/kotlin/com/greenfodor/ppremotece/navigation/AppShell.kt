@@ -249,8 +249,8 @@ fun AppShell(
                         widthClass = { currentWidthClass },
                         reconnecting = reconnecting,
                         fab = { currentFab },
-                        onOpenScreen = { uuid -> update(shown().open(StageLayoutsRoute(uuid))) },
-                        onBack = onBack
+                        onOpenScreen = { uuid -> update(shown().open(ShellTab.STAGE, StageLayoutsRoute(uuid))) },
+                        onCloseScreen = { uuid -> update(shown().close(ShellTab.STAGE, StageLayoutsRoute(uuid))) }
                     )
                 }
             )

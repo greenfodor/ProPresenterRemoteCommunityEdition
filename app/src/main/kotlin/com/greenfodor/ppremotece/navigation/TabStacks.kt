@@ -93,8 +93,15 @@ data class TabStacks(
     }
 }
 
-/** Shows [key] on the root of the selected tab's stack, in place of anything open above the root. */
-fun TabStacks.open(key: NavKey): TabStacks = copy(stacks = stacks + (current to stack(current).take(1) + key))
+/** Shows [key] on the root of [tab]'s stack, in place of anything open above the root. */
+fun TabStacks.open(tab: ShellTab, key: NavKey): TabStacks = copy(stacks = stacks + (tab to stack(tab).take(1) + key))
+
+/** Removes [key] from [tab]'s stack above its root; the stacks unchanged without it there. */
+fun TabStacks.close(tab: ShellTab, key: NavKey): TabStacks {
+    val stack = stack(tab)
+    val kept = stack.take(1) + stack.drop(1).filterNot { it == key }
+    return if (kept == stack) this else copy(stacks = stacks + (tab to kept))
+}
 
 private fun NavKey.isDetail(): Boolean =
     this is SlideGridRoute || this is LibraryGridRoute || this is PlaylistItemRoute

@@ -11,15 +11,16 @@ import com.greenfodor.ppremotece.feature.stage.StageRoot
 import com.greenfodor.ppremotece.feature.stage.StageRoute
 
 /**
- * The Stage root and a stage screen's layouts. [widthClass], [reconnecting] and [fab] are read
- * while an entry composes.
+ * The Stage root and a stage screen's layouts, which their back arrow and a screen gone from
+ * ProPresenter close with [onCloseScreen]. [widthClass], [reconnecting] and [fab] are read while
+ * an entry composes.
  */
 internal fun EntryProviderScope<NavKey>.stageEntries(
     widthClass: () -> WidthClass,
     reconnecting: () -> Boolean,
     fab: () -> (@Composable (SnackbarHostState) -> Unit)?,
     onOpenScreen: (String) -> Unit,
-    onBack: () -> Unit
+    onCloseScreen: (String) -> Unit
 ) {
     entry<StageRoute> {
         StageRoot(reconnecting = reconnecting(), onOpenScreen = onOpenScreen, floatingActionButton = fab())
@@ -29,7 +30,7 @@ internal fun EntryProviderScope<NavKey>.stageEntries(
             screenUuid = route.screenUuid,
             widthClass = widthClass(),
             reconnecting = reconnecting(),
-            onBack = onBack,
+            onBack = { onCloseScreen(route.screenUuid) },
             floatingActionButton = fab()
         )
     }

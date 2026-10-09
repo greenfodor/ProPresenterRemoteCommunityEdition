@@ -49,7 +49,10 @@ import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private const val COMPACT_COLUMNS = 2
 
-/** The layouts of stage screen [screenUuid]; [onBack] also runs once the screen is gone from ProPresenter. */
+/**
+ * The layouts of stage screen [screenUuid]; [onBack] closes them, from the back arrow and once the
+ * screen is gone from ProPresenter.
+ */
 @Composable
 fun StageLayoutsRoot(
     screenUuid: String,

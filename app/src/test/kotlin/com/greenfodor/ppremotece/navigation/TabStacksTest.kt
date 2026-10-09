@@ -358,7 +358,7 @@ class TabStacksTest {
     fun `a stage screen's layouts are shown on the stage stack over the more list`() {
         val stage = initial.openDetail(grid1).select(ShellTab.MORE).select(ShellTab.STAGE)
 
-        val open = stage.open(layouts)
+        val open = stage.open(ShellTab.STAGE, layouts)
 
         assertThat(open.current).isEqualTo(ShellTab.STAGE)
         assertThat(open.stack(ShellTab.STAGE)).containsExactly(StageRoute, layouts)
@@ -368,7 +368,7 @@ class TabStacksTest {
 
     @Test
     fun `back walks from a stage screen's layouts to the stage root and then to the more list`() {
-        val open = initial.select(ShellTab.MORE).select(ShellTab.STAGE).open(layouts)
+        val open = initial.select(ShellTab.MORE).select(ShellTab.STAGE).open(ShellTab.STAGE, layouts)
 
         val root = open.back(stageInMore)
         assertThat(root.current).isEqualTo(ShellTab.STAGE)
@@ -383,11 +383,38 @@ class TabStacksTest {
     @Test
     fun `opening another stage screen's layouts replaces the open ones and re-selecting stage trims to its root`() {
         val other = StageLayoutsRoute(screenUuid = "s-1")
-        val open = initial.select(ShellTab.STAGE).open(layouts).open(other)
+        val open = initial.select(ShellTab.STAGE).open(ShellTab.STAGE, layouts).open(ShellTab.STAGE, other)
 
         assertThat(open.stack(ShellTab.STAGE)).containsExactly(StageRoute, other)
         assertThat(open.select(ShellTab.STAGE).stack(ShellTab.STAGE)).containsExactly(StageRoute)
         assertThat(open.select(ShellTab.REMOTE).select(ShellTab.STAGE).stack(ShellTab.STAGE))
             .containsExactly(StageRoute, other)
+    }
+
+    @Test
+    fun `a stage screen's layouts opened while another tab is selected go on the stage stack only`() {
+        val remote = initial.openPlaylist(playlist).openDetail(grid1).select(ShellTab.REMOTE)
+
+        val open = remote.open(ShellTab.STAGE, layouts)
+
+        assertThat(open.current).isEqualTo(ShellTab.REMOTE)
+        assertThat(open.stack(ShellTab.STAGE)).containsExactly(StageRoute, layouts)
+        assertThat(open.stack(ShellTab.REMOTE)).containsExactly(RemoteRoute)
+        assertThat(open.stack(ShellTab.PRESENTATION)).containsExactly(PlaylistsRoute, playlist, grid1)
+    }
+
+    @Test
+    fun `closing a stage screen's layouts removes them from the stage stack and nothing else`() {
+        val open = initial.openDetail(grid1).select(ShellTab.STAGE).open(ShellTab.STAGE, layouts)
+
+        val closed = open.close(ShellTab.STAGE, layouts)
+
+        assertThat(closed.current).isEqualTo(ShellTab.STAGE)
+        assertThat(closed.stack(ShellTab.STAGE)).containsExactly(StageRoute)
+        assertThat(closed.close(ShellTab.STAGE, layouts)).isEqualTo(closed)
+        assertThat(open.select(ShellTab.REMOTE).close(ShellTab.STAGE, layouts).stack(ShellTab.REMOTE))
+            .containsExactly(RemoteRoute)
+        assertThat(open.close(ShellTab.STAGE, StageLayoutsRoute("s-9"))).isEqualTo(open)
+        assertThat(closed.close(ShellTab.STAGE, StageRoute)).isEqualTo(closed)
     }
 }

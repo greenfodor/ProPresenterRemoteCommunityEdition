@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
  * The layouts to choose from for stage screen [screenUuid]: one tile per layout of the
  * [StageRepository], in its order, the one the layout map names for the screen marked live. A tap
  * sets that layout for the screen, also the live one, and the live tile moves only with the layout
- * map; taps on a layout are ignored while its request is in flight, and a failure shows
+ * map; taps are ignored while a set for the screen is in flight, and a failure shows
  * "Couldn't set {layout}". Layouts that repeat a uuid are shown once.
  */
 class StageLayoutsViewModel(
@@ -65,7 +65,7 @@ class StageLayoutsViewModel(
     private fun set(layoutUuid: String) {
         val layout = stageRepository.layouts.value.orEmpty().firstOrNull { it.uuid == layoutUuid } ?: return
         viewModelScope.launch {
-            triggers.run(layoutUuid) {
+            triggers.run(screenUuid) {
                 stageRepository.setLayout(screenUuid, layoutUuid).onFailure {
                     messages.post(UiText.StringResource(R.string.stage_error_set, listOf(layout.name)))
                 }

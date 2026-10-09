@@ -122,6 +122,19 @@ class StageLayoutsViewModelTest {
     }
 
     @Test
+    fun `a tap on another layout is ignored while a set for the screen is in flight`() = runTest(dispatcher) {
+        repository.gate = CompletableDeferred()
+        val viewModel = viewModel()
+
+        viewModel.onAction(StageLayoutsAction.OnLayoutClick("l-1"))
+        viewModel.onAction(StageLayoutsAction.OnLayoutClick("l-2"))
+        repository.gate.complete(Unit)
+        viewModel.onAction(StageLayoutsAction.OnLayoutClick("l-2"))
+
+        assertThat(repository.sets).containsExactly("s-0" to "l-1", "s-0" to "l-2")
+    }
+
+    @Test
     fun `a tap on an unknown layout sends nothing`() = runTest(dispatcher) {
         viewModel().onAction(StageLayoutsAction.OnLayoutClick("nope"))
 
