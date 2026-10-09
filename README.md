@@ -1,16 +1,18 @@
 # ProPresenter Remote CE
 
-An Android remote for ProPresenter that keeps each playlist item's arrangement. It shows every
-item's slides in the arrangement chosen for that item, triggers cues by playlist item and cue
-index, and follows the live slide over ProPresenter's HTTP `/v1` API on the local network.
+An Android remote for ProPresenter, for phones and tablets. It browses the playlists and
+libraries, shows and triggers slides, follows what is live, and controls macros, timers, audio,
+looks, props, stage layouts and clears, over ProPresenter's HTTP `/v1` API on the local network.
+Every playlist item's slides are shown in the arrangement chosen for that item.
 
 **Unofficial.** This app is a community project. It is not affiliated with, endorsed by or
 supported by Renewed Vision. ProPresenter is a trademark of Renewed Vision.
 
-## What 0.3.0 provides
+## What 0.4.0 provides
 
-- **Connect.** Finds ProPresenter on the network or takes a host and port you type, and reconnects
-  to the saved host when the app starts.
+- **Connect.** A splash at start, held while the app reconnects to the saved host. The Connect
+  screen shows the last used host as a card, a card per ProPresenter found on the network, and
+  fields for a host and port you type.
 - **Presentation.** The playlist tree with its folders; a playlist screen with a type icon per item
   and coloured headers; a slide grid or list for each item, numbered in that item's arrangement,
   with the live and next slides marked, a group strip, a slide-size setting and Previous and Next;
@@ -26,6 +28,8 @@ supported by Renewed Vision. ProPresenter is a trademark of Renewed Vision.
   playlist; a tap plays a track; a bar shows what plays, with previous, play or pause, and next.
 - **Looks.** A card per look; a tap makes it the live look.
 - **Props.** A tile per prop with its thumbnail, grouped by collection; a tap shows or hides it.
+- **Stage.** A card per stage screen with the layout it shows; a tap opens that screen's layouts
+  as thumbnail tiles, and a tap on a tile sets that layout.
 - **Clear.** A button per layer (slide, media, live video, props, messages, announcements, audio)
   and per clear group.
 - **Settings.** Keep the screen on (never, on the Remote tab, always); orientation (follow the
@@ -37,8 +41,8 @@ two panes (the playlist beside its slides) from 840 dp.
 ## What it does not do yet
 
 - Shuffle, seek or skip within an audio track
-- Messages
-- The stage display
+- Messages and stage messages
+- Switching stage screens on or off
 - Editing timers
 - Editing anything stored in ProPresenter: the app only reads and triggers
 
@@ -79,7 +83,8 @@ Obtainium can tell you when a new release is out; allow its notifications if you
 
 1. Open the app. If Android asks whether the app may find and connect to devices on your local
    network, allow it: the app cannot reach ProPresenter without it.
-2. Pick your ProPresenter computer from the list, or type its address and port.
+2. Tap your ProPresenter computer's card, or open **Enter an address** and type its address and
+   port.
 
 A later release installs over the one you have and keeps your settings, whichever way you
 installed it. A build you make yourself is signed with another key and does not install over a
