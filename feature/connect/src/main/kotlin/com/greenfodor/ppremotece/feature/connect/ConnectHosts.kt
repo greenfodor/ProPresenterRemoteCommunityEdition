@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,7 +56,8 @@ internal fun LastUsedHost(host: ProPresenterHost, state: ConnectState, onAction:
 @Composable
 internal fun DiscoveredHosts(state: ConnectState, onAction: (ConnectAction) -> Unit) {
     val hosts = state.otherHosts
-    if (state.discoveredHosts.isNotEmpty() && hosts.isEmpty()) return
+    val unlistedHostError = state.unlistedHostError
+    if (state.discoveredHosts.isNotEmpty() && hosts.isEmpty() && unlistedHostError == null) return
     SectionHeading(stringResource(R.string.connect_discovered))
     if (state.discoveredHosts.isEmpty()) {
         when (state.discovery) {
@@ -83,6 +86,7 @@ internal fun DiscoveredHosts(state: ConnectState, onAction: (ConnectAction) -> U
         )
         TargetError(state.error.takeIf { state.target == target })
     }
+    TargetError(unlistedHostError)
 }
 
 @Composable
@@ -213,7 +217,7 @@ private fun ManualFields(state: ConnectState, onAction: (ConnectAction) -> Unit)
                 onValueChange = { onAction(ConnectAction.OnAddressChange(it)) },
                 label = { Text(stringResource(R.string.connect_address)) },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
                 modifier = Modifier.weight(1f)
             )
             OutlinedTextField(
@@ -221,7 +225,13 @@ private fun ManualFields(state: ConnectState, onAction: (ConnectAction) -> Unit)
                 onValueChange = { onAction(ConnectAction.OnPortChange(it)) },
                 label = { Text(stringResource(R.string.connect_port)) },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        defaultKeyboardAction(ImeAction.Done)
+                        onAction(ConnectAction.OnConnectClick)
+                    }
+                ),
                 modifier = Modifier.width(PortWidth)
             )
         }

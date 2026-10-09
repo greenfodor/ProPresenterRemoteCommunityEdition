@@ -20,6 +20,10 @@ data class ConnectState(
             val saved = savedHost ?: return discoveredHosts
             return discoveredHosts.filterNot { it.address == saved.address && it.port == saved.port }
         }
+
+    /** The [error] of an attempt on a discovered host that [otherHosts] no longer lists; null otherwise. */
+    val unlistedHostError: UiText?
+        get() = error.takeIf { (target as? ConnectTarget.Discovered)?.host?.let { it !in otherHosts } == true }
 }
 
 /** The card or form a connect attempt was started from: it shows the progress, then the error. */

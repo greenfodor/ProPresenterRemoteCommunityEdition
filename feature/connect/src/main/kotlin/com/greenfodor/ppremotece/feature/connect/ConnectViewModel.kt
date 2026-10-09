@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
  * requested on start and again on each connect attempt while it is missing; a failed auto-connect
  * leaves its address and port filled in. The saved host is the last-used card, and each attempt
  * names the card or form it was started from ([ConnectState.target]). Manual entry starts open
- * while there is neither a saved nor a discovered host.
+ * while there is neither a saved nor a discovered host, and opens when the search fails.
  * [ConnectEvent.StartupResolved] is sent once: at once when no auto-connect is started or the
  * permission has to be requested first, else after the auto-connect has succeeded or failed.
  */
@@ -110,7 +110,7 @@ class ConnectViewModel(
         _state.update { it.copy(discovery = DiscoveryStatus.SEARCHING) }
         viewModelScope.launch {
             hostDiscovery.discoveredHosts()
-                .catch { _state.update { it.copy(discovery = DiscoveryStatus.FAILED) } }
+                .catch { _state.update { it.copy(discovery = DiscoveryStatus.FAILED, manualOpen = true) } }
                 .collect { hosts -> _state.update { it.copy(discoveredHosts = hosts) } }
         }
     }

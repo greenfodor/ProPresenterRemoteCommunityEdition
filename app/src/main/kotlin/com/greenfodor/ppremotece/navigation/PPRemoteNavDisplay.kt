@@ -8,7 +8,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -25,14 +24,13 @@ import com.greenfodor.ppremotece.feature.connect.ConnectRoute
 /**
  * The full-screen Connect screen until a host is connected, then the app shell until Disconnect,
  * which returns to a Connect screen that does not auto-connect. [onStartupResolved] runs when the
- * Connect screen reports that start-up has nothing left to wait for. The shell reached by the
- * start-up auto-connect replaces the Connect screen without a transition, and [onStartupResolved]
- * then runs one frame after the shell is composed.
+ * Connect screen reports that start-up has nothing left to wait for. A shell reached while
+ * [splashHeld] replaces the Connect screen without a transition, and [onStartupResolved] then runs
+ * one frame after the shell is composed.
  */
 @Composable
-fun PPRemoteNavDisplay(onStartupResolved: () -> Unit, modifier: Modifier = Modifier) {
+fun PPRemoteNavDisplay(splashHeld: () -> Boolean, onStartupResolved: () -> Unit, modifier: Modifier = Modifier) {
     val backStack = rememberNavBackStack(ConnectRoute())
-    var startupResolved by rememberSaveable { mutableStateOf(false) }
     var shellEntersAtOnce by remember { mutableStateOf(false) }
     NavDisplay(
         backStack = backStack,
@@ -47,13 +45,10 @@ fun PPRemoteNavDisplay(onStartupResolved: () -> Unit, modifier: Modifier = Modif
                 ConnectRoot(
                     autoConnect = key.autoConnect,
                     onConnected = {
-                        shellEntersAtOnce = !startupResolved
+                        shellEntersAtOnce = splashHeld()
                         backStack.replaceAll(ShellRoute)
                     },
-                    onStartupResolved = {
-                        startupResolved = true
-                        if (!shellEntersAtOnce) onStartupResolved()
-                    }
+                    onStartupResolved = { if (!shellEntersAtOnce) onStartupResolved() }
                 )
             }
             entry<ShellRoute>(

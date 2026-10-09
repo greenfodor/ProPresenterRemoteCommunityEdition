@@ -26,6 +26,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -375,6 +376,34 @@ class ConnectViewModelTest {
 
         viewModel.onAction(ConnectAction.OnManualToggle)
         assertThat(viewModel.state.value.manualOpen).isFalse()
+    }
+
+    @Test
+    fun `the error of a discovered host that left the list is kept for the list as a whole`() = runTest {
+        val viewModel = ConnectViewModel(connections, discovery, preferences)
+        viewModel.onAction(ConnectAction.OnStart(permissionGranted = true, autoConnect = false))
+        discovered.value = listOf(otherHost)
+
+        viewModel.onAction(ConnectAction.OnDiscoveredHostClick(otherHost))
+        assertThat(viewModel.state.value.unlistedHostError).isNull()
+
+        discovered.value = emptyList()
+
+        assertThat((viewModel.state.value.unlistedHostError as? UiText.StringResource)?.id)
+            .isEqualTo(R.string.error_timeout)
+    }
+
+    @Test
+    fun `a failed search opens manual entry`() = runTest {
+        val failing = object : HostDiscovery {
+            override fun discoveredHosts(): Flow<List<ProPresenterHost>> = flow { error("no search") }
+        }
+        val viewModel = ConnectViewModel(connections, failing, preferences)
+
+        viewModel.onAction(ConnectAction.OnStart(permissionGranted = true, autoConnect = false))
+
+        assertThat(viewModel.state.value.discovery).isEqualTo(DiscoveryStatus.FAILED)
+        assertThat(viewModel.state.value.manualOpen).isTrue()
     }
 
     private fun assertSavedHostWaiting(state: ConnectState) {
