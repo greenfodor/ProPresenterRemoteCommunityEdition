@@ -15,7 +15,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 
 CI (`.github/workflows/build.yml`) runs `./gradlew check` (unit tests, detekt, ktlint, Android lint), then
-`./gradlew build` (what is left: the debug and the minified release build), on pushes and PRs to `master`.
+`./gradlew assemble` (the debug and the minified release build), on pushes and PRs to `master`; together
+they run what `./gradlew build` runs.
 
 The debug build is `com.greenfodor.ppremotece.debug` ("ProPresenter Remote CE Debug") and installs next to
 the release build `com.greenfodor.ppremotece`. `assembleRelease` signs the release only when

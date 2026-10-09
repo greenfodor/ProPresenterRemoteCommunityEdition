@@ -78,7 +78,7 @@ fun LooksRoot(
 /**
  * The Looks tab under a `theater_comedy` title: one 64 dp card per look in an adaptive grid of
  * 280 dp cells, a radio group in
- * which the live look is selected and marked, with 88 dp below the last row; a spinner until the
+ * which the live look is selected and marked, with 88 dp below the last row while the Clear FAB shows; a spinner until the
  * looks are loaded, "No looks in ProPresenter" when there are none, and "Not available on this
  * ProPresenter" when the server rejected them.
  */

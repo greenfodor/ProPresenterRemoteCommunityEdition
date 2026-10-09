@@ -85,7 +85,7 @@ fun TimersRoot(
 
 /**
  * The Timers tab: one card per timer in two columns on compact width and an adaptive grid of
- * 200 / 240 dp cells on medium / expanded width, with 88 dp below the last row; a spinner until the
+ * 200 / 240 dp cells on medium / expanded width, with 88 dp below the last row while the Clear FAB shows; a spinner until the
  * timers are loaded, "No timers in ProPresenter" when there are none, and "Not available on this
  * ProPresenter" when the server rejected them ([LoadableList]).
  */

@@ -28,5 +28,5 @@ jobs:
     - name: Test and lint
       run: ./gradlew check
 
-    - name: Build with the minified release
-      run: ./gradlew build
+    - name: Assemble with the minified release
+      run: ./gradlew assemble
