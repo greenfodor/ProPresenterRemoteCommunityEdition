@@ -29,11 +29,12 @@ class TabStacksTest {
     )
     private val noneInMore = emptySet<ShellTab>()
     private val remoteInMore = setOf(ShellTab.REMOTE, ShellTab.SETTINGS)
+    private val settingsInMore = setOf(ShellTab.SETTINGS)
 
     @Test
     fun `opens on the presentation root`() {
         assertThat(initial.current).isEqualTo(ShellTab.PRESENTATION)
-        assertThat(initial.displayed).containsExactly(PlaylistsRoute)
+        assertThat(initial.displayed(noneInMore)).containsExactly(PlaylistsRoute)
     }
 
     @Test
@@ -96,7 +97,7 @@ class TabStacksTest {
     fun `re-selecting presentation with a playlist and a detail open trims it to the tree`() {
         val stacks = initial.openPlaylist(playlist).openDetail(grid1).select(ShellTab.PRESENTATION)
 
-        assertThat(stacks.displayed).containsExactly(PlaylistsRoute)
+        assertThat(stacks.displayed(noneInMore)).containsExactly(PlaylistsRoute)
     }
 
     @Test
@@ -111,7 +112,7 @@ class TabStacksTest {
         val stacks = initial.openDetail(grid1).select(ShellTab.REMOTE)
 
         assertThat(stacks.current).isEqualTo(ShellTab.REMOTE)
-        assertThat(stacks.displayed).containsExactly(PlaylistsRoute, grid1, RemoteRoute)
+        assertThat(stacks.displayed(noneInMore)).containsExactly(PlaylistsRoute, grid1, RemoteRoute)
     }
 
     @Test
@@ -119,14 +120,14 @@ class TabStacksTest {
         val stacks = initial.openDetail(grid1).select(ShellTab.REMOTE).back(noneInMore)
 
         assertThat(stacks.current).isEqualTo(ShellTab.PRESENTATION)
-        assertThat(stacks.displayed).containsExactly(PlaylistsRoute, grid1)
+        assertThat(stacks.displayed(noneInMore)).containsExactly(PlaylistsRoute, grid1)
     }
 
     @Test
     fun `back on presentation pops its stack and stops at the root`() {
         val once = initial.openDetail(grid1).back(noneInMore)
 
-        assertThat(once.displayed).containsExactly(PlaylistsRoute)
+        assertThat(once.displayed(noneInMore)).containsExactly(PlaylistsRoute)
         assertThat(once.back(noneInMore)).isEqualTo(once)
     }
 
@@ -134,7 +135,7 @@ class TabStacksTest {
     fun `switching tabs keeps each stack`() {
         val stacks = initial.openDetail(grid1).select(ShellTab.REMOTE).select(ShellTab.PRESENTATION)
 
-        assertThat(stacks.displayed).containsExactly(PlaylistsRoute, grid1)
+        assertThat(stacks.displayed(noneInMore)).containsExactly(PlaylistsRoute, grid1)
     }
 
     @Test
@@ -142,7 +143,7 @@ class TabStacksTest {
         val stacks = initial.openDetail(grid1).select(ShellTab.PRESENTATION)
 
         assertThat(stacks.current).isEqualTo(ShellTab.PRESENTATION)
-        assertThat(stacks.displayed).containsExactly(PlaylistsRoute)
+        assertThat(stacks.displayed(noneInMore)).containsExactly(PlaylistsRoute)
     }
 
     @Test
@@ -157,9 +158,9 @@ class TabStacksTest {
     fun `settings shows the presentation stack under the settings stack and back returns to presentation`() {
         val stacks = initial.openDetail(grid1).select(ShellTab.SETTINGS)
 
-        assertThat(stacks.displayed).containsExactly(PlaylistsRoute, grid1, SettingsRoute)
+        assertThat(stacks.displayed(noneInMore)).containsExactly(PlaylistsRoute, grid1, SettingsRoute)
         assertThat(stacks.back(noneInMore).current).isEqualTo(ShellTab.PRESENTATION)
-        assertThat(stacks.back(noneInMore).displayed).containsExactly(PlaylistsRoute, grid1)
+        assertThat(stacks.back(noneInMore).displayed(noneInMore)).containsExactly(PlaylistsRoute, grid1)
     }
 
     @Test
@@ -167,7 +168,7 @@ class TabStacksTest {
         val stacks = initial.openDetail(grid1).select(ShellTab.MORE).select(ShellTab.REMOTE)
 
         assertThat(stacks.current).isEqualTo(ShellTab.REMOTE)
-        assertThat(stacks.displayed).containsExactly(PlaylistsRoute, grid1, RemoteRoute)
+        assertThat(stacks.displayed(remoteInMore)).containsExactly(PlaylistsRoute, grid1, MoreRoute, RemoteRoute)
         assertThat(stacks.highlighted(remoteInMore)).isEqualTo(ShellTab.MORE)
         assertThat(stacks.highlighted(noneInMore)).isEqualTo(ShellTab.REMOTE)
     }
@@ -178,7 +179,7 @@ class TabStacksTest {
 
         val moreList = remote.back(remoteInMore)
         assertThat(moreList.current).isEqualTo(ShellTab.MORE)
-        assertThat(moreList.displayed).containsExactly(PlaylistsRoute, MoreRoute)
+        assertThat(moreList.displayed(remoteInMore)).containsExactly(PlaylistsRoute, MoreRoute)
 
         assertThat(moreList.back(remoteInMore).current).isEqualTo(ShellTab.PRESENTATION)
     }
@@ -189,7 +190,8 @@ class TabStacksTest {
 
         assertThat(remote.highlighted(remoteInMore)).isEqualTo(ShellTab.MORE)
         assertThat(remote.highlighted(noneInMore)).isEqualTo(ShellTab.REMOTE)
-        assertThat(remote.displayed).containsExactly(PlaylistsRoute, grid1, RemoteRoute)
+        assertThat(remote.displayed(noneInMore)).containsExactly(PlaylistsRoute, grid1, RemoteRoute)
+        assertThat(remote.displayed(remoteInMore)).containsExactly(PlaylistsRoute, grid1, MoreRoute, RemoteRoute)
         assertThat(remote.back(noneInMore).current).isEqualTo(ShellTab.PRESENTATION)
         assertThat(remote.back(remoteInMore).current).isEqualTo(ShellTab.MORE)
     }
@@ -199,13 +201,13 @@ class TabStacksTest {
         val everything = setOf(ShellTab.PRESENTATION, ShellTab.REMOTE, ShellTab.SETTINGS)
         val moreList = initial.openDetail(grid1).select(ShellTab.MORE)
 
-        assertThat(moreList.displayed).containsExactly(PlaylistsRoute, grid1, MoreRoute)
+        assertThat(moreList.displayed(everything)).containsExactly(PlaylistsRoute, grid1, MoreRoute)
 
         val presentation = moreList.select(ShellTab.PRESENTATION)
         assertThat(presentation.current).isEqualTo(ShellTab.PRESENTATION)
         assertThat(presentation.highlighted(everything)).isEqualTo(ShellTab.MORE)
-        assertThat(presentation.displayed).containsExactly(PlaylistsRoute, grid1)
-        assertThat(presentation.back(everything).displayed).containsExactly(PlaylistsRoute)
+        assertThat(presentation.displayed(everything)).containsExactly(PlaylistsRoute, grid1)
+        assertThat(presentation.back(everything).displayed(everything)).containsExactly(PlaylistsRoute)
     }
 
     @Test
@@ -213,7 +215,7 @@ class TabStacksTest {
         val stacks = initial.openDetail(grid1).select(ShellTab.MORE).select(ShellTab.MORE)
 
         assertThat(stacks.current).isEqualTo(ShellTab.MORE)
-        assertThat(stacks.displayed).containsExactly(PlaylistsRoute, grid1, MoreRoute)
+        assertThat(stacks.displayed(noneInMore)).containsExactly(PlaylistsRoute, grid1, MoreRoute)
     }
 
     @Test
@@ -302,5 +304,48 @@ class TabStacksTest {
 
         assertThat(remote.fitting(noneInMore)).isEqualTo(remote)
         assertThat(remote.fitting(remoteInMore)).isEqualTo(remote)
+    }
+
+    @Test
+    fun `a tab under more shows the more list between the presentation stack and its own stack`() {
+        val settings = initial.openPlaylist(playlist).openDetail(grid1).select(ShellTab.MORE).select(ShellTab.SETTINGS)
+
+        assertThat(settings.displayed(settingsInMore))
+            .containsExactly(PlaylistsRoute, playlist, grid1, MoreRoute, SettingsRoute)
+    }
+
+    @Test
+    fun `back from the root of a tab under more selects more and the more list ends what is displayed`() {
+        val settings = initial.openDetail(grid1).select(ShellTab.MORE).select(ShellTab.SETTINGS)
+
+        val moreList = settings.back(settingsInMore)
+
+        assertThat(moreList.current).isEqualTo(ShellTab.MORE)
+        assertThat(moreList.displayed(settingsInMore)).containsExactly(PlaylistsRoute, grid1, MoreRoute)
+    }
+
+    @Test
+    fun `a tab that is not under more is displayed without the more list`() {
+        val remote = initial.openDetail(grid1).select(ShellTab.REMOTE)
+
+        assertThat(remote.displayed(settingsInMore)).containsExactly(PlaylistsRoute, grid1, RemoteRoute)
+        assertThat(remote.displayed(settingsInMore)).isEqualTo(remote.displayed(noneInMore))
+    }
+
+    @Test
+    fun `presentation is displayed as its own stack whatever is under more`() {
+        val presentation = initial.openPlaylist(playlist).openDetail(grid1)
+
+        assertThat(presentation.displayed(remoteInMore)).containsExactly(PlaylistsRoute, playlist, grid1)
+        assertThat(presentation.displayed(remoteInMore)).isEqualTo(presentation.displayed(noneInMore))
+    }
+
+    @Test
+    fun `with two panes back on presentation is the same while tabs are under more`() {
+        val stacks = initial.openPlaylist(playlist).openDetail(grid1)
+
+        assertThat(stacks.back(remoteInMore, twoPanes = true)).isEqualTo(stacks.back(noneInMore, twoPanes = true))
+        assertThat(stacks.back(remoteInMore, twoPanes = true).displayed(remoteInMore))
+            .containsExactly(PlaylistsRoute, grid1)
     }
 }

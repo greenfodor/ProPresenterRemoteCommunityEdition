@@ -25,5 +25,8 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build
-      run: ./gradlew build
+    - name: Test and lint
+      run: ./gradlew check
+
+    - name: Assemble with the minified release
+      run: ./gradlew assemble

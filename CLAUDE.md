@@ -5,7 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-./gradlew build                 # compile, detekt, ktlint, Android lint and all unit tests (what CI runs)
+./gradlew build                 # compile, detekt, ktlint, Android lint and all unit tests
+./gradlew check                 # the same without assembling the APKs: no R8 run
 ./gradlew assembleDebug
 ./gradlew :app:installDebug
 ./gradlew ktlintFormat          # auto-fix formatting
@@ -13,7 +14,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew :core:data:testDebugUnitTest --tests "com.greenfodor.ppremotece.core.data.SomeTest"  # one class
 ```
 
-CI (`.github/workflows/build.yml`) runs `./gradlew build` on pushes and PRs to `master`.
+CI (`.github/workflows/build.yml`) runs `./gradlew check` (unit tests, detekt, ktlint, Android lint), then
+`./gradlew assemble` (the debug and the minified release build), on pushes and PRs to `master`; together
+they run what `./gradlew build` runs.
 
 The debug build is `com.greenfodor.ppremotece.debug` ("ProPresenter Remote CE Debug") and installs next to
 the release build `com.greenfodor.ppremotece`. `assembleRelease` signs the release only when

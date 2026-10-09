@@ -215,7 +215,7 @@ fun AppShell(
             onClearOpenChange = { clearOpen = it }
         ) { padding ->
             NavDisplay(
-                backStack = shown().displayed,
+                backStack = shown().displayed(inMore),
                 modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
                 onBack = onBack,
                 entryDecorators = rememberShellEntryDecorators(),

@@ -88,7 +88,7 @@ fun MacrosRoot(
 /**
  * The Macros tab: one section per collection in an adaptive grid of square tiles (160 / 200 /
  * 240 dp cells by width class), each section under a 48 dp header while there are several, with
- * 88 dp below the last row; a spinner until the collections are loaded, "No macros in
+ * 88 dp below the last row while the Clear FAB shows; a spinner until the collections are loaded, "No macros in
  * ProPresenter" when there are none, and "Not available on this ProPresenter" when the server
  * rejected them ([LoadableList]).
  */
@@ -124,7 +124,8 @@ fun MacrosScreen(
                     sections = sections,
                     showHeaders = state.showHeaders,
                     widthClass = widthClass,
-                    bottomInset = insets.scrollBottom,
+                    bottomPadding = insets.scrollBottom +
+                        if (floatingActionButton != null) BottomClearance else 0.dp,
                     onAction = onAction
                 )
             }
@@ -137,7 +138,7 @@ private fun MacroGrid(
     sections: List<MacroSectionUi>,
     showHeaders: Boolean,
     widthClass: WidthClass,
-    bottomInset: Dp,
+    bottomPadding: Dp,
     onAction: (MacrosAction) -> Unit
 ) {
     LazyVerticalGrid(
@@ -146,7 +147,7 @@ private fun MacroGrid(
             start = GridPadding,
             top = GridPadding,
             end = GridPadding,
-            bottom = BottomClearance + bottomInset
+            bottom = bottomPadding
         ),
         horizontalArrangement = Arrangement.spacedBy(GridGap),
         verticalArrangement = Arrangement.spacedBy(GridGap),

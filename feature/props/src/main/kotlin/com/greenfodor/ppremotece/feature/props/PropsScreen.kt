@@ -83,7 +83,7 @@ fun PropsRoot(
 /**
  * The Props tab: one section per collection in a grid of tiles (two columns on compact width,
  * adaptive 200 / 240 dp cells on medium / expanded width), each section under a 48 dp header while
- * there are several, with 88 dp below the last row; a spinner until the props are loaded, "No props
+ * there are several, with 88 dp below the last row while the Clear FAB shows; a spinner until the props are loaded, "No props
  * in ProPresenter" when there are none, and "Not available on this ProPresenter" when the server
  * rejected them.
  */
@@ -120,7 +120,8 @@ fun PropsScreen(
                     showHeaders = state.showHeaders,
                     thumbnails = state.thumbnails,
                     widthClass = widthClass,
-                    bottomInset = insets.scrollBottom,
+                    bottomPadding = insets.scrollBottom +
+                        if (floatingActionButton != null) BottomClearance else 0.dp,
                     onAction = onAction
                 )
             }
@@ -134,7 +135,7 @@ private fun PropGrid(
     showHeaders: Boolean,
     thumbnails: PropThumbnailRequests?,
     widthClass: WidthClass,
-    bottomInset: Dp,
+    bottomPadding: Dp,
     onAction: (PropsAction) -> Unit
 ) {
     LazyVerticalGrid(
@@ -143,7 +144,7 @@ private fun PropGrid(
             start = GridPadding,
             top = GridPadding,
             end = GridPadding,
-            bottom = BottomClearance + bottomInset
+            bottom = bottomPadding
         ),
         horizontalArrangement = Arrangement.spacedBy(GridGap),
         verticalArrangement = Arrangement.spacedBy(GridGap),
