@@ -195,7 +195,7 @@ private fun appVersion(context: Context): String {
 @Composable
 private fun SettingsScreenPreview() {
     PPRemoteTheme {
-        SettingsScreen(state = PreviewState, onAction = {}, appVersion = "0.3.0", onOpenSource = {})
+        SettingsScreen(state = PreviewState, onAction = {}, appVersion = "0.4.0", onOpenSource = {})
     }
 }
 
@@ -203,7 +203,7 @@ private fun SettingsScreenPreview() {
 @Composable
 private fun SettingsScreenWidePreview() {
     PPRemoteTheme {
-        SettingsScreen(state = PreviewState, onAction = {}, appVersion = "0.3.0", onOpenSource = {})
+        SettingsScreen(state = PreviewState, onAction = {}, appVersion = "0.4.0", onOpenSource = {})
     }
 }
 

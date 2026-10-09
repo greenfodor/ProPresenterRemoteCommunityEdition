@@ -207,7 +207,7 @@ private fun ConnectionSectionPreview() {
 private fun AboutSectionPreview() {
     PPRemoteTheme {
         Surface {
-            AboutSection(appVersion = "0.3.0", onOpenSource = {})
+            AboutSection(appVersion = "0.4.0", onOpenSource = {})
         }
     }
 }

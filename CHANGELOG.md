@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-10
+
 ### Added
 - Stage: a destination that lists the stage screens with the layout each one shows. A tap on a
   stage screen opens its layouts as thumbnail tiles, and a tap on a tile sets that layout; the
@@ -88,5 +90,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A navigation bar or rail that fits the destinations to the screen, with a More list.
 - A `.debug` application id for debug builds and optional release signing.
 
-[Unreleased]: https://github.com/greenfodor/ProPresenterRemoteCommunityEdition/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/greenfodor/ProPresenterRemoteCommunityEdition/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/greenfodor/ProPresenterRemoteCommunityEdition/releases/tag/v0.4.0
 [0.3.0]: https://github.com/greenfodor/ProPresenterRemoteCommunityEdition/releases/tag/v0.3.0
