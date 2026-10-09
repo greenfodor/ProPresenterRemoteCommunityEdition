@@ -7,7 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- A splash screen with the app's icon. It stays for at least 0.6 s and until the saved host has
+  answered, at most 2 s, so a normal start goes from the splash to the app.
+
 ### Changed
+- The Connect screen: the app's icon and name, the saved host as a "Last used" card, a card per
+  host found on the network, and the address fields folded behind "Enter an address". The card or
+  button that was used shows the progress and, after a failure, the error.
 - Settings keeps its content in a centred column of at most 600 dp on wide screens.
 - The More title has no icon.
 - Beside the navigation rail, Macros, Timers, Looks and Props end just above the gesture bar, without

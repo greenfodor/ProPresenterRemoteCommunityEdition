@@ -25,7 +25,11 @@ import kotlinx.coroutines.launch
  * disconnected, connects to the saved host on start; otherwise the saved host's address and port
  * fill the empty fields, and connecting to them keeps the saved host's name. The permission is
  * requested on start and again on each connect attempt while it is missing; a failed auto-connect
- * leaves its address and port filled in.
+ * leaves its address and port filled in. The saved host is the last-used card, and each attempt
+ * names the card or form it was started from ([ConnectState.target]). Manual entry starts open
+ * while there is neither a saved nor a discovered host, and opens when the search fails.
+ * [ConnectEvent.StartupResolved] is sent once: at once when no auto-connect is started or the
+ * permission has to be requested first, else after the auto-connect has succeeded or failed.
  */
 class ConnectViewModel(
     private val connectionRepository: ConnectionRepository,
@@ -42,6 +46,8 @@ class ConnectViewModel(
     private var permissionGranted = false
     private var discoveryStarted = false
     private var pendingHost: ProPresenterHost? = null
+    private var pendingTarget: ConnectTarget? = null
+    private var startupResolved = false
     private var savedHost: ProPresenterHost? = null
 
     fun onAction(action: ConnectAction) {
@@ -53,7 +59,9 @@ class ConnectViewModel(
                 it.copy(port = action.port.filter(Char::isDigit), error = null)
             }
             ConnectAction.OnConnectClick -> connectToEnteredHost()
-            is ConnectAction.OnDiscoveredHostClick -> connect(action.host)
+            ConnectAction.OnSavedHostClick -> savedHost?.let { connect(it, ConnectTarget.LastUsed) }
+            ConnectAction.OnManualToggle -> _state.update { it.copy(manualOpen = !it.manualOpen) }
+            is ConnectAction.OnDiscoveredHostClick -> connect(action.host, ConnectTarget.Discovered(action.host))
         }
     }
 
@@ -65,11 +73,18 @@ class ConnectViewModel(
         viewModelScope.launch {
             val host = connectionRepository.savedHost()
             savedHost = host
+            _state.update {
+                it.copy(
+                    savedHost = host,
+                    manualOpen = it.manualOpen || (host == null && it.discoveredHosts.isEmpty())
+                )
+            }
             if (host != null && autoConnect && autoConnectAllowed()) {
-                connect(host)
+                connect(host, ConnectTarget.LastUsed)
                 return@launch
             }
             if (host != null) prefill(host)
+            resolveStartup()
             if (!granted) _events.send(ConnectEvent.RequestLocalNetworkPermission)
         }
     }
@@ -80,10 +95,12 @@ class ConnectViewModel(
     private fun onPermissionResult(granted: Boolean) {
         permissionGranted = granted
         val host = pendingHost
+        val target = pendingTarget
         pendingHost = null
+        pendingTarget = null
         if (granted) {
             startDiscovery()
-            host?.let(::connect)
+            if (host != null && target != null) connect(host, target)
         }
     }
 
@@ -93,7 +110,7 @@ class ConnectViewModel(
         _state.update { it.copy(discovery = DiscoveryStatus.SEARCHING) }
         viewModelScope.launch {
             hostDiscovery.discoveredHosts()
-                .catch { _state.update { it.copy(discovery = DiscoveryStatus.FAILED) } }
+                .catch { _state.update { it.copy(discovery = DiscoveryStatus.FAILED, manualOpen = true) } }
                 .collect { hosts -> _state.update { it.copy(discoveredHosts = hosts) } }
         }
     }
@@ -103,13 +120,15 @@ class ConnectViewModel(
         val port = _state.value.port.toIntOrNull()
         when {
             address.isEmpty() -> _state.update {
-                it.copy(error = UiText.StringResource(R.string.connect_error_address))
+                it.copy(error = UiText.StringResource(R.string.connect_error_address), target = ConnectTarget.Manual)
             }
-            port == null || port !in PORT_RANGE ->
-                _state.update { it.copy(error = UiText.StringResource(R.string.connect_error_port)) }
+            port == null || port !in PORT_RANGE -> _state.update {
+                it.copy(error = UiText.StringResource(R.string.connect_error_port), target = ConnectTarget.Manual)
+            }
             else -> connect(
                 savedHost?.takeIf { it.address == address && it.port == port }
-                    ?: ProPresenterHost(name = address, address = address, port = port)
+                    ?: ProPresenterHost(name = address, address = address, port = port),
+                ConnectTarget.Manual
             )
         }
     }
@@ -124,12 +143,18 @@ class ConnectViewModel(
         }
     }
 
-    private fun connect(host: ProPresenterHost) {
+    private fun connect(host: ProPresenterHost, target: ConnectTarget) {
         if (_state.value.isConnecting) return
-        _state.update { it.copy(address = host.address, port = host.port.toString(), error = null) }
+        _state.update {
+            it.copy(address = host.address, port = host.port.toString(), error = null, target = target)
+        }
         if (!permissionGranted) {
             pendingHost = host
-            viewModelScope.launch { _events.send(ConnectEvent.RequestLocalNetworkPermission) }
+            pendingTarget = target
+            viewModelScope.launch {
+                resolveStartup()
+                _events.send(ConnectEvent.RequestLocalNetworkPermission)
+            }
             return
         }
         _state.update { it.copy(isConnecting = true) }
@@ -138,7 +163,14 @@ class ConnectViewModel(
                 .onSuccess { _events.send(ConnectEvent.Connected) }
                 .onFailure { error -> _state.update { it.copy(error = error.toUiText()) } }
             _state.update { it.copy(isConnecting = false) }
+            resolveStartup()
         }
+    }
+
+    private suspend fun resolveStartup() {
+        if (startupResolved) return
+        startupResolved = true
+        _events.send(ConnectEvent.StartupResolved)
     }
 
     private companion object {

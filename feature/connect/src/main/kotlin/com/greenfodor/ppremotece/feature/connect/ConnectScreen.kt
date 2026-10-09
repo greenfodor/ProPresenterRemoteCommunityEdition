@@ -5,57 +5,57 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
+import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
 import org.koin.compose.viewmodel.koinViewModel
+import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private const val LOCAL_NETWORK_PERMISSION_SDK = 37
-private val ButtonHeight = 48.dp
-private val ProgressSize = 20.dp
+private val ColumnMaxWidth = 480.dp
+private val ColumnPadding = 16.dp
+private val HeaderIconHeight = 64.dp
+internal val CardGap = 10.dp
 
 @Composable
 fun ConnectRoot(
     autoConnect: Boolean,
     onConnected: () -> Unit,
+    onStartupResolved: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ConnectViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val appName = remember(context) { context.applicationInfo.loadLabel(context.packageManager).toString() }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         viewModel.onAction(ConnectAction.OnPermissionResult(granted))
     }
@@ -70,132 +70,141 @@ fun ConnectRoot(
                 Manifest.permission.ACCESS_LOCAL_NETWORK
             )
             ConnectEvent.Connected -> onConnected()
+            ConnectEvent.StartupResolved -> onStartupResolved()
         }
     }
-    ConnectScreen(state = state, onAction = viewModel::onAction, modifier = modifier)
+    ConnectScreen(state = state, appName = appName, onAction = viewModel::onAction, modifier = modifier)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The Connect screen, a scrolling column of at most 480 dp, centred: the app's icon and [appName],
+ * the saved host as the "Last used" card, a card per other discovered host under "On this network",
+ * and the "Enter an address" row that opens the address and port fields with the Connect button.
+ * The card or button an attempt was started from shows its progress, and its error beneath it;
+ * while connecting nothing else responds.
+ */
 @Composable
 fun ConnectScreen(
     state: ConnectState,
+    appName: String,
     onAction: (ConnectAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.connect_title)) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                )
-            )
-        }
-    ) { padding ->
-        Column(
+    Scaffold(modifier = modifier) { padding ->
+        Box(
+            contentAlignment = Alignment.TopCenter,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .consumeWindowInsets(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            DiscoveredHosts(state = state, onAction = onAction)
-            ManualHost(state = state, onAction = onAction)
-            state.error?.let {
-                Text(
-                    text = it.asString(),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(CardGap),
+                modifier = Modifier
+                    .widthIn(max = ColumnMaxWidth)
+                    .fillMaxWidth()
+                    .padding(ColumnPadding)
+            ) {
+                Header(appName)
+                state.savedHost?.let { LastUsedHost(host = it, state = state, onAction = onAction) }
+                DiscoveredHosts(state = state, onAction = onAction)
+                ManualHost(state = state, onAction = onAction)
             }
         }
     }
 }
 
 @Composable
-private fun DiscoveredHosts(state: ConnectState, onAction: (ConnectAction) -> Unit) {
-    Text(text = stringResource(R.string.connect_discovered), style = MaterialTheme.typography.titleMedium)
-    if (state.discoveredHosts.isEmpty()) {
-        when (state.discovery) {
-            DiscoveryStatus.SEARCHING -> {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(ProgressSize), strokeWidth = 2.dp)
-                    Text(text = stringResource(R.string.connect_searching), style = MaterialTheme.typography.bodyMedium)
-                }
-                DiscoveryNote(stringResource(R.string.connect_none_found))
-            }
-            DiscoveryStatus.WAITING_FOR_PERMISSION -> DiscoveryNote(stringResource(R.string.connect_error_permission))
-            DiscoveryStatus.FAILED -> DiscoveryNote(stringResource(R.string.connect_search_failed))
-        }
-    }
-    state.discoveredHosts.forEach { host ->
-        ListItem(
-            headlineContent = { Text(host.name) },
-            supportingContent = { Text(stringResource(R.string.connect_host_address, host.address, host.port)) },
-            modifier = Modifier.clickableUnlessConnecting(state.isConnecting) {
-                onAction(ConnectAction.OnDiscoveredHostClick(host))
-            }
-        )
-    }
-}
-
-@Composable
-private fun DiscoveryNote(text: String) {
-    Text(text = text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-@Composable
-private fun ManualHost(state: ConnectState, onAction: (ConnectAction) -> Unit) {
-    Text(text = stringResource(R.string.connect_manual), style = MaterialTheme.typography.titleMedium)
-    OutlinedTextField(
-        value = state.address,
-        onValueChange = { onAction(ConnectAction.OnAddressChange(it)) },
-        label = { Text(stringResource(R.string.connect_address)) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-        modifier = Modifier.fillMaxWidth()
-    )
-    OutlinedTextField(
-        value = state.port,
-        onValueChange = { onAction(ConnectAction.OnPortChange(it)) },
-        label = { Text(stringResource(R.string.connect_port)) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = Modifier.fillMaxWidth()
-    )
-    Button(
-        onClick = { onAction(ConnectAction.OnConnectClick) },
-        enabled = !state.isConnecting,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(ButtonHeight)
+private fun Header(appName: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp)
     ) {
-        if (state.isConnecting) {
-            CircularProgressIndicator(modifier = Modifier.size(ProgressSize), strokeWidth = 2.dp)
-        } else {
-            Text(stringResource(R.string.connect_button))
-        }
+        Image(
+            painter = painterResource(DesignR.drawable.ic_app_deck),
+            contentDescription = null,
+            modifier = Modifier.height(HeaderIconHeight)
+        )
+        Text(text = appName, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
     }
 }
 
-private fun Modifier.clickableUnlessConnecting(isConnecting: Boolean, onClick: () -> Unit): Modifier =
-    if (isConnecting) this else clickable(onClick = onClick)
+private val PreviewSaved = ProPresenterHost(name = "Host 01", address = "192.0.2.14", port = 60113)
+private val PreviewOthers = listOf(
+    ProPresenterHost(name = "Host 02", address = "192.0.2.15", port = 60113),
+    ProPresenterHost(name = "Host 03", address = "192.0.2.16", port = 50001)
+)
+private val PreviewState = ConnectState(
+    discovery = DiscoveryStatus.SEARCHING,
+    discoveredHosts = PreviewOthers + PreviewSaved,
+    savedHost = PreviewSaved
+)
 
-@Preview
+@Preview(heightDp = 700)
 @Composable
 private fun ConnectScreenPreview() {
     PPRemoteTheme {
+        ConnectScreen(state = PreviewState, appName = "ProPresenter Remote CE", onAction = {})
+    }
+}
+
+@Preview(heightDp = 800)
+@Composable
+private fun ConnectScreenManualOpenPreview() {
+    PPRemoteTheme {
         ConnectScreen(
-            state = ConnectState(
-                discovery = DiscoveryStatus.SEARCHING,
-                discoveredHosts = listOf(ProPresenterHost(name = "Host 01", address = "192.0.2.14", port = 50001))
-            ),
+            state = PreviewState.copy(address = "192.0.2.14", port = "60113", manualOpen = true),
+            appName = "ProPresenter Remote CE",
             onAction = {}
         )
+    }
+}
+
+@Preview(heightDp = 700)
+@Composable
+private fun ConnectScreenConnectingPreview() {
+    PPRemoteTheme {
+        ConnectScreen(
+            state = PreviewState.copy(isConnecting = true, target = ConnectTarget.LastUsed),
+            appName = "ProPresenter Remote CE",
+            onAction = {}
+        )
+    }
+}
+
+@Preview(heightDp = 700)
+@Composable
+private fun ConnectScreenErrorPreview() {
+    PPRemoteTheme {
+        ConnectScreen(
+            state = PreviewState.copy(
+                target = ConnectTarget.Discovered(PreviewOthers.first()),
+                error = UiText.StringResource(DesignR.string.error_timeout)
+            ),
+            appName = "ProPresenter Remote CE",
+            onAction = {}
+        )
+    }
+}
+
+@Preview(heightDp = 700)
+@Composable
+private fun ConnectScreenSearchingPreview() {
+    PPRemoteTheme {
+        ConnectScreen(
+            state = ConnectState(discovery = DiscoveryStatus.SEARCHING, manualOpen = true),
+            appName = "ProPresenter Remote CE",
+            onAction = {}
+        )
+    }
+}
+
+@Preview(widthDp = 1100, heightDp = 500)
+@Composable
+private fun ConnectScreenWidePreview() {
+    PPRemoteTheme {
+        ConnectScreen(state = PreviewState, appName = "ProPresenter Remote CE", onAction = {})
     }
 }
