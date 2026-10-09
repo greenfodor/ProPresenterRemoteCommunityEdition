@@ -14,6 +14,7 @@ import com.greenfodor.ppremotece.feature.playlist.playlistModule
 import com.greenfodor.ppremotece.feature.props.propsModule
 import com.greenfodor.ppremotece.feature.remote.remoteModule
 import com.greenfodor.ppremotece.feature.settings.settingsModule
+import com.greenfodor.ppremotece.feature.stage.stageModule
 import com.greenfodor.ppremotece.feature.timers.timersModule
 import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
@@ -38,7 +39,8 @@ class PPRemoteApplication :
                 macrosModule,
                 audioModule,
                 looksModule,
-                propsModule
+                propsModule,
+                stageModule
             )
         }
     }

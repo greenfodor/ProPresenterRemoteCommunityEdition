@@ -239,11 +239,12 @@ class KtorProPresenterClientTest {
         client.triggerLook(LOOK_UUID)
         client.triggerProp(PROP_UUID)
         client.clearProp(PROP_UUID)
+        client.setStageLayout(STAGE_SCREEN_UUID, STAGE_LAYOUT_UUID)
         client.triggerNext()
         client.triggerPrevious()
         client.statusUpdates(listOf("status/slide")).first()
 
-        assertThat(fake.requests.size).isEqualTo(26)
+        assertThat(fake.requests.size).isEqualTo(27)
         FakeProPresenter.assertOnlyAllowedRequests(fake.requests)
     }
 
@@ -265,6 +266,20 @@ class KtorProPresenterClientTest {
         assertThat(client.triggerLook(LOOK_UUID)).isEqualTo(Result.Success(Unit))
         assertThat(fake.requests.single().method).isEqualTo("GET")
         assertThat(fake.requests.single().url.encodedPath).isEqualTo("/v1/look/$LOOK_UUID/trigger")
+    }
+
+    @Test
+    fun `setting a stage layout gets the stage screen's layout route with both uuids`() = runBlocking {
+        assertThat(client.setStageLayout(STAGE_SCREEN_UUID, STAGE_LAYOUT_UUID)).isEqualTo(Result.Success(Unit))
+        assertThat(fake.requests.single().method).isEqualTo("GET")
+        assertThat(fake.requests.single().url.encodedPath)
+            .isEqualTo("/v1/stage/screen/$STAGE_SCREEN_UUID/layout/$STAGE_LAYOUT_UUID")
+    }
+
+    @Test
+    fun `setting a stage layout that the server does not know fails as not found`() = runBlocking {
+        assertThat(client.setStageLayout(STAGE_SCREEN_UUID, "unknown layout"))
+            .isEqualTo(Result.Failure(DataError.Network.NOT_FOUND))
     }
 
     @Test
@@ -365,6 +380,8 @@ class KtorProPresenterClientTest {
         const val MACRO_UUID = "701c977b-f340-428d-b397-a52d4f29437b"
         const val LOOK_UUID = "0c12bf85-6a1e-4f8e-9c2d-3b4a5d6e7f80"
         const val PROP_UUID = "4b1e3d2c-7a6f-4e5d-8c9b-0a1f2e3d4c5b"
+        const val STAGE_SCREEN_UUID = "5c1d6a52-8f0e-4f4b-9d0c-3a8f3a1d7e10"
+        const val STAGE_LAYOUT_UUID = "0b7f7f0e-5a54-4c0c-8a7e-6d3e2b9c4f21"
         const val TIMER_UUID = "2d8ffe81-50af-46a5-8c6b-8ed6ac5f34cf"
         const val CLEAR_GROUP_UUID = "5da095db-20ef-4246-b3d5-3b741312386b"
     }

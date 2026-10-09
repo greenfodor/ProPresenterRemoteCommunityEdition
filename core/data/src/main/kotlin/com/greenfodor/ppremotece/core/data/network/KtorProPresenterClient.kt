@@ -159,6 +159,14 @@ class KtorProPresenterClient(
     override suspend fun triggerLook(uuid: String): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/look/${uuid.encodeURLPathPart()}/trigger") }
 
+    /** `GET /v1/stage/screen/{screen uuid}/layout/{layout uuid}`: makes the layout the stage screen's layout. */
+    suspend fun setStageLayout(screenUuid: String, layoutUuid: String): EmptyResult<DataError.Network> =
+        safeEmptyCall {
+            httpClient.get(
+                "$baseUrl/v1/stage/screen/${screenUuid.encodeURLPathPart()}/layout/${layoutUuid.encodeURLPathPart()}"
+            )
+        }
+
     override suspend fun triggerProp(uuid: String): EmptyResult<DataError.Network> =
         safeEmptyCall { httpClient.get("$baseUrl/v1/prop/${uuid.encodeURLPathPart()}/trigger") }
 

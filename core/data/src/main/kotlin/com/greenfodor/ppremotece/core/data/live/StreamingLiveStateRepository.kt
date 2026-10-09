@@ -20,6 +20,8 @@ import com.greenfodor.ppremotece.core.domain.model.Look
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PropCollection
+import com.greenfodor.ppremotece.core.domain.model.StageLayout
+import com.greenfodor.ppremotece.core.domain.model.StageScreen
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
 import com.greenfodor.ppremotece.core.domain.model.Transport
@@ -88,7 +90,9 @@ fun defaultReconnectDelay(attempt: Int): Duration =
  * reopened streams of this connection ([withoutRejected]), keeps the content it feeds
  * [Loadable.Unavailable] and is passed to [log] once; a rejected transport url leaves that transport
  * unavailable (the audio one without a position), and a rejected `audio/playlist/active` leaves no
- * active track. [requestLiveRead] makes the next chunk read `slide_index` and `playlist/active` again.
+ * active track. `stage/screens`, `stage/layouts` and `stage/layout_map` frames set [stageScreens],
+ * [stageLayouts] and [stageLayoutMap], and a rejected one of the three leaves all three unavailable.
+ * [requestLiveRead] makes the next chunk read `slide_index` and `playlist/active` again.
  */
 class StreamingLiveStateRepository(
     private val client: KtorProPresenterClient,
@@ -142,6 +146,21 @@ class StreamingLiveStateRepository(
 
     private val audioSeconds = MutableStateFlow<Double?>(null)
     override val audioPosition: StateFlow<Double?> = audioSeconds.asStateFlow()
+
+    private val stageScreenList = MutableStateFlow<Loadable<List<StageScreen>>>(Loadable.NotLoaded)
+
+    /** The stage screens, in ProPresenter's order. */
+    val stageScreens: StateFlow<Loadable<List<StageScreen>>> = stageScreenList.asStateFlow()
+
+    private val stageLayoutList = MutableStateFlow<Loadable<List<StageLayout>>>(Loadable.NotLoaded)
+
+    /** The stage layouts, in ProPresenter's order. */
+    val stageLayouts: StateFlow<Loadable<List<StageLayout>>> = stageLayoutList.asStateFlow()
+
+    private val stageLayoutByScreen = MutableStateFlow<Loadable<Map<String, String>>>(Loadable.NotLoaded)
+
+    /** Each stage screen's uuid with the uuid of the layout it shows. */
+    val stageLayoutMap: StateFlow<Loadable<Map<String, String>>> = stageLayoutByScreen.asStateFlow()
 
     @Volatile
     private var subscriptions = SUBSCRIPTIONS
@@ -209,6 +228,10 @@ class StreamingLiveStateRepository(
                                     audioPlaylistList.load(event.nodes, "audio/playlists")
                                 }
                                 is StatusEvent.ActiveAudioChanged -> activeTrack.value = event.active
+                                is StatusEvent.StageScreens -> stageScreenList.load(event.screens, *STAGE_URLS)
+                                is StatusEvent.StageLayouts -> stageLayoutList.load(event.layouts, *STAGE_URLS)
+                                is StatusEvent.StageLayoutMap ->
+                                    stageLayoutByScreen.load(event.layoutByScreen, *STAGE_URLS)
                                 is StatusEvent.Rejected -> event.messages.forEach(::reject)
                                 else -> Unit
                             }
@@ -273,6 +296,11 @@ class StreamingLiveStateRepository(
                 audioLoaded.value = Loadable.Unavailable
             }
             "audio/playlist/active" -> activeTrack.value = null
+            in STAGE_URLS -> {
+                stageScreenList.value = Loadable.Unavailable
+                stageLayoutList.value = Loadable.Unavailable
+                stageLayoutByScreen.value = Loadable.Unavailable
+            }
         }
         log(message)
     }
@@ -288,6 +316,7 @@ class StreamingLiveStateRepository(
     private companion object {
         const val TAG = "LiveStream"
         val AUDIO_TRANSPORT_URLS = arrayOf("transport/audio/current", "transport/audio/time")
+        val STAGE_URLS = arrayOf("stage/layout_map", "stage/screens", "stage/layouts")
         val SUBSCRIPTIONS =
             listOf(
                 "status/slide",
@@ -304,7 +333,8 @@ class StreamingLiveStateRepository(
                 "transport/audio/current",
                 "transport/audio/time",
                 "audio/playlists",
-                "audio/playlist/active"
+                "audio/playlist/active",
+                *STAGE_URLS
             )
     }
 }

@@ -1,0 +1,8 @@
+<resources>
+    <string name="stage_title">Stage</string>
+    <string name="stage_empty">No stage screens in ProPresenter</string>
+    <string name="stage_layouts_empty">No stage layouts in ProPresenter</string>
+    <string name="stage_no_layout">No layout</string>
+    <string name="stage_back">Back</string>
+    <string name="stage_error_set">Couldn\'t set %1$s</string>
+</resources>

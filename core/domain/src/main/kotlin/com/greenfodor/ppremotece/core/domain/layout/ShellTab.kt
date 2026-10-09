@@ -9,6 +9,7 @@ enum class ShellTab {
     AUDIO,
     LOOKS,
     PROPS,
+    STAGE,
     SETTINGS,
     MORE
 }

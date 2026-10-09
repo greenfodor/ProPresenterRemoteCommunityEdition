@@ -77,6 +77,7 @@ dependencies {
     implementation(project(":feature:audio"))
     implementation(project(":feature:looks"))
     implementation(project(":feature:props"))
+    implementation(project(":feature:stage"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)

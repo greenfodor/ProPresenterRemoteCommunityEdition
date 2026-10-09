@@ -141,6 +141,7 @@ class FakeProPresenter(
     private fun dispatchContent(path: String): MockResponse =
         when {
             PLAYLIST_UPDATES.matches(path) -> playlistUpdates.poll() ?: status(404)
+            STAGE_LAYOUT_SET.matches(path) -> status(204)
             path.startsWith("/v1/playlist/") -> fixture("playlist", path.removePrefix("/v1/playlist/"))
             path.startsWith("/v1/presentation/") -> fixture("presentation", path.removePrefix("/v1/presentation/"))
             else -> status(404)
@@ -264,6 +265,8 @@ class FakeProPresenter(
                 """"announcements":{"playlist":null,"item":null}}}"""
         }
 
+        private val STAGE_LAYOUT_SET = Regex("^/v1/stage/screen/[0-9a-f-]+/layout/[0-9a-f-]+$")
+
         private val ALLOWED = listOf(
             "GET" to Regex("^/version$"),
             "GET" to Regex("^/v1/playlists$"),
@@ -286,6 +289,7 @@ class FakeProPresenter(
             "GET" to Regex("^/v1/macro/[0-9a-f-]+/(trigger|icon)$"),
             "GET" to Regex("^/v1/look/[0-9a-f-]+/trigger$"),
             "GET" to Regex("^/v1/prop/[0-9a-f-]+/(trigger|clear)$"),
+            "GET" to STAGE_LAYOUT_SET,
             "POST" to Regex("^/v1/status/updates$")
         )
 

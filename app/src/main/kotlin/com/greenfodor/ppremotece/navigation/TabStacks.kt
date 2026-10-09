@@ -15,6 +15,7 @@ import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
  * [highlighted] and back from its root shows the More list. Back pops the selected stack and, from
  * the root of More or of a tab not under More, returns to Presentation. The Presentation stack is
  * the tree, then the open playlist screen, then the open detail, each optional above the tree.
+ * The Stage stack is the stage screens, then the open screen's layouts.
  * While two panes show, the playlist screen and the detail sit side by side: back takes the list
  * pane from the playlist to the tree and keeps the open detail, and opening a playlist keeps it too.
  */
@@ -90,6 +91,16 @@ data class TabStacks(
         fun initial(roots: Map<ShellTab, NavKey>): TabStacks =
             TabStacks(stacks = roots.mapValues { (_, root) -> listOf(root) }, current = ShellTab.PRESENTATION)
     }
+}
+
+/** Shows [key] on the root of [tab]'s stack, in place of anything open above the root. */
+fun TabStacks.open(tab: ShellTab, key: NavKey): TabStacks = copy(stacks = stacks + (tab to stack(tab).take(1) + key))
+
+/** Removes [key] from [tab]'s stack above its root; the stacks unchanged without it there. */
+fun TabStacks.close(tab: ShellTab, key: NavKey): TabStacks {
+    val stack = stack(tab)
+    val kept = stack.take(1) + stack.drop(1).filterNot { it == key }
+    return if (kept == stack) this else copy(stacks = stacks + (tab to kept))
 }
 
 private fun NavKey.isDetail(): Boolean =

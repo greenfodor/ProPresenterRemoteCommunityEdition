@@ -7,6 +7,8 @@ import com.greenfodor.ppremotece.core.domain.model.Macro
 import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.Prop
 import com.greenfodor.ppremotece.core.domain.model.PropCollection
+import com.greenfodor.ppremotece.core.domain.model.StageLayout
+import com.greenfodor.ppremotece.core.domain.model.StageScreen
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
 import com.greenfodor.ppremotece.core.domain.model.TimerState
@@ -77,6 +79,34 @@ private fun JsonElement?.toProp(): Prop? {
             isActive = (child("is_active") as? JsonPrimitive)?.booleanOrNull ?: false,
             transitionName = child("transition").child("name").stringOrNull()
         )
+    }
+}
+
+/** The event of a `stage/screens`, `stage/layouts` or `stage/layout_map` frame; null for any other [url]. */
+internal fun stageEventOf(url: String?, data: JsonElement?): StatusEvent? {
+    val list = data as? JsonArray ?: return null
+    return when (url) {
+        "stage/screens" -> StatusEvent.StageScreens(
+            list.mapNotNull { screen ->
+                screen.child("uuid").stringOrNull()?.let {
+                    StageScreen(it, screen.child("name").stringOrNull().orEmpty())
+                }
+            }
+        )
+        "stage/layouts" -> StatusEvent.StageLayouts(
+            list.mapNotNull { layout ->
+                val id = layout.child("id")
+                id.child("uuid").stringOrNull()?.let { StageLayout(it, id.child("name").stringOrNull().orEmpty()) }
+            }
+        )
+        "stage/layout_map" -> StatusEvent.StageLayoutMap(
+            list.mapNotNull { entry ->
+                val screen = entry.child("screen").child("uuid").stringOrNull()
+                val layout = entry.child("layout").child("uuid").stringOrNull()
+                if (screen != null && layout != null) screen to layout else null
+            }.toMap()
+        )
+        else -> null
     }
 }
 

@@ -10,6 +10,8 @@ class NavigationSlotsTest {
 
     private val eight = listOf("presentation", "remote", "macros", "timers", "audio", "looks", "props", "settings")
 
+    private val nine = eight.dropLast(1) + listOf("stage", "settings")
+
     private fun rail(slots: Int, destinations: List<String>) =
         navigationSlots(NavigationLayout.RAIL, availableDp = slots * RAIL_SLOT_DP, destinations = destinations)
 
@@ -106,5 +108,34 @@ class NavigationSlotsTest {
             )
         assertThat(navigationSlots(NavigationLayout.BAR, availableDp = 240, destinations = three))
             .isEqualTo(NavigationSlots(shown = three, more = emptyList()))
+    }
+
+    @Test
+    fun `a 527 dp bar shows four of the nine destinations and lists stage under more`() {
+        assertThat(navigationSlots(NavigationLayout.BAR, availableDp = 527, destinations = nine))
+            .isEqualTo(
+                NavigationSlots(
+                    shown = listOf("presentation", "remote", "macros", "timers"),
+                    more = listOf("audio", "looks", "props", "stage", "settings")
+                )
+            )
+    }
+
+    @Test
+    fun `a rail of six slots shows five of the nine destinations and lists stage under more`() {
+        assertThat(rail(slots = 6, destinations = nine))
+            .isEqualTo(
+                NavigationSlots(
+                    shown = listOf("presentation", "remote", "macros", "timers", "audio"),
+                    more = listOf("looks", "props", "stage", "settings")
+                )
+            )
+    }
+
+    @Test
+    fun `a rail of nine slots shows all nine destinations`() {
+        assertThat(rail(slots = 9, destinations = nine)).isEqualTo(NavigationSlots(shown = nine, more = emptyList()))
+        assertThat(rail(slots = 8, destinations = nine))
+            .isEqualTo(NavigationSlots(shown = nine.take(7), more = listOf("stage", "settings")))
     }
 }

@@ -64,7 +64,7 @@ class StatusFrameParser {
             "playlist/active" -> playlistActiveOf(data)
             "status/layers" -> (data as? JsonObject)?.toLayers()
             "timer/system_time" -> (data as? JsonPrimitive)?.longOrNull?.let { StatusEvent.Heartbeat(it) }
-            else -> listEventOf(url, data) ?: mediaEventOf(url, data)
+            else -> listEventOf(url, data) ?: mediaEventOf(url, data) ?: stageEventOf(url, data)
         } ?: StatusEvent.Unknown(url)
     }
 
