@@ -123,7 +123,8 @@ fun TimersScreen(
                         start = GridPadding,
                         top = GridPadding,
                         end = GridPadding,
-                        bottom = BottomClearance + insets.scrollBottom
+                        bottom = insets.scrollBottom +
+                            if (floatingActionButton != null) BottomClearance else 0.dp
                     ),
                     horizontalArrangement = Arrangement.spacedBy(GridGap),
                     verticalArrangement = Arrangement.spacedBy(GridGap),

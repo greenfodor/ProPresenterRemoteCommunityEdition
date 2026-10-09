@@ -124,7 +124,8 @@ fun MacrosScreen(
                     sections = sections,
                     showHeaders = state.showHeaders,
                     widthClass = widthClass,
-                    bottomInset = insets.scrollBottom,
+                    bottomInset = insets.scrollBottom +
+                        if (floatingActionButton != null) BottomClearance else 0.dp,
                     onAction = onAction
                 )
             }
@@ -146,7 +147,7 @@ private fun MacroGrid(
             start = GridPadding,
             top = GridPadding,
             end = GridPadding,
-            bottom = BottomClearance + bottomInset
+            bottom = bottomInset
         ),
         horizontalArrangement = Arrangement.spacedBy(GridGap),
         verticalArrangement = Arrangement.spacedBy(GridGap),

@@ -120,7 +120,8 @@ fun PropsScreen(
                     showHeaders = state.showHeaders,
                     thumbnails = state.thumbnails,
                     widthClass = widthClass,
-                    bottomInset = insets.scrollBottom,
+                    bottomInset = insets.scrollBottom +
+                        if (floatingActionButton != null) BottomClearance else 0.dp,
                     onAction = onAction
                 )
             }
@@ -143,7 +144,7 @@ private fun PropGrid(
             start = GridPadding,
             top = GridPadding,
             end = GridPadding,
-            bottom = BottomClearance + bottomInset
+            bottom = bottomInset
         ),
         horizontalArrangement = Arrangement.spacedBy(GridGap),
         verticalArrangement = Arrangement.spacedBy(GridGap),

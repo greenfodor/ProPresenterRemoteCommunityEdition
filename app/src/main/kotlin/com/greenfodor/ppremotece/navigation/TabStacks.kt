@@ -8,7 +8,8 @@ import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
 
 /**
  * The shell's back stacks, one per [ShellTab], and its selected tab. [displayed] is the Presentation
- * stack, with the selected tab's stack on top while another tab is selected. Selecting the selected
+ * stack, with the selected tab's stack on top while another tab is selected, and the More list
+ * between them while that tab is listed under More. Selecting the selected
  * tab again trims its stack to its root. The More stack is the More list, a chooser: a More row
  * selects that destination's own tab, and while the selected tab is listed under More, More is
  * [highlighted] and back from its root shows the More list. Back pops the selected stack and, from
@@ -21,11 +22,15 @@ data class TabStacks(
     val stacks: Map<ShellTab, List<NavKey>>,
     val current: ShellTab
 ) {
-    val displayed: List<NavKey>
-        get() = if (current == ShellTab.PRESENTATION) {
-            stack(ShellTab.PRESENTATION)
-        } else {
-            stack(ShellTab.PRESENTATION) + stack(current)
+    /**
+     * What is shown while [inMore] are listed under More: the Presentation stack, then the More
+     * stack while the selected tab is listed under More, then the selected tab's stack.
+     */
+    fun displayed(inMore: Set<ShellTab>): List<NavKey> =
+        when {
+            current == ShellTab.PRESENTATION -> stack(ShellTab.PRESENTATION)
+            current in inMore -> stack(ShellTab.PRESENTATION) + stack(ShellTab.MORE) + stack(current)
+            else -> stack(ShellTab.PRESENTATION) + stack(current)
         }
 
     fun stack(tab: ShellTab): List<NavKey> = stacks.getValue(tab)

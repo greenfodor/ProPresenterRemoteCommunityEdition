@@ -3,9 +3,12 @@ package com.greenfodor.ppremotece.feature.settings
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -22,12 +25,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
@@ -37,6 +42,9 @@ import com.greenfodor.ppremotece.core.domain.settings.KeepAwake
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
+
+/** The widest the content column of Settings gets; it is centred beyond that. */
+private val ContentMaxWidth = 600.dp
 
 internal const val SOURCE_URL = "https://github.com/greenfodor/ProPresenterRemoteCommunityEdition"
 
@@ -79,7 +87,10 @@ fun SettingsRoot(
     )
 }
 
-/** Settings: keep-awake, Connection and About, and the Disconnect dialog while it is confirmed. */
+/**
+ * Settings: keep-awake, Orientation, Connection and About in a centred column of at most 600 dp, and
+ * the Disconnect dialog while it is confirmed.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -103,24 +114,30 @@ fun SettingsScreen(
         }
     ) { padding ->
         val insets = scrollInsets(padding)
-        Column(
+        Box(
+            contentAlignment = Alignment.TopCenter,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(insets.frame)
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = insets.scrollBottom)
         ) {
-            KeepAwakeSection(mode = state.keepAwake, onModeChange = { onAction(SettingsAction.OnKeepAwakeChange(it)) })
-            OrientationSection(
-                orientation = state.orientation,
-                onOrientationChange = { onAction(SettingsAction.OnOrientationChange(it)) }
-            )
-            ConnectionSection(
-                state = state,
-                onAutoConnectChange = { onAction(SettingsAction.OnAutoConnectChange(it)) },
-                onDisconnectClick = { onAction(SettingsAction.OnDisconnectClick) }
-            )
-            AboutSection(appVersion = appVersion, onOpenSource = onOpenSource)
+            Column(modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth()) {
+                KeepAwakeSection(
+                    mode = state.keepAwake,
+                    onModeChange = { onAction(SettingsAction.OnKeepAwakeChange(it)) }
+                )
+                OrientationSection(
+                    orientation = state.orientation,
+                    onOrientationChange = { onAction(SettingsAction.OnOrientationChange(it)) }
+                )
+                ConnectionSection(
+                    state = state,
+                    onAutoConnectChange = { onAction(SettingsAction.OnAutoConnectChange(it)) },
+                    onDisconnectClick = { onAction(SettingsAction.OnDisconnectClick) }
+                )
+                AboutSection(appVersion = appVersion, onOpenSource = onOpenSource)
+            }
         }
     }
     if (state.confirmingDisconnect) {
@@ -177,6 +194,14 @@ private fun appVersion(context: Context): String {
 @Preview
 @Composable
 private fun SettingsScreenPreview() {
+    PPRemoteTheme {
+        SettingsScreen(state = PreviewState, onAction = {}, appVersion = "0.3.0", onOpenSource = {})
+    }
+}
+
+@Preview(widthDp = 1100, heightDp = 500)
+@Composable
+private fun SettingsScreenWidePreview() {
     PPRemoteTheme {
         SettingsScreen(state = PreviewState, onAction = {}, appVersion = "0.3.0", onOpenSource = {})
     }

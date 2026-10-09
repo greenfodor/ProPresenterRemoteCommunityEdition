@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Settings keeps its content in a centred column of at most 600 dp on wide screens.
+- The More title has no icon.
+- Beside the navigation rail, Macros, Timers, Looks and Props end just above the gesture bar, without
+  the space kept for the Clear button.
+
+### Fixed
+- The predictive-back preview of a destination opened from More shows the More list.
+
 ## [0.3.0] - 2026-10-07
 
 ### Added

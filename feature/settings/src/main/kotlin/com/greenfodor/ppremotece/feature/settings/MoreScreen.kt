@@ -23,7 +23,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation3.runtime.NavKey
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
-import com.greenfodor.ppremotece.core.designsystem.ui.TabTitle
 import com.greenfodor.ppremotece.core.designsystem.ui.scrollInsets
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
@@ -42,7 +41,7 @@ fun MoreScreen(entries: List<MoreEntry>, onOpen: (NavKey) -> Unit, modifier: Mod
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { TabTitle(DesignR.drawable.ic_more_horiz, stringResource(R.string.more_title)) },
+                title = { Text(stringResource(R.string.more_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
