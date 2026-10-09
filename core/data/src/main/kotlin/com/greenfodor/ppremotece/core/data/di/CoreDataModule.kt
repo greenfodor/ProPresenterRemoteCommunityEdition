@@ -24,6 +24,8 @@ import com.greenfodor.ppremotece.core.domain.macros.MacrosRepository
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailSource
 import com.greenfodor.ppremotece.core.domain.props.PropsRepository
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
+import com.greenfodor.ppremotece.core.domain.stage.StageLayoutThumbnailSource
+import com.greenfodor.ppremotece.core.domain.stage.StageRepository
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import com.greenfodor.ppremotece.core.domain.timers.TimersRepository
@@ -49,6 +51,8 @@ val coreDataModule = module {
             TransportRepository::class,
             AudioRepository::class,
             PropThumbnailSource::class,
+            StageRepository::class,
+            StageLayoutThumbnailSource::class,
             ThumbnailSource::class
         )
     single<ProPresenterClient> { get<ProPresenterSession>().client }

@@ -8,6 +8,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Stage: a destination that lists the stage screens with the layout each one shows. A tap on a
+  stage screen opens its layouts as thumbnail tiles, and a tap on a tile sets that layout; the
+  `LIVE` mark follows ProPresenter, also when the layout is changed there.
 - A splash screen with the app's icon. It stays for at least 0.6 s and until the saved host has
   answered, at most 2 s, so a normal start goes from the splash to the app.
 

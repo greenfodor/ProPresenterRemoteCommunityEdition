@@ -4,6 +4,7 @@ import com.greenfodor.ppremotece.core.data.live.StreamingLiveStateRepository
 import com.greenfodor.ppremotece.core.data.network.KtorProPresenterClient
 import com.greenfodor.ppremotece.core.data.thumbnail.presentationThumbnailUrl
 import com.greenfodor.ppremotece.core.data.thumbnail.propThumbnailUrl
+import com.greenfodor.ppremotece.core.data.thumbnail.stageLayoutThumbnailUrl
 import com.greenfodor.ppremotece.core.data.thumbnail.thumbnailUrl
 import com.greenfodor.ppremotece.core.domain.audio.AudioRepository
 import com.greenfodor.ppremotece.core.domain.live.ConnectionRepository
@@ -24,6 +25,8 @@ import com.greenfodor.ppremotece.core.domain.model.MacroCollection
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterHost
 import com.greenfodor.ppremotece.core.domain.model.ProPresenterVersion
 import com.greenfodor.ppremotece.core.domain.model.PropCollection
+import com.greenfodor.ppremotece.core.domain.model.StageLayout
+import com.greenfodor.ppremotece.core.domain.model.StageScreen
 import com.greenfodor.ppremotece.core.domain.model.Transport
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.props.PropThumbnailRequests
@@ -32,8 +35,15 @@ import com.greenfodor.ppremotece.core.domain.props.PropsRepository
 import com.greenfodor.ppremotece.core.domain.props.propThumbnailKey
 import com.greenfodor.ppremotece.core.domain.props.propThumbnailWidth
 import com.greenfodor.ppremotece.core.domain.result.DataError
+import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onSuccess
+import com.greenfodor.ppremotece.core.domain.stage.StageLayoutThumbnailRequest
+import com.greenfodor.ppremotece.core.domain.stage.StageLayoutThumbnailRequests
+import com.greenfodor.ppremotece.core.domain.stage.StageLayoutThumbnailSource
+import com.greenfodor.ppremotece.core.domain.stage.StageRepository
+import com.greenfodor.ppremotece.core.domain.stage.stageLayoutThumbnailKey
+import com.greenfodor.ppremotece.core.domain.stage.stageLayoutThumbnailWidth
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
@@ -79,6 +89,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * [thumbnailRequests] are null until that clear has finished. [timers] and [collections] are the connection's
  * timers and macro collections, and [looks] and [currentLook] its looks and live look,
  * [Loadable.NotLoaded] and null while disconnected; [propCollections] its prop collections and
+ * [screens], [layouts] and [layoutMap] its stage screens, stage layouts and the layout each screen
+ * shows, with [stageLayoutThumbnailRequests] and [setLayout];
  * [propThumbnailRequests] its prop thumbnail requests, keyed by the host's name and null until the
  * thumbnail cache is cleared; [presentationTransport] and [audioTransport] what its transport layers
  * have loaded, not loaded while disconnected; [audioPlaylists], [activeAudio] and [audioPosition] its audio
@@ -98,12 +110,15 @@ class ProPresenterSession(
     TransportRepository,
     AudioRepository,
     PropThumbnailSource,
+    StageRepository,
+    StageLayoutThumbnailSource,
     ThumbnailSource {
     private class Connection(
         val client: KtorProPresenterClient,
         val live: StreamingLiveStateRepository,
         val thumbnails: StateFlow<ThumbnailRequests?>,
         val propThumbnails: StateFlow<PropThumbnailRequests?>,
+        val stageLayoutThumbnails: StateFlow<StageLayoutThumbnailRequests?>,
         val scope: CoroutineScope
     )
 
@@ -184,6 +199,32 @@ class ProPresenterSession(
             .flatMapLatest { it?.live?.audioTransport ?: flowOf(Loadable.NotLoaded) }
             .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val screens: StateFlow<Loadable<List<StageScreen>>> =
+        connection
+            .flatMapLatest { it?.live?.stageScreens ?: flowOf(Loadable.NotLoaded) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val layouts: StateFlow<Loadable<List<StageLayout>>> =
+        connection
+            .flatMapLatest { it?.live?.stageLayouts ?: flowOf(Loadable.NotLoaded) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val layoutMap: StateFlow<Loadable<Map<String, String>>> =
+        connection
+            .flatMapLatest { it?.live?.stageLayoutMap ?: flowOf(Loadable.NotLoaded) }
+            .stateIn(sessionScope, SharingStarted.Eagerly, Loadable.NotLoaded)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val stageLayoutThumbnailRequests: Flow<StageLayoutThumbnailRequests?> =
+        connection.flatMapLatest { it?.stageLayoutThumbnails ?: flowOf(null) }
+
+    override suspend fun setLayout(screenUuid: String, layoutUuid: String): EmptyResult<DataError.Network> =
+        connection.value?.client?.setStageLayout(screenUuid, layoutUuid)
+            ?: Result.Failure(DataError.Network.NO_CONNECTION)
+
     /** Whether the current connection's status stream is connected. */
     fun isStreamConnected(): Boolean =
         connection.value?.live?.liveState?.value?.connection == ConnectionStatus.CONNECTED
@@ -235,7 +276,11 @@ class ProPresenterSession(
             val live = StreamingLiveStateRepository(client, scope, onReconnected = { _streamReconnects.tryEmit(Unit) })
             val thumbnails = MutableStateFlow<ThumbnailRequests?>(null)
             val propThumbnails = MutableStateFlow<PropThumbnailRequests?>(null)
-            connection.getAndUpdate { Connection(client, live, thumbnails, propThumbnails, scope) }?.scope?.cancel()
+            val stageLayoutThumbnails = MutableStateFlow<StageLayoutThumbnailRequests?>(null)
+            connection
+                .getAndUpdate { Connection(client, live, thumbnails, propThumbnails, stageLayoutThumbnails, scope) }
+                ?.scope
+                ?.cancel()
             _sessionKey.value = "${connectCount.incrementAndGet()}@${host.address}:${host.port}"
             _connectedHost.value = ConnectedHost(named, version)
             restoreAllowed = true
@@ -243,6 +288,7 @@ class ProPresenterSession(
                 thumbnailCache.clear()
                 thumbnails.value = thumbnailRequests(baseUrl, version.name)
                 propThumbnails.value = propThumbnailRequests(baseUrl, version.name)
+                stageLayoutThumbnails.value = stageLayoutThumbnailRequests(baseUrl, version.name)
             }
             try {
                 savedHostStore.save(named, namedByVersion)
@@ -268,12 +314,6 @@ class ProPresenterSession(
             // The saved host stays as it was.
         }
     }
-
-    private fun propThumbnailRequests(baseUrl: String, instanceName: String) =
-        PropThumbnailRequests { uuid, px ->
-            val width = propThumbnailWidth(px)
-            PropThumbnailRequest(propThumbnailUrl(baseUrl, uuid, width), propThumbnailKey(instanceName, uuid, width))
-        }
 
     private fun thumbnailRequests(baseUrl: String, instanceName: String) =
         ThumbnailRequests { source, presentationUuid, cue, quality ->
@@ -308,3 +348,18 @@ class ProPresenterSession(
             }
         }
 }
+
+private fun propThumbnailRequests(baseUrl: String, instanceName: String) =
+    PropThumbnailRequests { uuid, px ->
+        val width = propThumbnailWidth(px)
+        PropThumbnailRequest(propThumbnailUrl(baseUrl, uuid, width), propThumbnailKey(instanceName, uuid, width))
+    }
+
+private fun stageLayoutThumbnailRequests(baseUrl: String, instanceName: String) =
+    StageLayoutThumbnailRequests { uuid, px ->
+        val width = stageLayoutThumbnailWidth(px)
+        StageLayoutThumbnailRequest(
+            stageLayoutThumbnailUrl(baseUrl, uuid, width),
+            stageLayoutThumbnailKey(instanceName, uuid, width)
+        )
+    }

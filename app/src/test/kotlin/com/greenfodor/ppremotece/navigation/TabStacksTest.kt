@@ -12,6 +12,8 @@ import com.greenfodor.ppremotece.feature.playlist.SlideGridRoute
 import com.greenfodor.ppremotece.feature.remote.RemoteRoute
 import com.greenfodor.ppremotece.feature.settings.MoreRoute
 import com.greenfodor.ppremotece.feature.settings.SettingsRoute
+import com.greenfodor.ppremotece.feature.stage.StageLayoutsRoute
+import com.greenfodor.ppremotece.feature.stage.StageRoute
 import org.junit.jupiter.api.Test
 
 class TabStacksTest {
@@ -23,10 +25,13 @@ class TabStacksTest {
         mapOf(
             ShellTab.PRESENTATION to PlaylistsRoute,
             ShellTab.REMOTE to RemoteRoute,
+            ShellTab.STAGE to StageRoute,
             ShellTab.SETTINGS to SettingsRoute,
             ShellTab.MORE to MoreRoute
         )
     )
+    private val layouts = StageLayoutsRoute(screenUuid = "s-0")
+    private val stageInMore = setOf(ShellTab.STAGE, ShellTab.SETTINGS)
     private val noneInMore = emptySet<ShellTab>()
     private val remoteInMore = setOf(ShellTab.REMOTE, ShellTab.SETTINGS)
     private val settingsInMore = setOf(ShellTab.SETTINGS)
@@ -347,5 +352,42 @@ class TabStacksTest {
         assertThat(stacks.back(remoteInMore, twoPanes = true)).isEqualTo(stacks.back(noneInMore, twoPanes = true))
         assertThat(stacks.back(remoteInMore, twoPanes = true).displayed(remoteInMore))
             .containsExactly(PlaylistsRoute, grid1)
+    }
+
+    @Test
+    fun `a stage screen's layouts are shown on the stage stack over the more list`() {
+        val stage = initial.openDetail(grid1).select(ShellTab.MORE).select(ShellTab.STAGE)
+
+        val open = stage.open(layouts)
+
+        assertThat(open.current).isEqualTo(ShellTab.STAGE)
+        assertThat(open.stack(ShellTab.STAGE)).containsExactly(StageRoute, layouts)
+        assertThat(open.displayed(stageInMore)).containsExactly(PlaylistsRoute, grid1, MoreRoute, StageRoute, layouts)
+        assertThat(open.displayed(noneInMore)).containsExactly(PlaylistsRoute, grid1, StageRoute, layouts)
+    }
+
+    @Test
+    fun `back walks from a stage screen's layouts to the stage root and then to the more list`() {
+        val open = initial.select(ShellTab.MORE).select(ShellTab.STAGE).open(layouts)
+
+        val root = open.back(stageInMore)
+        assertThat(root.current).isEqualTo(ShellTab.STAGE)
+        assertThat(root.stack(ShellTab.STAGE)).containsExactly(StageRoute)
+
+        val moreList = root.back(stageInMore)
+        assertThat(moreList.current).isEqualTo(ShellTab.MORE)
+        assertThat(moreList.displayed(stageInMore)).containsExactly(PlaylistsRoute, MoreRoute)
+        assertThat(root.back(noneInMore).current).isEqualTo(ShellTab.PRESENTATION)
+    }
+
+    @Test
+    fun `opening another stage screen's layouts replaces the open ones and re-selecting stage trims to its root`() {
+        val other = StageLayoutsRoute(screenUuid = "s-1")
+        val open = initial.select(ShellTab.STAGE).open(layouts).open(other)
+
+        assertThat(open.stack(ShellTab.STAGE)).containsExactly(StageRoute, other)
+        assertThat(open.select(ShellTab.STAGE).stack(ShellTab.STAGE)).containsExactly(StageRoute)
+        assertThat(open.select(ShellTab.REMOTE).select(ShellTab.STAGE).stack(ShellTab.STAGE))
+            .containsExactly(StageRoute, other)
     }
 }

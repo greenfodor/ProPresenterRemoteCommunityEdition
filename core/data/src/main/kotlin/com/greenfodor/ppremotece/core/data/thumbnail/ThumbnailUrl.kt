@@ -15,6 +15,10 @@ fun presentationThumbnailUrl(baseUrl: String, presentationUuid: String, cueIndex
     "${baseUrl.trimEnd('/')}/v1/presentation/${presentationUuid.encodeURLPathPart()}/thumbnail/$cueIndex" +
         "?quality=${ThumbnailRoute.PRESENTATION.query(boxQuality)}"
 
+/** `GET {baseUrl}/v1/stage/layout/{uuid}/thumbnail?quality={width}`: the stage layout's image [width] px wide. */
+fun stageLayoutThumbnailUrl(baseUrl: String, layoutUuid: String, width: Int): String =
+    "${baseUrl.trimEnd('/')}/v1/stage/layout/${layoutUuid.encodeURLPathPart()}/thumbnail?quality=$width"
+
 /** `GET {baseUrl}/v1/prop/{uuid}/thumbnail?quality={width}`: the prop's image [width] px wide. */
 fun propThumbnailUrl(baseUrl: String, propUuid: String, width: Int): String =
     "${baseUrl.trimEnd('/')}/v1/prop/${propUuid.encodeURLPathPart()}/thumbnail?quality=$width"

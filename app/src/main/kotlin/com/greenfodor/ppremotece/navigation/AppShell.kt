@@ -85,6 +85,8 @@ import com.greenfodor.ppremotece.feature.settings.MoreRoute
 import com.greenfodor.ppremotece.feature.settings.MoreScreen
 import com.greenfodor.ppremotece.feature.settings.SettingsRoot
 import com.greenfodor.ppremotece.feature.settings.SettingsRoute
+import com.greenfodor.ppremotece.feature.stage.StageLayoutsRoute
+import com.greenfodor.ppremotece.feature.stage.StageRoute
 import com.greenfodor.ppremotece.feature.timers.TimersRoot
 import com.greenfodor.ppremotece.feature.timers.TimersRoute
 import kotlinx.coroutines.Job
@@ -117,6 +119,7 @@ internal enum class ShellDestination(
     AUDIO(ShellItem(ShellTab.AUDIO, DesignR.drawable.ic_music_note_2, R.string.shell_audio), AudioRoute),
     LOOKS(ShellItem(ShellTab.LOOKS, DesignR.drawable.ic_theater_comedy, R.string.shell_looks), LooksRoute),
     PROPS(ShellItem(ShellTab.PROPS, DesignR.drawable.ic_layers, R.string.shell_props), PropsRoute),
+    STAGE(ShellItem(ShellTab.STAGE, DesignR.drawable.ic_podium, R.string.shell_stage), StageRoute),
     SETTINGS(ShellItem(ShellTab.SETTINGS, DesignR.drawable.ic_settings, R.string.shell_settings), SettingsRoute)
 }
 
@@ -131,7 +134,8 @@ private val ClearFabTabs =
         ShellTab.TIMERS,
         ShellTab.AUDIO,
         ShellTab.LOOKS,
-        ShellTab.PROPS
+        ShellTab.PROPS,
+        ShellTab.STAGE
     )
 
 /** Each tab's root route. */
@@ -240,6 +244,13 @@ fun AppShell(
                         moreEntries = { currentMoreEntries },
                         onOpenFromMore = onOpenFromMore,
                         onDisconnected = onDisconnected
+                    )
+                    stageEntries(
+                        widthClass = { currentWidthClass },
+                        reconnecting = reconnecting,
+                        fab = { currentFab },
+                        onOpenScreen = { uuid -> update(shown().open(StageLayoutsRoute(uuid))) },
+                        onBack = onBack
                     )
                 }
             )

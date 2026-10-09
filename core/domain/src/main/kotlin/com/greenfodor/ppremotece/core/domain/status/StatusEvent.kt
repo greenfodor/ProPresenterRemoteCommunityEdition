@@ -9,6 +9,8 @@ import com.greenfodor.ppremotece.core.domain.model.OutputLayer
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PropCollection
 import com.greenfodor.ppremotece.core.domain.model.SlideText
+import com.greenfodor.ppremotece.core.domain.model.StageLayout
+import com.greenfodor.ppremotece.core.domain.model.StageScreen
 import com.greenfodor.ppremotece.core.domain.model.Timer
 import com.greenfodor.ppremotece.core.domain.model.TimerReading
 import com.greenfodor.ppremotece.core.domain.model.Transport
@@ -96,6 +98,21 @@ sealed interface StatusEvent {
     /** The audio playlist track that plays, null without one, from an `audio/playlist/active` frame. */
     data class ActiveAudioChanged(
         val active: ActiveAudio?
+    ) : StatusEvent
+
+    /** The stage screens, from a `stage/screens` frame. */
+    data class StageScreens(
+        val screens: List<StageScreen>
+    ) : StatusEvent
+
+    /** The stage layouts, from a `stage/layouts` frame. */
+    data class StageLayouts(
+        val layouts: List<StageLayout>
+    ) : StatusEvent
+
+    /** Each stage screen's uuid with the uuid of the layout it shows, from a `stage/layout_map` frame. */
+    data class StageLayoutMap(
+        val layoutByScreen: Map<String, String>
     ) : StatusEvent
 
     data class Heartbeat(

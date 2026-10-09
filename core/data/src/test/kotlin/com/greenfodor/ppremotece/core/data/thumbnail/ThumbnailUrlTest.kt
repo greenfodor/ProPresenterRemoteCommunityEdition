@@ -17,6 +17,12 @@ class ThumbnailUrlTest {
     }
 
     @Test
+    fun `a stage layout thumbnail url asks for its width as the quality`() {
+        assertThat(stageLayoutThumbnailUrl("http://192.0.2.14:60113/", "l-0", width = 800))
+            .isEqualTo("http://192.0.2.14:60113/v1/stage/layout/l-0/thumbnail?quality=800")
+    }
+
+    @Test
     fun `a prop thumbnail url asks for its width as the quality`() {
         assertThat(propThumbnailUrl("http://192.0.2.14:60113/", "p-0", width = 400))
             .isEqualTo("http://192.0.2.14:60113/v1/prop/p-0/thumbnail?quality=400")

@@ -61,6 +61,7 @@ MVI presentation (State / Action / Event, `XxxRoot` / `XxxScreen`, `UiText`).
 | `:feature:audio`     | `ppremotece.android.feature`         | Audio tab: an audio playlist's tracks and the now-playing bar                    |
 | `:feature:looks`     | `ppremotece.android.feature`         | Looks tab: a radio card per look; a tap makes it the live look                   |
 | `:feature:props`     | `ppremotece.android.feature`         | Props tab: one section per collection, a thumbnail tile per prop; a tap toggles  |
+| `:feature:stage`     | `ppremotece.android.feature`         | Stage tab: a card per stage screen, then a tile per layout; a tap sets the layout |
 
 **Dependency rules:** `domain` depends on nothing; `data` → `domain`; `designsystem` → `domain`;
 features → `domain` + `designsystem`, never `data` and never each other; `:app` → everything and
@@ -98,7 +99,10 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
   playlist's uuid, never a folder's, which returns 404), the track trigger by the track's own uuid
   `GET /v1/audio/playlist/{playlist uuid}/{track uuid}/trigger` (never by index),
   `GET /v1/audio/playlist/active/next/trigger`, `GET /v1/audio/playlist/active/previous/trigger`,
-  `GET /v1/transport/audio/play` and `GET /v1/transport/audio/pause`;
+  `GET /v1/transport/audio/play` and `GET /v1/transport/audio/pause`, and the stage calls
+  `GET /v1/stage/screen/{screen uuid}/layout/{layout uuid}` (sets a stage screen's layout, from a tile tap
+  only) and the stage layout thumbnail `GET /v1/stage/layout/{layout uuid}/thumbnail?quality=200|400|600|800`
+  (kept in memory only);
 - the presentation-cue trigger `GET /v1/presentation/{uuid}/{cue}/trigger`, only from library mode (a cue
   tap, and the library grid's Prev/Next while the slide is cleared, never for a playlist item) and
   when a presentation is live outside a playlist (or remembered from one after a clear);
@@ -113,7 +117,8 @@ The app talks to ProPresenter's HTTP `/v1` API and sends only:
 - one `POST /v1/status/updates` stream whose URL array is exactly `["status/slide", "timer/system_time",
   "playlist/active", "status/layers", "timers", "timers/current", "macro_collections", "looks",
   "look/current", "prop_collections", "transport/presentation/current", "transport/audio/current",
-  "transport/audio/time", "audio/playlists", "audio/playlist/active"]` (one unknown URL
+  "transport/audio/time", "audio/playlists", "audio/playlist/active", "stage/layout_map", "stage/screens",
+  "stage/layouts"]` (one unknown URL
   ends the whole stream); after an error frame `URL: x. Error: …` the reopened stream sends the same list
   without `x` for the rest of that connection, and the next connect sends `x` again.
 
@@ -124,7 +129,10 @@ bounds, as are `timer/{id}/increment/…`, `timers/{op}`, any `/focus` route, `P
 `transport/presentation/time`, `audio/playlist/focused`, `playlists`, `playlist/focused`, `playlist/{uuid}`
 (it ends the stream) and `playlist/{uuid}/updates` (read only over its own route), the `updates` routes of
 audio playlists, media playlists and libraries, any `/v1/media/…` route and a thumbnail request
-for a media or audio playlist item (neither thumbnail route serves one).
+for a media or audio playlist item (neither thumbnail route serves one). For stage, out of bounds are
+`PUT`/`DELETE /v1/stage/message`, `PUT /v1/stage/layout_map`, `PUT /v1/status/stage_screens`,
+`DELETE /v1/stage/layout/{id}`, the stream URLs `stage/message` and `status/stage_screens`, and a stage
+layout thumbnail at a quality above 800.
 Inside a playlist, trigger by `(playlist uuid, item index, cue index)`, or by
 `(playlist uuid, item index)` for the item trigger, only;
 `/v1/presentation/active/{n}/trigger`, `/v1/presentation/{uuid}/{n}/trigger` and
