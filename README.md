@@ -10,8 +10,8 @@ supported by Renewed Vision. ProPresenter is a trademark of Renewed Vision.
 
 ## What 0.4.0 provides
 
-- **Connect.** A splash while the app reconnects to the saved host at start; otherwise a Connect
-  screen with the last used host as a card, a card per ProPresenter found on the network, and
+- **Connect.** A splash at start, held while the app reconnects to the saved host. The Connect
+  screen shows the last used host as a card, a card per ProPresenter found on the network, and
   fields for a host and port you type.
 - **Presentation.** The playlist tree with its folders; a playlist screen with a type icon per item
   and coloured headers; a slide grid or list for each item, numbered in that item's arrangement,
