@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- A slide lock: a lock button in the top bar of the slide grid and list, the item screen and the
+  Remote. While it is on, slide taps, Previous and Next, the Remote's boxes and cue list, Re-sync
+  and the item screen's start send nothing and show "Locked". Macros, timers, audio, looks, props,
+  stage layouts and clears keep working. The lock is saved and stays on until you turn it off.
+
 ### Changed
 - A song with no arrangement is labelled "Master", as ProPresenter names it: a chip on its
   playlist row, "Master · N cues" in the slide grid's header, "Live in Master" in the

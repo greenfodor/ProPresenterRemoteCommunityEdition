@@ -15,5 +15,8 @@
     <string name="cue_number">%1$d.</string>
     <string name="reconnecting">Reconnecting…</string>
     <string name="retry">Retry</string>
+    <string name="slide_locked">Locked</string>
+    <string name="slide_lock">Lock slides</string>
+    <string name="slide_unlock">Unlock slides</string>
     <string name="not_available">Not available on this ProPresenter</string>
 </resources>

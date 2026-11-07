@@ -55,6 +55,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.CueRow
 import com.greenfodor.ppremotece.core.designsystem.ui.ErrorWithRetry
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
+import com.greenfodor.ppremotece.core.designsystem.ui.SlideLockButton
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.ViewMode
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
@@ -159,6 +160,7 @@ fun SlideGridScreen(
                     }
                 },
                 actions = {
+                    SlideLockButton(locked = state.locked, onToggle = { onAction(SlideGridAction.OnLockClick) })
                     GridActions(
                         gridStep = state.gridStep ?: GridStep.Default,
                         viewMode = state.viewMode ?: ViewMode.GRID,

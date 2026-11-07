@@ -3,10 +3,12 @@ package com.greenfodor.ppremotece.feature.playlist.items
 import app.cash.turbine.test
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.live.Loadable
@@ -19,6 +21,7 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.transport.ItemLive
 import com.greenfodor.ppremotece.core.domain.transport.TransportRepository
+import com.greenfodor.ppremotece.feature.playlist.FakeAppPreferences
 import com.greenfodor.ppremotece.feature.playlist.FakeContentRepository
 import com.greenfodor.ppremotece.feature.playlist.FakeProPresenterClient
 import com.greenfodor.ppremotece.feature.playlist.R
@@ -34,6 +37,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaylistItemViewModelTest {
@@ -72,7 +76,10 @@ class PlaylistItemViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel(key: PlaylistItemKey) = PlaylistItemViewModel(key, content, transports, client, messages)
+    private val preferences = FakeAppPreferences()
+
+    private fun viewModel(key: PlaylistItemKey) =
+        PlaylistItemViewModel(key, content, transports, client, messages, preferences)
 
     private fun playing(uuid: String, isPlaying: Boolean = true) =
         Loadable.Loaded(Transport(isPlaying, uuid, "", "", false, 0.0))
@@ -105,6 +112,72 @@ class PlaylistItemViewModelTest {
         }
 
         assertThat(client.triggeredItems).containsExactly(MEDIA)
+    }
+
+    @Test
+    fun `while locked the card sends nothing and posts Locked`() = runTest(dispatcher) {
+        preferences.lock.value = true
+        val viewModel = viewModel(MEDIA)
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().locked).isTrue()
+            viewModel.onAction(PlaylistItemAction.OnCardClick)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.triggeredItems).isEmpty()
+        messages.messages.test {
+            assertThat((awaitItem() as UiText.StringResource).id).isEqualTo(DesignR.string.slide_locked)
+        }
+    }
+
+    @Test
+    fun `the card is locked until the lock is read and when it cannot be read`() = runTest(dispatcher) {
+        preferences.lock.value = null
+        val unread = viewModel(MEDIA)
+        unread.state.test {
+            assertThat(expectMostRecentItem().locked).isTrue()
+            unread.onAction(PlaylistItemAction.OnCardClick)
+            cancelAndIgnoreRemainingEvents()
+        }
+        preferences.failRead = true
+        val failed = viewModel(AUDIO)
+        failed.state.test {
+            assertThat(expectMostRecentItem().locked).isTrue()
+            failed.onAction(PlaylistItemAction.OnCardClick)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.triggeredItems).isEmpty()
+    }
+
+    @Test
+    fun `the lock button saves the other state`() = runTest(dispatcher) {
+        val viewModel = viewModel(MEDIA)
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().locked).isFalse()
+            viewModel.onAction(PlaylistItemAction.OnLockClick)
+            assertThat(awaitItem().locked).isTrue()
+        }
+
+        assertThat(preferences.writes).containsExactly(true)
+    }
+
+    @Test
+    fun `a lock that can't be saved posts the setting message`() = runTest(dispatcher) {
+        preferences.failWrites = true
+        val viewModel = viewModel(MEDIA)
+
+        viewModel.state.test {
+            expectMostRecentItem()
+            viewModel.onAction(PlaylistItemAction.OnLockClick)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        messages.messages.test {
+            assertThat((awaitItem() as UiText.StringResource).id).isEqualTo(DesignR.string.setting_not_saved)
+        }
     }
 
     @Test

@@ -32,11 +32,11 @@ internal val Context.appSettingsDataStore by preferencesDataStore(
 )
 
 /**
- * [AppPreferences] in [dataStore] under `keep_awake`, `orientation` and `auto_connect`;
- * [KeepAwake.Default], [AppOrientation.Default] and auto-connect on when unset.
- * A corrupt file is replaced with an empty one. A read error gives the defaults, then, unless the
- * file is corrupt, the values are read again after [READ_RETRY_DELAY_MS]; a write error leaves the
- * saved value unchanged and is returned.
+ * [AppPreferences] in [dataStore] under `keep_awake`, `orientation`, `auto_connect` and `slide_lock`;
+ * [KeepAwake.Default], [AppOrientation.Default], auto-connect on and the slide lock off when unset.
+ * A corrupt file is replaced with an empty one. A read error gives the defaults, and the slide lock
+ * on; then, unless the file is corrupt, the values are read again after [READ_RETRY_DELAY_MS]. A write
+ * error leaves the saved value unchanged and is returned.
  */
 class DataStoreAppPreferences(
     private val dataStore: DataStore<Preferences>
@@ -64,14 +64,21 @@ class DataStoreAppPreferences(
     override suspend fun setAutoConnect(enabled: Boolean): EmptyResult<DataError.Local> =
         write { it[AUTO_CONNECT] = enabled }
 
-    private fun <T> read(value: (Preferences) -> T): Flow<T> =
+    override fun slideLock(): Flow<Boolean> = read(unreadable = true) { it[SLIDE_LOCK] ?: false }
+
+    override suspend fun setSlideLock(locked: Boolean): EmptyResult<DataError.Local> =
+        write { it[SLIDE_LOCK] = locked }
+
+    /** [value] of the preferences; on a read error [unreadable] when given, else [value] of empty preferences. */
+    private fun <T> read(unreadable: T? = null, value: (Preferences) -> T): Flow<T> =
         dataStore.data
+            .map<Preferences, T>(value)
             .retryWhen { cause, _ ->
-                if (cause is IOException) emit(emptyPreferences())
+                if (cause is IOException) emit(unreadable ?: value(emptyPreferences()))
                 (cause is IOException && cause !is CorruptionException).also { retry ->
                     if (retry) delay(READ_RETRY_DELAY_MS)
                 }
-            }.catch { if (it !is CorruptionException) throw it }.map(value)
+            }.catch { if (it !is CorruptionException) throw it }
             .distinctUntilChanged()
 
     private suspend fun write(change: (MutablePreferences) -> Unit): EmptyResult<DataError.Local> =
@@ -87,5 +94,6 @@ class DataStoreAppPreferences(
         val KEEP_AWAKE = stringPreferencesKey("keep_awake")
         val ORIENTATION = stringPreferencesKey("orientation")
         val AUTO_CONNECT = booleanPreferencesKey("auto_connect")
+        val SLIDE_LOCK = booleanPreferencesKey("slide_lock")
     }
 }

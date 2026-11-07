@@ -12,6 +12,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItem
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onFailure
+import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.transport.TransportRepository
 import com.greenfodor.ppremotece.core.domain.transport.formatDuration
 import com.greenfodor.ppremotece.core.domain.transport.itemLive
@@ -21,12 +22,14 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private const val STOP_TIMEOUT_MILLIS = 5_000L
 
@@ -37,16 +40,21 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * nothing. An item that is not a media, audio or live-video
  * item is shown as no longer in the playlist.
  * A tap triggers the item; taps are ignored while its request is in flight, and a failure posts
- * "Couldn't start {item}".
+ * "Couldn't start {item}". While the slide lock is on, and until it is read or when it cannot be read, a tap
+ * sends nothing and posts "Locked"; the lock button saves the other state.
  */
 class PlaylistItemViewModel(
     private val key: PlaylistItemKey,
     private val contentRepository: ContentRepository,
     transportRepository: TransportRepository,
     private val client: ProPresenterClient,
-    private val messages: UiMessages
+    private val messages: UiMessages,
+    private val appPreferences: AppPreferences
 ) : ViewModel() {
     private val triggers = InFlightTriggers()
+    private val locked: StateFlow<Boolean> = appPreferences.slideLock()
+        .catch { emit(true) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     private val reads = MutableStateFlow(0)
 
     /** The item as last read, or why it could not be read; neither while it is being read. */
@@ -91,18 +99,30 @@ class PlaylistItemViewModel(
                     isLoading = false
                 )
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), PlaylistItemState())
+        }.combine(locked) { state, locked -> state.copy(locked = locked) }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                PlaylistItemState(locked = true)
+            )
 
     fun onAction(action: PlaylistItemAction) {
         when (action) {
             PlaylistItemAction.OnCardClick -> trigger()
             PlaylistItemAction.OnRetryClick -> reads.update { it + 1 }
+            PlaylistItemAction.OnLockClick -> viewModelScope.launch {
+                appPreferences.setSlideLock(!locked.value).onFailure { messages.post(it.toUiText()) }
+            }
         }
     }
 
     private fun trigger() {
         val shown = state.value
         if (shown.type == null) return
+        if (locked.value) {
+            messages.post(UiText.StringResource(DesignR.string.slide_locked))
+            return
+        }
         viewModelScope.launch {
             triggers.run(TRIGGER_KEY) {
                 client.triggerItem(key).onFailure {

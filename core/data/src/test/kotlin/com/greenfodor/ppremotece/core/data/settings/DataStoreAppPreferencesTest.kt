@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.core.data.settings
 
 import androidx.datastore.core.CorruptionException
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.preferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.cash.turbine.test
@@ -117,6 +118,58 @@ class DataStoreAppPreferencesTest {
             advanceTimeBy(60_000)
             expectNoEvents()
         }
+    }
+
+    @Test
+    fun `the slide lock is off until saved`() = runBlocking<Unit> {
+        assertThat(preferences.slideLock().first()).isFalse()
+    }
+
+    @Test
+    fun `the slide lock is saved and read back`() = runBlocking<Unit> {
+        assertThat(preferences.setSlideLock(true)).isEqualTo(Result.Success(Unit))
+        assertThat(preferences.slideLock().first()).isTrue()
+
+        assertThat(preferences.setSlideLock(false)).isEqualTo(Result.Success(Unit))
+        assertThat(preferences.slideLock().first()).isFalse()
+    }
+
+    @Test
+    fun `the slide lock is stored under its own key`() = runTest {
+        val dataStore = FlakyDataStore()
+
+        DataStoreAppPreferences(dataStore).setSlideLock(true)
+
+        assertThat(dataStore.stored.value[booleanPreferencesKey("slide_lock")]).isEqualTo(true)
+    }
+
+    @Test
+    fun `a failed slide lock read is locked, then the saved value is read again`() = runTest {
+        val dataStore = FlakyDataStore(preferencesOf(booleanPreferencesKey("slide_lock") to false), readFailures = 1)
+
+        DataStoreAppPreferences(dataStore).slideLock().test {
+            assertThat(awaitItem()).isTrue()
+            assertThat(awaitItem()).isFalse()
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `a slide lock that cannot be read at all stays locked`() = runTest {
+        val dataStore = FlakyDataStore(readFailures = Int.MAX_VALUE)
+
+        DataStoreAppPreferences(dataStore).slideLock().test {
+            assertThat(awaitItem()).isTrue()
+            advanceTimeBy(60_000)
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun `a failed slide lock write is reported`() = runTest {
+        val preferences = DataStoreAppPreferences(FlakyDataStore().apply { failWrites = true })
+
+        assertThat(preferences.setSlideLock(true)).isEqualTo(Result.Failure(DataError.Local.WRITE_FAILED))
     }
 
     @Test

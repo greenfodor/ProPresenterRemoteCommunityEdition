@@ -21,7 +21,8 @@ data class RemoteState(
     val error: UiText? = null,
     val sidebar: List<SidebarCueUi> = emptyList(),
     val sidebarFocus: Int? = null,
-    val sidebarSource: CueSource? = null
+    val sidebarSource: CueSource? = null,
+    val locked: Boolean = false
 )
 
 /** A cue of the cue sidebar with its mark and thumbnail request. */
@@ -47,6 +48,8 @@ sealed interface RemoteAction {
     data object OnBackToLiveClick : RemoteAction
 
     data object OnRetryClick : RemoteAction
+
+    data object OnLockClick : RemoteAction
 
     data class OnSidebarCueClick(
         val index: Int

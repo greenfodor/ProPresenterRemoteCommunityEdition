@@ -2,6 +2,7 @@ package com.greenfodor.ppremotece.feature.playlist.grid
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.designsystem.ui.toUiText
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementBanner
@@ -31,6 +32,7 @@ import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.map
 import com.greenfodor.ppremotece.core.domain.result.onFailure
+import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
@@ -44,6 +46,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -56,6 +59,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.withIndex
 import kotlinx.coroutines.launch
+import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private const val STOP_TIMEOUT_MILLIS = 5_000L
 
@@ -75,7 +79,9 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * shows the [ArrangementBanner] while its presentation is live in another arrangement, and Re-sync
  * triggers this item's cue at the live slide ([resyncTarget]), and is disabled without a match. A
  * setting that can't be saved shows a message. The group strip lists the
- * [groupSequence], and a pill tap scrolls to the occurrence's first cue.
+ * [groupSequence], and a pill tap scrolls to the occurrence's first cue. While the slide lock is on, and until
+ * it is read or when it cannot be read, every trigger sends nothing and posts "Locked" to [messages]; the lock
+ * button saves the other state.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SlideGridViewModel(
@@ -85,7 +91,9 @@ class SlideGridViewModel(
     liveStateRepository: LiveStateRepository,
     private val thumbnailSource: ThumbnailSource,
     private val thumbnailCache: ThumbnailCache,
-    private val gridPreferences: GridPreferences
+    private val gridPreferences: GridPreferences,
+    private val appPreferences: AppPreferences,
+    private val messages: UiMessages
 ) : ViewModel() {
     private sealed interface Content {
         data object Loading : Content
@@ -116,6 +124,9 @@ class SlideGridViewModel(
     private val viewMode: Flow<ViewMode?> =
         widthClass.flatMapLatest { it?.let(gridPreferences::viewMode) ?: flowOf(null) }
     private var loaded: Content.Loaded? = null
+    private val locked: StateFlow<Boolean> = appPreferences.slideLock()
+        .catch { emit(true) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     private val live = liveStateRepository.liveState
     private val lastLive = liveStateRepository.lastLive
 
@@ -199,10 +210,10 @@ class SlideGridViewModel(
                     .withLive(source, loaded.presentation, loaded.cueList, live, last, read?.ref, liveItemLoading)
                     .copy(gridStep = step)
             }
-        }.stateIn(
+        }.combine(locked) { state, locked -> state.copy(locked = locked) }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-            SlideGridState(steps = idleSteps)
+            SlideGridState(steps = idleSteps, locked = true)
         )
 
     /** The index of the first cue shown, as last reported by [SlideGridAction.OnFirstVisibleCueChange]. */
@@ -224,6 +235,9 @@ class SlideGridViewModel(
             }
             is SlideGridAction.OnFirstVisibleCueChange -> firstVisibleCue = action.cueIndex
             SlideGridAction.OnRetryClick -> retries.value++
+            SlideGridAction.OnLockClick -> viewModelScope.launch {
+                appPreferences.setSlideLock(!locked.value).onFailure { showWriteError(it) }
+            }
             SlideGridAction.OnReloadClick -> reload()
             is SlideGridAction.Layout -> onLayoutAction(action)
         }
@@ -329,6 +343,10 @@ class SlideGridViewModel(
     }
 
     private fun send(trigger: suspend () -> EmptyResult<DataError.Network>) {
+        if (locked.value) {
+            messages.post(UiText.StringResource(DesignR.string.slide_locked))
+            return
+        }
         viewModelScope.launch {
             trigger().onFailure { _events.send(SlideGridEvent.ShowError(it.toUiText())) }
         }

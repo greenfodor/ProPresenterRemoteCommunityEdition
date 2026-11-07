@@ -29,6 +29,7 @@ data class SlideGridState(
     val steps: CueSteps = CueSteps(next = CueStep.Disabled, previous = CueStep.Disabled),
     val gridStep: GridStep? = null,
     val viewMode: ViewMode? = null,
+    val locked: Boolean = false,
     val isLoading: Boolean = true,
     val error: UiText? = null
 )
@@ -51,6 +52,8 @@ sealed interface SlideGridAction {
     data class OnCueClick(
         val index: Int
     ) : SlideGridAction
+
+    data object OnLockClick : SlideGridAction
 
     data object OnNextClick : SlideGridAction
 

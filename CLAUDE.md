@@ -72,6 +72,12 @@ navigation goes through callbacks wired in `:app`.
 so a value `AppShell` passes into an entry is read inside the entry (a `() -> T` or a `State`), never
 captured by value.
 
+**Slide lock:** `AppPreferences.slideLock()` is one app-wide saved boolean (off by default, on while it
+cannot be read). `SlideGridViewModel`, `RemoteViewModel` and `PlaylistItemViewModel` treat it as on until
+it is read; while on, every path to `triggerCue`, `triggerItem`, `triggerPresentationCue`, `triggerNext`
+and `triggerPrevious` sends nothing and posts "Locked" to `UiMessages`. Nothing is sent to ProPresenter
+for the lock, and no other call reads it. The toggle is `SlideLockButton` in those three screens' top bars.
+
 `:core:domain` compiles against the JDK 17 API (`-Xjdk-release=17`, javac `--release 17`), and
 animal-sniffer (`animalsnifferMain`, part of `check`) fails the build on any JDK API missing from
 Android API 29 (gummy-bears signatures). Android modules compile against `android.jar`. Convention plugins live in `build-logic/convention`. `ppremotece.lint` (detekt + ktlint) is

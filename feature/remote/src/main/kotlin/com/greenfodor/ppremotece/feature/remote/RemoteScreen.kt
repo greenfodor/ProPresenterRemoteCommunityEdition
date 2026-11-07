@@ -62,6 +62,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.ErrorWithRetry
 import com.greenfodor.ppremotece.core.designsystem.ui.ObserveAsEvents
 import com.greenfodor.ppremotece.core.designsystem.ui.OutlinedBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
+import com.greenfodor.ppremotece.core.designsystem.ui.SlideLockButton
 import com.greenfodor.ppremotece.core.designsystem.ui.ThumbnailPrefetch
 import com.greenfodor.ppremotece.core.domain.layout.WidthClass
 import com.greenfodor.ppremotece.core.domain.remote.RemoteBox
@@ -228,7 +229,10 @@ private fun RemoteScaffold(
                         }
                     }
                 },
-                actions = { HeaderActions(display) },
+                actions = {
+                    HeaderActions(display)
+                    SlideLockButton(locked = state.locked, onToggle = { onAction(RemoteAction.OnLockClick) })
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                 )
@@ -297,7 +301,7 @@ private fun HeaderActions(display: RemoteDisplay) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(end = 16.dp)
+        modifier = Modifier.padding(end = 4.dp)
     ) {
         header.arrangement?.let { ArrangementChip(text = it.label()) }
         val number = header.cueNumber

@@ -43,6 +43,7 @@ import com.greenfodor.ppremotece.core.designsystem.ui.ErrorWithRetry
 import com.greenfodor.ppremotece.core.designsystem.ui.LiveMark
 import com.greenfodor.ppremotece.core.designsystem.ui.OutlinedBadge
 import com.greenfodor.ppremotece.core.designsystem.ui.ReconnectingStrip
+import com.greenfodor.ppremotece.core.designsystem.ui.SlideLockButton
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.model.PlaylistItemType
 import com.greenfodor.ppremotece.core.domain.transport.ItemLive
@@ -116,6 +117,9 @@ fun PlaylistItemScreen(
                             Icon(painterResource(DesignR.drawable.ic_arrow_back), stringResource(R.string.grid_back))
                         }
                     }
+                },
+                actions = {
+                    SlideLockButton(locked = state.locked, onToggle = { onAction(PlaylistItemAction.OnLockClick) })
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
