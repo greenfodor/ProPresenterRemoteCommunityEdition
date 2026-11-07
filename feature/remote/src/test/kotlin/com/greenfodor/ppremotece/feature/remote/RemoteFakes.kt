@@ -24,6 +24,7 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.EmptyResult
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.status.StatusEvent
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -127,19 +128,24 @@ class FakeLiveStateRepository : LiveStateRepository {
     }
 }
 
-/** Serves fixed playlists and presentations, counting each read; uuids in [failing] fail with a server error. */
+/**
+ * Serves fixed playlists and presentations, counting each read; uuids in [failing] fail with a server error,
+ * playlists in [pending] never answer.
+ */
 class FakeContentRepository(
     private val playlists: Map<String, Playlist>,
     private val presentations: Map<String, Presentation>
 ) : ContentRepository {
     val reads = mutableListOf<String>()
     val failing = mutableSetOf<String>()
+    val pending = mutableSetOf<String>()
 
     override fun playlists(): Flow<Result<List<PlaylistTreeNode>, DataError.Network>> = flowOf(
         Result.Success(emptyList())
     )
 
     override fun playlist(uuid: String): Flow<Result<Playlist, DataError.Network>> = flow {
+        if (uuid in pending) awaitCancellation()
         emit(read(uuid, playlists[uuid]))
     }
 

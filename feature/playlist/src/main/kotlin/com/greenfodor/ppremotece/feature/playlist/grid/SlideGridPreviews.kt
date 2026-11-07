@@ -111,8 +111,14 @@ private fun SlideGridPhoneUnlockedPreview() {
     GridPreview(cleared = false, steps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative))
 }
 
-@Preview(widthDp = 813, heightDp = 527)
+@Preview(widthDp = 1173, heightDp = 527)
 @Composable
 private fun SlideGridWideLockedPreview() {
     GridPreview(cleared = false, steps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative), locked = true)
+}
+
+@Preview(widthDp = 1173, heightDp = 527)
+@Composable
+private fun SlideGridWideUnlockedPreview() {
+    GridPreview(cleared = false, steps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative))
 }

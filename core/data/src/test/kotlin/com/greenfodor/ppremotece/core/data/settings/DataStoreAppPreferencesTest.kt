@@ -166,6 +166,16 @@ class DataStoreAppPreferencesTest {
     }
 
     @Test
+    fun `a corrupt file is replaced with the slide lock on and the other defaults`() = runTest {
+        val preferences = DataStoreAppPreferences(FlakyDataStore(appSettingsAfterCorruption()))
+
+        assertThat(preferences.slideLock().first()).isTrue()
+        assertThat(preferences.keepAwake().first()).isEqualTo(KeepAwake.Default)
+        assertThat(preferences.orientation().first()).isEqualTo(AppOrientation.Default)
+        assertThat(preferences.autoConnect().first()).isTrue()
+    }
+
+    @Test
     fun `a failed slide lock write is reported`() = runTest {
         val preferences = DataStoreAppPreferences(FlakyDataStore().apply { failWrites = true })
 

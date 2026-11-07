@@ -33,6 +33,7 @@ import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.map
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
+import com.greenfodor.ppremotece.core.domain.settings.SlideLock
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailKey
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
@@ -46,7 +47,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -81,7 +81,7 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * setting that can't be saved shows a message. The group strip lists the
  * [groupSequence], and a pill tap scrolls to the occurrence's first cue. While the slide lock is on, and until
  * it is read or when it cannot be read, every trigger sends nothing and posts "Locked" to [messages]; the lock
- * button saves the other state.
+ * button saves the other state once the lock is read ([SlideLock]).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SlideGridViewModel(
@@ -124,9 +124,7 @@ class SlideGridViewModel(
     private val viewMode: Flow<ViewMode?> =
         widthClass.flatMapLatest { it?.let(gridPreferences::viewMode) ?: flowOf(null) }
     private var loaded: Content.Loaded? = null
-    private val locked: StateFlow<Boolean> = appPreferences.slideLock()
-        .catch { emit(true) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    private val lock = SlideLock(appPreferences, viewModelScope)
     private val live = liveStateRepository.liveState
     private val lastLive = liveStateRepository.lastLive
 
@@ -210,7 +208,7 @@ class SlideGridViewModel(
                     .withLive(source, loaded.presentation, loaded.cueList, live, last, read?.ref, liveItemLoading)
                     .copy(gridStep = step)
             }
-        }.combine(locked) { state, locked -> state.copy(locked = locked) }.stateIn(
+        }.combine(lock.on) { state, locked -> state.copy(locked = locked) }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             SlideGridState(steps = idleSteps, locked = true)
@@ -235,9 +233,7 @@ class SlideGridViewModel(
             }
             is SlideGridAction.OnFirstVisibleCueChange -> firstVisibleCue = action.cueIndex
             SlideGridAction.OnRetryClick -> retries.value++
-            SlideGridAction.OnLockClick -> viewModelScope.launch {
-                appPreferences.setSlideLock(!locked.value).onFailure { showWriteError(it) }
-            }
+            SlideGridAction.OnLockClick -> lock.toggle { showWriteError(it) }
             SlideGridAction.OnReloadClick -> reload()
             is SlideGridAction.Layout -> onLayoutAction(action)
         }
@@ -343,7 +339,7 @@ class SlideGridViewModel(
     }
 
     private fun send(trigger: suspend () -> EmptyResult<DataError.Network>) {
-        if (locked.value) {
+        if (lock.isOn) {
             messages.post(UiText.StringResource(DesignR.string.slide_locked))
             return
         }

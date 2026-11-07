@@ -26,6 +26,7 @@ import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
+import com.greenfodor.ppremotece.core.domain.settings.SlideLock
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
@@ -37,7 +38,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -65,7 +65,7 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * thumbnails at their measured width, and the thumbnails [remotePrefetch] names are loaded
  * ahead; the sidebar asks for grid thumbnails. While the slide lock is on, and until it is read or when it cannot
  * be read, every command sends nothing and posts "Locked" to [messages]; ⏮/⏭ and "Back to live" are unaffected,
- * and the lock button saves the other state.
+ * and the lock button saves the other state once the lock is read ([SlideLock]).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RemoteViewModel(
@@ -92,9 +92,7 @@ class RemoteViewModel(
     private val mediaLive = MutableStateFlow<Chosen?>(null)
     private val retries = MutableStateFlow(0)
     private val boxWidth = MutableStateFlow(0)
-    private val locked: StateFlow<Boolean> = appPreferences.slideLock()
-        .catch { emit(true) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    private val lock = SlideLock(appPreferences, viewModelScope)
 
     private val inputs: Flow<RemoteInputs> =
         combine(liveStateRepository.liveState, liveStateRepository.lastLive, cued, mediaLive) {
@@ -166,7 +164,10 @@ class RemoteViewModel(
                 sidebarFocus = display.sidebar?.focus,
                 sidebarSource = display.sidebar?.source
             )
-        }.combine(locked) { state, locked -> state.copy(locked = locked) }
+        }
+            // The content keeps its last value across a pause, and the lock shows before it loads.
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), RemoteState())
+            .combine(lock.on) { state, locked -> state.copy(locked = locked) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), RemoteState(locked = true))
 
     private val _events = Channel<RemoteEvent>()
@@ -183,10 +184,8 @@ class RemoteViewModel(
             RemoteAction.OnNextItemClick -> display.nextItem?.let { cue(it, display) }
             RemoteAction.OnBackToLiveClick -> cued.value = null
             RemoteAction.OnRetryClick -> retries.value++
-            RemoteAction.OnLockClick -> viewModelScope.launch {
-                appPreferences.setSlideLock(!locked.value).onFailure {
-                    _events.send(RemoteEvent.ShowError(it.toUiText()))
-                }
+            RemoteAction.OnLockClick -> lock.toggle {
+                _events.send(RemoteEvent.ShowError(it.toUiText()))
             }
             is RemoteAction.OnSidebarCueClick -> sendSidebarCue(action.index, display)
             is RemoteAction.OnBoxSized -> boxWidth.value = action.px
@@ -210,7 +209,7 @@ class RemoteViewModel(
 
     private fun send(command: RemoteCommand?) {
         command ?: return
-        if (locked.value) {
+        if (lock.isOn) {
             messages.post(UiText.StringResource(DesignR.string.slide_locked))
             return
         }

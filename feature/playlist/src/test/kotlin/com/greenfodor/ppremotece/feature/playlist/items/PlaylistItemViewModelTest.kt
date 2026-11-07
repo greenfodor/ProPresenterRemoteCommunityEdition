@@ -126,29 +126,64 @@ class PlaylistItemViewModelTest {
         }
 
         assertThat(client.triggeredItems).isEmpty()
+        assertLockedPosted()
+    }
+
+    private suspend fun assertLockedPosted() {
         messages.messages.test {
             assertThat((awaitItem() as UiText.StringResource).id).isEqualTo(DesignR.string.slide_locked)
         }
     }
 
     @Test
-    fun `the card is locked until the lock is read and when it cannot be read`() = runTest(dispatcher) {
+    fun `the card is locked until the lock is read, then a tap is sent`() = runTest(dispatcher) {
         preferences.lock.value = null
-        val unread = viewModel(MEDIA)
-        unread.state.test {
+        val viewModel = viewModel(MEDIA)
+
+        viewModel.state.test {
             assertThat(expectMostRecentItem().locked).isTrue()
-            unread.onAction(PlaylistItemAction.OnCardClick)
+            viewModel.onAction(PlaylistItemAction.OnCardClick)
+            assertLockedPosted()
+            assertThat(client.triggeredItems).isEmpty()
+            preferences.lock.value = false
+            assertThat(expectMostRecentItem().locked).isFalse()
+            viewModel.onAction(PlaylistItemAction.OnCardClick)
             cancelAndIgnoreRemainingEvents()
         }
+
+        assertThat(client.triggeredItems).containsExactly(MEDIA)
+    }
+
+    @Test
+    fun `the card is locked when the lock cannot be read`() = runTest(dispatcher) {
         preferences.failRead = true
-        val failed = viewModel(AUDIO)
-        failed.state.test {
+        val viewModel = viewModel(MEDIA)
+
+        viewModel.state.test {
             assertThat(expectMostRecentItem().locked).isTrue()
-            failed.onAction(PlaylistItemAction.OnCardClick)
+            viewModel.onAction(PlaylistItemAction.OnCardClick)
+            assertLockedPosted()
+            viewModel.onAction(PlaylistItemAction.OnLockClick)
             cancelAndIgnoreRemainingEvents()
         }
 
         assertThat(client.triggeredItems).isEmpty()
+        assertThat(preferences.writes).isEmpty()
+    }
+
+    @Test
+    fun `while the item loads the lock button shows the saved lock and toggles it`() = runTest(dispatcher) {
+        content.pendingPlaylists += PLAYLIST
+        val viewModel = viewModel(MEDIA)
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().locked).isFalse()
+            viewModel.onAction(PlaylistItemAction.OnLockClick)
+            assertThat(expectMostRecentItem().locked).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(preferences.writes).containsExactly(true)
     }
 
     @Test

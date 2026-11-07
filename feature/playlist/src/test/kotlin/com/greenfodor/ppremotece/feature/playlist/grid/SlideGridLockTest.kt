@@ -88,12 +88,7 @@ class SlideGridLockTest {
 
         override fun gridStep(widthClass: WidthClass) = steps.map { it[widthClass] ?: GridStep.Default }
 
-        var writes = 0
-        var failWrites = false
-
         override suspend fun setGridStep(widthClass: WidthClass, step: GridStep): EmptyResult<DataError.Local> {
-            writes++
-            if (failWrites) return Result.Failure(DataError.Local.WRITE_FAILED)
             steps.value += widthClass to step
             return Result.Success(Unit)
         }
@@ -103,19 +98,14 @@ class SlideGridLockTest {
         override fun viewMode(widthClass: WidthClass) = modes.map { it[widthClass] ?: ViewMode.GRID }
 
         override suspend fun setViewMode(widthClass: WidthClass, mode: ViewMode): EmptyResult<DataError.Local> {
-            if (failWrites) return Result.Failure(DataError.Local.WRITE_FAILED)
             modes.value += widthClass to mode
             return Result.Success(Unit)
         }
     }
     private val thumbnailCache = object : ThumbnailCache {
-        val removed = mutableListOf<List<String>>()
-
         override suspend fun clear() = Unit
 
-        override suspend fun remove(keys: Collection<String>) {
-            removed += keys.toList()
-        }
+        override suspend fun remove(keys: Collection<String>) = Unit
     }
 
     @BeforeEach
@@ -163,20 +153,24 @@ class SlideGridLockTest {
             val state = expectMostRecentItem()
             assertThat(state.locked).isTrue()
             assertThat(state.resync).isEqualTo(ResyncTarget.Cue(4))
-            viewModel.onAction(SlideGridAction.OnCueClick(0))
-            viewModel.onAction(SlideGridAction.OnNextClick)
-            viewModel.onAction(SlideGridAction.OnPreviousClick)
-            viewModel.onAction(SlideGridAction.OnResyncClick)
+            listOf(
+                SlideGridAction.OnCueClick(0),
+                SlideGridAction.OnNextClick,
+                SlideGridAction.OnPreviousClick,
+                SlideGridAction.OnResyncClick
+            ).forEach { action ->
+                viewModel.onAction(action)
+                assertLockedPosted()
+            }
             cancelAndIgnoreRemainingEvents()
         }
 
         assertThat(client.triggeredCues).isEmpty()
         assertThat(client.steps).isEmpty()
-        assertLockedPosted()
     }
 
     @Test
-    fun `while locked a list row tap sends nothing`() = runTest {
+    fun `while locked a list row tap, the same action as a cell, sends nothing`() = runTest {
         preferences.lock.value = true
         val viewModel = viewModel()
 
@@ -200,15 +194,16 @@ class SlideGridLockTest {
 
         viewModel.state.test {
             assertThat(expectMostRecentItem().steps).isEqualTo(relativeSteps)
-            viewModel.onAction(SlideGridAction.OnCueClick(0))
-            viewModel.onAction(SlideGridAction.OnNextClick)
-            viewModel.onAction(SlideGridAction.OnPreviousClick)
+            listOf(SlideGridAction.OnCueClick(0), SlideGridAction.OnNextClick, SlideGridAction.OnPreviousClick)
+                .forEach { action ->
+                    viewModel.onAction(action)
+                    assertLockedPosted()
+                }
             cancelAndIgnoreRemainingEvents()
         }
 
         assertThat(client.triggeredPresentationCues).isEmpty()
         assertThat(client.steps).isEmpty()
-        assertLockedPosted()
     }
 
     @Test
@@ -230,31 +225,53 @@ class SlideGridLockTest {
     }
 
     @Test
-    fun `a library presentation unlocked sends its presentation trigger`() = runTest {
+    fun `a library presentation unlocked sends its cue, next and previous`() = runTest {
         val viewModel = viewModel(CueSource.Presentation(SONG_C))
+        live.value = outside(cue = 3, totalCues = 8)
 
         viewModel.state.test {
-            expectMostRecentItem()
+            assertThat(expectMostRecentItem().steps).isEqualTo(relativeSteps)
             viewModel.onAction(SlideGridAction.OnCueClick(2))
+            viewModel.onAction(SlideGridAction.OnNextClick)
+            viewModel.onAction(SlideGridAction.OnPreviousClick)
             cancelAndIgnoreRemainingEvents()
         }
 
         assertThat(client.triggeredPresentationCues).containsExactly(SONG_C to 2)
+        assertThat(client.steps).containsExactly("next", "previous")
     }
 
     @Test
-    fun `the grid is locked until the lock is read`() = runTest {
+    fun `the grid is locked until the lock is read, then a tap is sent`() = runTest {
         preferences.lock.value = null
         val viewModel = viewModel()
 
         viewModel.state.test {
             assertThat(expectMostRecentItem().locked).isTrue()
             viewModel.onAction(SlideGridAction.OnCueClick(0))
+            assertLockedPosted()
+            assertThat(client.triggeredCues).isEmpty()
+            preferences.lock.value = false
+            assertThat(expectMostRecentItem().locked).isFalse()
+            viewModel.onAction(SlideGridAction.OnCueClick(0))
             cancelAndIgnoreRemainingEvents()
         }
 
-        assertThat(client.triggeredCues).isEmpty()
-        assertLockedPosted()
+        assertThat(client.triggeredCues).containsExactly(item to 0)
+    }
+
+    @Test
+    fun `a lock tap before the lock is read saves nothing`() = runTest {
+        preferences.lock.value = null
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            expectMostRecentItem()
+            viewModel.onAction(SlideGridAction.OnLockClick)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(preferences.writes).isEmpty()
     }
 
     @Test
@@ -300,7 +317,6 @@ class SlideGridLockTest {
     }
 
     private val relativeSteps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative)
-    private val disabledSteps = CueSteps(next = CueStep.Disabled, previous = CueStep.Disabled)
 
     private fun SlideGridEvent.messageId() = ((this as SlideGridEvent.ShowError).message as UiText.StringResource).id
 
@@ -360,7 +376,5 @@ class SlideGridLockTest {
     private companion object {
         const val PLAYLIST = "pl-1"
         const val SONG_C = "p-c"
-        const val PENDING_PLAYLIST = "pl-2"
-        const val UNRESOLVED_PLAYLIST = "pl-3"
     }
 }

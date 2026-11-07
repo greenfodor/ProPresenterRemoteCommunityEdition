@@ -13,6 +13,7 @@ import com.greenfodor.ppremotece.core.domain.model.PlaylistItemKey
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onFailure
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
+import com.greenfodor.ppremotece.core.domain.settings.SlideLock
 import com.greenfodor.ppremotece.core.domain.transport.TransportRepository
 import com.greenfodor.ppremotece.core.domain.transport.formatDuration
 import com.greenfodor.ppremotece.core.domain.transport.itemLive
@@ -22,7 +23,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -41,7 +41,7 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * item is shown as no longer in the playlist.
  * A tap triggers the item; taps are ignored while its request is in flight, and a failure posts
  * "Couldn't start {item}". While the slide lock is on, and until it is read or when it cannot be read, a tap
- * sends nothing and posts "Locked"; the lock button saves the other state.
+ * sends nothing and posts "Locked"; the lock button saves the other state once the lock is read ([SlideLock]).
  */
 class PlaylistItemViewModel(
     private val key: PlaylistItemKey,
@@ -52,9 +52,7 @@ class PlaylistItemViewModel(
     private val appPreferences: AppPreferences
 ) : ViewModel() {
     private val triggers = InFlightTriggers()
-    private val locked: StateFlow<Boolean> = appPreferences.slideLock()
-        .catch { emit(true) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    private val lock = SlideLock(appPreferences, viewModelScope)
     private val reads = MutableStateFlow(0)
 
     /** The item as last read, or why it could not be read; neither while it is being read. */
@@ -99,7 +97,10 @@ class PlaylistItemViewModel(
                     isLoading = false
                 )
             }
-        }.combine(locked) { state, locked -> state.copy(locked = locked) }
+        }
+            // The content keeps its last value across a pause, and the lock shows before it loads.
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), PlaylistItemState())
+            .combine(lock.on) { state, locked -> state.copy(locked = locked) }
             .stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -110,16 +111,14 @@ class PlaylistItemViewModel(
         when (action) {
             PlaylistItemAction.OnCardClick -> trigger()
             PlaylistItemAction.OnRetryClick -> reads.update { it + 1 }
-            PlaylistItemAction.OnLockClick -> viewModelScope.launch {
-                appPreferences.setSlideLock(!locked.value).onFailure { messages.post(it.toUiText()) }
-            }
+            PlaylistItemAction.OnLockClick -> lock.toggle { messages.post(it.toUiText()) }
         }
     }
 
     private fun trigger() {
         val shown = state.value
         if (shown.type == null) return
-        if (locked.value) {
+        if (lock.isOn) {
             messages.post(UiText.StringResource(DesignR.string.slide_locked))
             return
         }

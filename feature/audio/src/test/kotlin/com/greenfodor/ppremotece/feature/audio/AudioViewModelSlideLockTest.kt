@@ -1,19 +1,19 @@
 package com.greenfodor.ppremotece.feature.audio
 
 import assertk.assertThat
-import assertk.assertions.isTrue
+import assertk.assertions.doesNotContain
+import assertk.assertions.isNotEmpty
 import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
 import org.junit.jupiter.api.Test
 
 class AudioViewModelSlideLockTest {
     @Test
-    fun `the view model does not read the slide lock`() {
-        val constructors = AudioViewModel::class.java.constructors
+    fun `the view model takes no AppPreferences, so its calls do not depend on the slide lock`() {
+        val constructors = AudioViewModel::class.java.constructors.toList()
 
-        assertThat(
-            constructors.all { constructor ->
-                AppPreferences::class.java !in constructor.parameterTypes
-            }
-        ).isTrue()
+        assertThat(constructors).isNotEmpty()
+        constructors.forEach { constructor ->
+            assertThat(constructor.parameterTypes.toList()).doesNotContain(AppPreferences::class.java)
+        }
     }
 }

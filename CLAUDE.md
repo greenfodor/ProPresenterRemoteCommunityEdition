@@ -73,8 +73,9 @@ so a value `AppShell` passes into an entry is read inside the entry (a `() -> T`
 captured by value.
 
 **Slide lock:** `AppPreferences.slideLock()` is one app-wide saved boolean (off by default, on while it
-cannot be read). `SlideGridViewModel`, `RemoteViewModel` and `PlaylistItemViewModel` treat it as on until
-it is read; while on, every path to `triggerCue`, `triggerItem`, `triggerPresentationCue`, `triggerNext`
+cannot be read, and on in the file that replaces a corrupt one). `SlideGridViewModel`, `RemoteViewModel`
+and `PlaylistItemViewModel` hold it through `SlideLock` (domain), which treats it as on until it is read
+and ignores a toggle until then; while on, every path to `triggerCue`, `triggerItem`, `triggerPresentationCue`, `triggerNext`
 and `triggerPrevious` sends nothing and posts "Locked" to `UiMessages`. Nothing is sent to ProPresenter
 for the lock, and no other call reads it. The toggle is `SlideLockButton` in those three screens' top bars.
 

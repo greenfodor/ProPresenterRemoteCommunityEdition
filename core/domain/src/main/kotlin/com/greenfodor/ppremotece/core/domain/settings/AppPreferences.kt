@@ -23,7 +23,7 @@ interface AppPreferences {
 
     suspend fun setAutoConnect(enabled: Boolean): EmptyResult<DataError.Local>
 
-    /** Whether the five slide calls are blocked. */
+    /** Whether the slide lock is on: off by default, on while it cannot be read. See [SlideLock]. */
     fun slideLock(): Flow<Boolean>
 
     suspend fun setSlideLock(locked: Boolean): EmptyResult<DataError.Local>

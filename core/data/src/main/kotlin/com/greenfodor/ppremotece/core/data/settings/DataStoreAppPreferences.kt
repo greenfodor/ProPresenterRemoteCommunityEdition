@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.preferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.greenfodor.ppremotece.core.domain.result.DataError
@@ -25,16 +26,21 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
 import java.io.IOException
 
+private const val SLIDE_LOCK_KEY = "slide_lock"
+
+/** What replaces a corrupt `app_settings` file: the defaults, with the slide lock on. */
+internal fun appSettingsAfterCorruption(): Preferences = preferencesOf(booleanPreferencesKey(SLIDE_LOCK_KEY) to true)
+
 /** The `app_settings` DataStore. */
 internal val Context.appSettingsDataStore by preferencesDataStore(
     name = "app_settings",
-    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }
+    corruptionHandler = ReplaceFileCorruptionHandler { appSettingsAfterCorruption() }
 )
 
 /**
  * [AppPreferences] in [dataStore] under `keep_awake`, `orientation`, `auto_connect` and `slide_lock`;
  * [KeepAwake.Default], [AppOrientation.Default], auto-connect on and the slide lock off when unset.
- * A corrupt file is replaced with an empty one. A read error gives the defaults, and the slide lock
+ * A corrupt file is replaced with the defaults and the slide lock on. A read error gives the defaults, and the slide lock
  * on; then, unless the file is corrupt, the values are read again after [READ_RETRY_DELAY_MS]. A write
  * error leaves the saved value unchanged and is returned.
  */
@@ -94,6 +100,6 @@ class DataStoreAppPreferences(
         val KEEP_AWAKE = stringPreferencesKey("keep_awake")
         val ORIENTATION = stringPreferencesKey("orientation")
         val AUTO_CONNECT = booleanPreferencesKey("auto_connect")
-        val SLIDE_LOCK = booleanPreferencesKey("slide_lock")
+        val SLIDE_LOCK = booleanPreferencesKey(SLIDE_LOCK_KEY)
     }
 }

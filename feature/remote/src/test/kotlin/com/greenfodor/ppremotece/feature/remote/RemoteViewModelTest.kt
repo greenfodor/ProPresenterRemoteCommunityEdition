@@ -125,35 +125,84 @@ class RemoteViewModelTest {
 
         viewModel.state.test {
             assertThat(awaitShowing().locked).isTrue()
-            viewModel.onAction(RemoteAction.OnCurrentClick)
-            viewModel.onAction(RemoteAction.OnNextBoxClick)
-            viewModel.onAction(RemoteAction.OnNextClick)
-            viewModel.onAction(RemoteAction.OnPreviousClick)
-            viewModel.onAction(RemoteAction.OnSidebarCueClick(4))
+            listOf(
+                RemoteAction.OnCurrentClick,
+                RemoteAction.OnNextBoxClick,
+                RemoteAction.OnNextClick,
+                RemoteAction.OnPreviousClick,
+                RemoteAction.OnSidebarCueClick(4)
+            ).forEach { action ->
+                viewModel.onAction(action)
+                assertLockedPosted()
+            }
             cancelAndIgnoreRemainingEvents()
         }
 
         assertThat(client.sent).isEmpty()
-        assertLockedPosted()
     }
 
     @Test
-    fun `while locked a cued item's box and a media card send nothing`() = runTest {
+    fun `while locked a cued item's boxes and Next send nothing`() = runTest {
         preferences.lock.value = true
-        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 1))
         val viewModel = viewModel()
 
         viewModel.state.test {
             awaitShowing()
             viewModel.onAction(RemoteAction.OnNextItemClick)
-            awaitUntil { it.display.cued }
-            viewModel.onAction(RemoteAction.OnCurrentClick)
-            viewModel.onAction(RemoteAction.OnNextClick)
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            awaitUntil { it.display.cued && it.display.current is RemoteBox.Slide }
+            listOf(
+                RemoteAction.OnCurrentClick,
+                RemoteAction.OnNextClick,
+                RemoteAction.OnNextBoxClick
+            ).forEach { action ->
+                viewModel.onAction(action)
+                assertLockedPosted()
+            }
             cancelAndIgnoreRemainingEvents()
         }
 
         assertThat(client.sent).isEmpty()
-        assertLockedPosted()
+    }
+
+    @Test
+    fun `while locked a presentation live outside a playlist sends nothing`() = runTest {
+        preferences.lock.value = true
+        live.goLive(LiveCue(CueSource.Presentation(SONG_C), SONG_C, 1), totalCues = 3)
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitShowing().sidebarSource).isEqualTo(CueSource.Presentation(SONG_C))
+            listOf(
+                RemoteAction.OnCurrentClick,
+                RemoteAction.OnNextClick,
+                RemoteAction.OnPreviousClick,
+                RemoteAction.OnSidebarCueClick(2)
+            ).forEach { action ->
+                viewModel.onAction(action)
+                assertLockedPosted()
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.sent).isEmpty()
+    }
+
+    @Test
+    fun `while the playlist loads the lock button shows the saved lock and toggles it`() = runTest {
+        content.pending += PLAYLIST
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().locked).isFalse()
+            viewModel.onAction(RemoteAction.OnLockClick)
+            assertThat(expectMostRecentItem().locked).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(preferences.writes).containsExactly(true)
     }
 
     @Test
@@ -171,24 +220,41 @@ class RemoteViewModelTest {
     }
 
     @Test
-    fun `the Remote is locked until the lock is read and when it cannot be read`() = runTest {
+    fun `the Remote is locked until the lock is read, then a Next is sent`() = runTest {
         live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         preferences.lock.value = null
-        val unread = viewModel()
-        unread.state.test {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
             assertThat(awaitShowing().locked).isTrue()
-            unread.onAction(RemoteAction.OnNextClick)
+            viewModel.onAction(RemoteAction.OnNextClick)
+            assertLockedPosted()
+            assertThat(client.sent).isEmpty()
+            preferences.lock.value = false
+            awaitUntil { !it.locked }
+            viewModel.onAction(RemoteAction.OnNextClick)
             cancelAndIgnoreRemainingEvents()
         }
+
+        assertThat(client.sent).containsExactly(RemoteCommand.TriggerCue(key(0), 3))
+    }
+
+    @Test
+    fun `the Remote is locked when the lock cannot be read`() = runTest {
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
         preferences.failRead = true
-        val failed = viewModel()
-        failed.state.test {
+        val viewModel = viewModel()
+
+        viewModel.state.test {
             assertThat(awaitShowing().locked).isTrue()
-            failed.onAction(RemoteAction.OnNextClick)
+            viewModel.onAction(RemoteAction.OnNextClick)
+            assertLockedPosted()
+            viewModel.onAction(RemoteAction.OnLockClick)
             cancelAndIgnoreRemainingEvents()
         }
 
         assertThat(client.sent).isEmpty()
+        assertThat(preferences.writes).isEmpty()
     }
 
     @Test

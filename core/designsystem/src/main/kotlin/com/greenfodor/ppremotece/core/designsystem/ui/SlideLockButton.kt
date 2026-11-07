@@ -2,7 +2,7 @@ package com.greenfodor.ppremotece.core.designsystem.ui
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -15,15 +15,15 @@ import com.greenfodor.ppremotece.core.designsystem.R
 import com.greenfodor.ppremotece.core.designsystem.theme.PPRemoteTheme
 
 /**
- * A 48 dp icon button for the slide lock: the open lock while unlocked, the closed lock in the accent colour while
- * [locked]. A tap calls [onToggle].
+ * A 48 dp toggle button for the slide lock, announced as "Slide lock" with its on/off state: the open lock while
+ * unlocked, the closed lock in the accent colour while [locked]. A tap calls [onToggle].
  */
 @Composable
 fun SlideLockButton(locked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
-    IconButton(onClick = onToggle, modifier = modifier) {
+    IconToggleButton(checked = locked, onCheckedChange = { onToggle() }, modifier = modifier) {
         Icon(
             painter = painterResource(if (locked) R.drawable.ic_lock else R.drawable.ic_lock_open),
-            contentDescription = stringResource(if (locked) R.string.slide_unlock else R.string.slide_lock),
+            contentDescription = stringResource(R.string.slide_lock),
             tint = if (locked) MaterialTheme.colorScheme.primary else LocalContentColor.current
         )
     }
