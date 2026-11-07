@@ -150,7 +150,7 @@ private const val RAIL_PADDING_DP = 12
  * under More, whose rows select their own tabs; while nothing is listed there, Presentation is shown
  * in place of a selected More list ([TabStacks.fitting]) and the selection is kept. The rail ends with the Clear button in a pinned
  * 64 dp footer and no screen shows the Clear FAB; with the bar, each screen shows the Clear FAB.
- * With two panes the Presentation tab's one Reconnecting strip runs across both panes, under the status bar.
+ * With two panes the Presentation tab's one Reconnecting strip runs across both panes ([reconnectingStrips]).
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -218,8 +218,8 @@ fun AppShell(
             clearOpen = clearOpen,
             onClearOpenChange = { clearOpen = it }
         ) { padding ->
-            val sharedStrip = currentTwoPanes && reconnecting() && shown().current == ShellTab.PRESENTATION
-            ShellContent(padding = padding, sharedStrip = sharedStrip) { contentModifier ->
+            val strips = reconnectingStrips(currentTwoPanes, reconnecting(), shown().current)
+            ShellContent(padding = padding, sharedStrip = strips.shell) { contentModifier ->
                 NavDisplay(
                     backStack = shown().displayed(inMore),
                     modifier = contentModifier,
@@ -366,7 +366,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
             mode = shown.listMode,
             onModeChange = onModeChange,
             openPresentation = (shown.detail as? LibraryGridRoute)?.presentationUuid,
-            reconnecting = reconnecting() && !detailValues().closesPane,
+            reconnecting = reconnectingStrips(detailValues().closesPane, reconnecting(), ShellTab.PRESENTATION).panes,
             onOpenPlaylist = onOpenPlaylist,
             onOpenPresentation = { uuid -> onOpenDetail(LibraryGridRoute(uuid)) },
             floatingActionButton = shown.fab.takeIf { shown.detail == null }
@@ -381,7 +381,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
         PlaylistRoot(
             playlistUuid = route.playlistUuid,
             openItem = shown.detail.toItemKey(),
-            reconnecting = reconnecting() && !detailValues().closesPane,
+            reconnecting = reconnectingStrips(detailValues().closesPane, reconnecting(), ShellTab.PRESENTATION).panes,
             onBack = onBack,
             onOpenSlides = { item -> onOpenDetail(SlideGridRoute(item.playlistUuid, item.index)) },
             onOpenItem = { item -> onOpenDetail(PlaylistItemRoute(item.playlistUuid, item.index)) },
@@ -391,7 +391,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
     entry<PlaylistItemRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
         PlaylistItemRoot(
             key = PlaylistItemKey(route.playlistUuid, route.itemIndex),
-            reconnecting = reconnecting() && !detailValues().closesPane,
+            reconnecting = reconnectingStrips(detailValues().closesPane, reconnecting(), ShellTab.PRESENTATION).panes,
             onBack = onCloseDetail,
             closesPane = detailValues().closesPane,
             floatingActionButton = values().fab ?: {}
@@ -403,7 +403,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
             source = source,
             widthClass = detail.widthClass,
             headerScrollsWithGrid = detail.compactHeight,
-            reconnecting = reconnecting() && !detail.closesPane,
+            reconnecting = reconnectingStrips(detail.closesPane, reconnecting(), ShellTab.PRESENTATION).panes,
             onBack = onCloseDetail,
             closesPane = detail.closesPane,
             floatingActionButton = values().fab ?: {}

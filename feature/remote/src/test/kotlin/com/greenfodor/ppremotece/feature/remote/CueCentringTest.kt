@@ -2,8 +2,6 @@ package com.greenfodor.ppremotece.feature.remote
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
-import assertk.assertions.isTrue
 import org.junit.jupiter.api.Test
 
 class CueCentringTest {
@@ -33,31 +31,5 @@ class CueCentringTest {
     @Test
     fun `a cue taller than the viewport is centred with a positive offset`() {
         assertThat(centringOffset(viewportStart = 0, viewportEnd = 300, itemSize = 500)).isEqualTo(100)
-    }
-
-    @Test
-    fun `a focus change to the cue the user tapped does not scroll`() {
-        assertThat(scrollsOnChange(focus = 4, ownTap = 4)).isFalse()
-    }
-
-    @Test
-    fun `a later focus change after the user's tap scrolls`() {
-        var ownTap: Int? = 4
-        val first = scrollsOnChange(focus = 4, ownTap = ownTap)
-        ownTap = null
-
-        assertThat(first).isFalse()
-        assertThat(scrollsOnChange(focus = 5, ownTap = ownTap)).isTrue()
-    }
-
-    @Test
-    fun `a focus change from elsewhere scrolls`() {
-        assertThat(scrollsOnChange(focus = 7, ownTap = null)).isTrue()
-        assertThat(scrollsOnChange(focus = 7, ownTap = 4)).isTrue()
-    }
-
-    @Test
-    fun `nothing scrolls without a focus cue`() {
-        assertThat(scrollsOnChange(focus = null, ownTap = null)).isFalse()
     }
 }

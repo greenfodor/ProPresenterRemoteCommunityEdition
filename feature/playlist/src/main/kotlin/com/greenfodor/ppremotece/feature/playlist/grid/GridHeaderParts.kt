@@ -205,7 +205,7 @@ private fun bannerText(banner: ArrangementBanner): String {
     }
 }
 
-/** The banner's text: "Live in Master" for no arrangement, the arrangement's name, or "a different arrangement". */
+/** The plurals resource of the banner's text: "Live in Master", the live arrangement's name, or "a different arrangement". */
 internal fun ArrangementBanner.textPlural(): Int =
     when {
         isSongOrder -> R.plurals.grid_banner_master
