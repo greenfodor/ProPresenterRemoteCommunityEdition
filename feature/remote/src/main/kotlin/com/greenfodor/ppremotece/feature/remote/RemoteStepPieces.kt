@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.designsystem.ui.ArrangementChip
+import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.remote.RemoteDisplay
 import com.greenfodor.ppremotece.core.designsystem.R as DesignR
@@ -166,12 +167,14 @@ internal fun NextUpLabel(display: RemoteDisplay, maxLines: Int, nameModifier: Mo
     }
 }
 
-/** The arrangement's name, "Unnamed arrangement" for an empty one and nothing for the song order. */
-@Composable
-internal fun ArrangementChoice.label(): String =
+/** The arrangement's name, "Unnamed arrangement" for an empty one and "Master" for no arrangement. */
+internal fun ArrangementChoice.labelText(): UiText =
     when (this) {
-        is ArrangementChoice.Resolved -> arrangement.name.ifEmpty {
-            stringResource(R.string.remote_unnamed_arrangement)
-        }
-        ArrangementChoice.SongOrder -> ""
+        is ArrangementChoice.Resolved -> arrangement.name.takeIf { it.isNotEmpty() }?.let(UiText::DynamicString)
+            ?: UiText.StringResource(R.string.remote_unnamed_arrangement)
+        ArrangementChoice.SongOrder -> UiText.StringResource(R.string.remote_arrangement_master)
     }
+
+/** [labelText] as a string. */
+@Composable
+internal fun ArrangementChoice.label(): String = labelText().asString()

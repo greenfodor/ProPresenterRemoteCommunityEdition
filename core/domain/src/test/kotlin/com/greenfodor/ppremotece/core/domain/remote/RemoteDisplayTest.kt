@@ -114,6 +114,31 @@ class RemoteDisplayTest {
     }
 
     @Test
+    fun `an item without an arrangement keeps its song-order choice for the header and Next Up chips`() {
+        val withSongOrder = playlist.copy(
+            items = playlist.items.take(1) +
+                PlaylistItem(key(1), "Song A", PlaylistItemType.PRESENTATION, PresentationRef(SONG_A, "", "")) +
+                playlist.items.drop(2)
+        )
+
+        val live = RemoteDisplay.reduce(
+            RemoteInputs(liveAt(1, SONG_A, 0), lastLive = null),
+            withSongOrder,
+            presentations
+        )
+        val before = RemoteDisplay.reduce(
+            RemoteInputs(liveAt(0, SONG_A, 0), lastLive = null),
+            withSongOrder,
+            presentations
+        )
+
+        assertThat(live.header).isEqualTo(
+            RemoteHeader("Song A", ArrangementChoice.SongOrder, cueNumber = 1, cueCount = 5)
+        )
+        assertThat(before.nextUp).isEqualTo(NextUp(key(1), "Song A", ArrangementChoice.SongOrder))
+    }
+
+    @Test
     fun `next item row names the next item with its arrangement`() {
         val display = reduce(RemoteInputs(liveAt(0, SONG_A, 2), lastLive = null))
 

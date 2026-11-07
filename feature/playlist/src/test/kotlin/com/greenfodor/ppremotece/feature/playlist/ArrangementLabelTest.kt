@@ -2,7 +2,6 @@ package com.greenfodor.ppremotece.feature.playlist
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isNull
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import org.junit.jupiter.api.Test
@@ -23,7 +22,7 @@ class ArrangementLabelTest {
     }
 
     @Test
-    fun `item without an arrangement has no label`() {
-        assertThat(ArrangementChoice.SongOrder.toArrangementLabel()).isNull()
+    fun `item without an arrangement is labelled Master`() {
+        assertThat(ArrangementChoice.SongOrder.toArrangementLabel()).isEqualTo(ArrangementLabel.Master)
     }
 }

@@ -47,6 +47,13 @@ class NowPlayingTest {
     }
 
     @Test
+    fun `the bar's name has its audio extension removed`() {
+        val loaded = Loadable.Loaded(transport().value.copy(name = "Track 01.mp3"))
+
+        assertThat(nowPlaying(loaded, positionSeconds = 1.0, active).name).isEqualTo("Track 01")
+    }
+
+    @Test
     fun `while paused the button plays`() {
         val bar = nowPlaying(transport(isPlaying = false), positionSeconds = 41.3, active)
 

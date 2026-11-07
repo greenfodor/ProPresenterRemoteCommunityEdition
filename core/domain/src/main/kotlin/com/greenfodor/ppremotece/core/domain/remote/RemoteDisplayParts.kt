@@ -1,6 +1,5 @@
 package com.greenfodor.ppremotece.core.domain.remote
 
-import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementChoice
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementExpander
 import com.greenfodor.ppremotece.core.domain.arrangement.CueList
 import com.greenfodor.ppremotece.core.domain.arrangement.liveItemResolution
@@ -48,7 +47,7 @@ internal fun cardDisplay(item: PlaylistItem, mark: BoxMark) =
 internal fun headerOf(name: String, cueList: CueList, cueIndex: Int?) =
     RemoteHeader(
         itemName = name,
-        arrangement = cueList.choice.takeIf { it is ArrangementChoice.Resolved },
+        arrangement = cueList.choice,
         cueNumber = cueIndex?.plus(1),
         cueCount = cueList.cues.size
     )
@@ -66,7 +65,6 @@ internal fun nextUpOf(item: PlaylistItem, presentations: Map<String, Presentatio
     val ref = item.presentation
     val arrangement = ref?.let { presentations[it.presentationUuid] }
         ?.let { ArrangementExpander.expand(it, checkNotNull(ref)).choice }
-        ?.takeIf { it is ArrangementChoice.Resolved }
     return NextUp(item.key, item.name, arrangement)
 }
 

@@ -251,7 +251,7 @@ internal fun PlaylistItemType.icon(): Int? =
 private val PreviewDarkHeader = GroupColor(red = 0.33f, green = 0.42f, blue = 0.18f, alpha = 1f)
 private val PreviewLightHeader = GroupColor(red = 0.95f, green = 0.85f, blue = 0.3f, alpha = 1f)
 
-@Preview(heightDp = 640)
+@Preview(widthDp = 527, heightDp = 640)
 @Composable
 private fun PlaylistScreenPreview() {
     fun item(index: Int, name: String, type: PlaylistItemType, opens: RowTarget, label: ArrangementLabel? = null) =
@@ -264,6 +264,7 @@ private fun PlaylistScreenPreview() {
                 rows = listOf(
                     item(0, "Song A", PlaylistItemType.PRESENTATION, RowTarget.SLIDES, ArrangementLabel.Named("Full")),
                     item(1, "Song A", PlaylistItemType.PRESENTATION, RowTarget.SLIDES, ArrangementLabel.Named("Short")),
+                    item(10, "Song B", PlaylistItemType.PRESENTATION, RowTarget.SLIDES, ArrangementLabel.Master),
                     PlaylistRowUi.Header("pl/2", "Header 01", color = null),
                     item(3, "Media 01", PlaylistItemType.MEDIA, RowTarget.ITEM),
                     item(4, "Track 01", PlaylistItemType.AUDIO, RowTarget.ITEM),

@@ -76,7 +76,10 @@ sealed interface RemoteBox {
     data object Empty : RemoteBox
 }
 
-/** The shown item's or presentation's name, its arrangement (null for no chip) and the 1-based cue number of the current box. */
+/**
+ * The shown item's or presentation's name, its arrangement (null for an item card) and the 1-based cue number of the
+ * current box.
+ */
 data class RemoteHeader(
     val itemName: String,
     val arrangement: ArrangementChoice?,

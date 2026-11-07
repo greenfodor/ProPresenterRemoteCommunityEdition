@@ -49,8 +49,8 @@ two panes (the playlist beside its slides) from 840 dp.
 ## Requirements
 
 - Android 10 or later
-- ProPresenter 21.4.2 with the network API enabled in its Network settings. Other ProPresenter
-  versions are untested.
+- ProPresenter with the network API enabled in its Network settings. Tested with ProPresenter
+  22.0 (and 21.4.2); other versions are untested.
 - The phone or tablet on the same network as the ProPresenter computer
 
 ProPresenter's network API accepts control from anyone on the local network without a password.
