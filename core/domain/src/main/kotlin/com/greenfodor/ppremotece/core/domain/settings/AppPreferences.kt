@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.Flow
 /**
  * The app's settings: keep-awake ([KeepAwake.Default] by default), the orientation
  * ([AppOrientation.Default] by default, and [AppOrientation.SYSTEM] for as long as it cannot be
- * read) and auto-connect (on by default); a failed write is reported.
+ * read), auto-connect (on by default) and the slide lock (unlocked by default, and locked for as long
+ * as it cannot be read); a failed write is reported.
  */
 interface AppPreferences {
     fun keepAwake(): Flow<KeepAwake>
@@ -21,4 +22,9 @@ interface AppPreferences {
     fun autoConnect(): Flow<Boolean>
 
     suspend fun setAutoConnect(enabled: Boolean): EmptyResult<DataError.Local>
+
+    /** Whether the slide lock is on: off by default, on while it cannot be read. See [SlideLock]. */
+    fun slideLock(): Flow<Boolean>
+
+    suspend fun setSlideLock(locked: Boolean): EmptyResult<DataError.Local>
 }

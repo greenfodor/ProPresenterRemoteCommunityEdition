@@ -14,7 +14,7 @@ import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 private const val PREVIEW_LIBRARY_CUES = 15
 
 @Composable
-private fun GridPreview(cleared: Boolean, steps: CueSteps) {
+private fun GridPreview(cleared: Boolean, steps: CueSteps, locked: Boolean = false) {
     val chorus = GroupColor(red = 0f, green = 0.47f, blue = 0.8f, alpha = 1f)
 
     fun thumbnail(cue: Int) = ThumbnailRequest(
@@ -55,6 +55,7 @@ private fun GridPreview(cleared: Boolean, steps: CueSteps) {
                     countMismatch = true,
                     marked = MarkedCue(index = 0, cleared = cleared, next = 2),
                     steps = steps,
+                    locked = locked,
                     isLoading = false
                 ),
                 onAction = {},
@@ -96,4 +97,28 @@ private fun LibraryGridScreenPreview() {
             onBack = {}
         )
     }
+}
+
+@Preview(widthDp = 527)
+@Composable
+private fun SlideGridPhoneLockedPreview() {
+    GridPreview(cleared = false, steps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative), locked = true)
+}
+
+@Preview(widthDp = 527)
+@Composable
+private fun SlideGridPhoneUnlockedPreview() {
+    GridPreview(cleared = false, steps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative))
+}
+
+@Preview(widthDp = 1173, heightDp = 527)
+@Composable
+private fun SlideGridWideLockedPreview() {
+    GridPreview(cleared = false, steps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative), locked = true)
+}
+
+@Preview(widthDp = 1173, heightDp = 527)
+@Composable
+private fun SlideGridWideUnlockedPreview() {
+    GridPreview(cleared = false, steps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative))
 }

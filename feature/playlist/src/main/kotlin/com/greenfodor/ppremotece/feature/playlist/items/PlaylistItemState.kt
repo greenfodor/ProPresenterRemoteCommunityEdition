@@ -14,6 +14,7 @@ data class PlaylistItemState(
     val type: PlaylistItemType? = null,
     val duration: String? = null,
     val live: ItemLive = ItemLive.NONE,
+    val locked: Boolean = false,
     val isLoading: Boolean = true,
     val error: UiText? = null
 )
@@ -22,4 +23,6 @@ sealed interface PlaylistItemAction {
     data object OnCardClick : PlaylistItemAction
 
     data object OnRetryClick : PlaylistItemAction
+
+    data object OnLockClick : PlaylistItemAction
 }

@@ -14,7 +14,9 @@ import org.koin.dsl.module
 val playlistModule = module {
     viewModelOf(::PlaylistTreeViewModel)
     viewModelOf(::LibraryViewModel)
-    viewModel { (source: CueSource) -> SlideGridViewModel(source, get(), get(), get(), get(), get(), get()) }
+    viewModel { (source: CueSource) ->
+        SlideGridViewModel(source, get(), get(), get(), get(), get(), get(), get(), get())
+    }
     viewModel { (playlistUuid: String) -> PlaylistViewModel(playlistUuid, get()) }
-    viewModel { (key: PlaylistItemKey) -> PlaylistItemViewModel(key, get(), get(), get(), get()) }
+    viewModel { (key: PlaylistItemKey) -> PlaylistItemViewModel(key, get(), get(), get(), get(), get()) }
 }

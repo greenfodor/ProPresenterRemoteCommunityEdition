@@ -10,6 +10,7 @@ import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
 import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.arrangement.ArrangementBanner
 import com.greenfodor.ppremotece.core.domain.arrangement.NoMatchReason
@@ -44,6 +45,7 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
 import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
+import com.greenfodor.ppremotece.feature.playlist.FakeAppPreferences
 import com.greenfodor.ppremotece.feature.playlist.FakeContentRepository
 import com.greenfodor.ppremotece.feature.playlist.FakeProPresenterClient
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +68,8 @@ class SlideGridViewModelTest {
     private val chorusItem = PlaylistItemKey(PLAYLIST, 8)
     private val content = FakeContentRepository()
     private val client = FakeProPresenterClient()
+    private val preferences = FakeAppPreferences()
+    private val messages = UiMessages()
     private val live = MutableStateFlow(LiveState.Initial)
     private val liveStateRepository = object : LiveStateRepository {
         override val liveState = live
@@ -738,7 +742,9 @@ class SlideGridViewModelTest {
             liveStateRepository,
             thumbnailSource,
             thumbnailCache,
-            gridPreferences
+            gridPreferences,
+            preferences,
+            messages
         )
 
     private fun songC(chorusText: String): Presentation {

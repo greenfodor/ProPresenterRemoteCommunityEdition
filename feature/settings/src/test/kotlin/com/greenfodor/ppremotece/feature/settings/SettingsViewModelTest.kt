@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -200,6 +201,10 @@ class SettingsViewModelTest {
             autoConnect.value = enabled
             return Result.Success(Unit)
         }
+
+        override fun slideLock(): Flow<Boolean> = flowOf(false)
+
+        override suspend fun setSlideLock(locked: Boolean): EmptyResult<DataError.Local> = Result.Success(Unit)
     }
 
     private class FakeConnections(

@@ -87,6 +87,10 @@ class ConnectViewModelTest {
             autoConnect.value = enabled
             return Result.Success(Unit)
         }
+
+        override fun slideLock(): Flow<Boolean> = flowOf(false)
+
+        override suspend fun setSlideLock(locked: Boolean): EmptyResult<DataError.Local> = Result.Success(Unit)
     }
     private val otherHost = ProPresenterHost(name = "Host 02", address = "192.0.2.15", port = 60113)
     private val discovered = MutableStateFlow<List<ProPresenterHost>?>(null)

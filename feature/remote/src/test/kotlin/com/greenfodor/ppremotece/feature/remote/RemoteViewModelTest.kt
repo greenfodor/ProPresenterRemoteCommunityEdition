@@ -10,6 +10,8 @@ import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
+import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.model.Arrangement
 import com.greenfodor.ppremotece.core.domain.model.ConnectionStatus
 import com.greenfodor.ppremotece.core.domain.model.CueSource
@@ -44,6 +46,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RemoteViewModelTest {
@@ -79,7 +82,16 @@ class RemoteViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = RemoteViewModel(client, live, content, thumbnails)
+    private val preferences = FakeAppPreferences()
+    private val messages = UiMessages()
+
+    private fun viewModel() = RemoteViewModel(client, live, content, thumbnails, preferences, messages)
+
+    private suspend fun assertLockedPosted() {
+        messages.messages.test {
+            assertThat((awaitItem() as UiText.StringResource).id).isEqualTo(DesignR.string.slide_locked)
+        }
+    }
 
     @Test
     fun `taps and buttons send the display's commands`() = runTest {
@@ -103,6 +115,183 @@ class RemoteViewModelTest {
             RemoteCommand.TriggerCue(key(0), 3),
             RemoteCommand.TriggerCue(key(0), 1)
         )
+    }
+
+    @Test
+    fun `while locked the boxes, the cue list, next and previous send nothing and post Locked`() = runTest {
+        preferences.lock.value = true
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitShowing().locked).isTrue()
+            listOf(
+                RemoteAction.OnCurrentClick,
+                RemoteAction.OnNextBoxClick,
+                RemoteAction.OnNextClick,
+                RemoteAction.OnPreviousClick,
+                RemoteAction.OnSidebarCueClick(4)
+            ).forEach { action ->
+                viewModel.onAction(action)
+                assertLockedPosted()
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.sent).isEmpty()
+    }
+
+    @Test
+    fun `while locked a cued item's boxes and Next send nothing`() = runTest {
+        preferences.lock.value = true
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 1))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            awaitShowing()
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            awaitUntil { it.display.cued && it.display.current is RemoteBox.Slide }
+            listOf(
+                RemoteAction.OnCurrentClick,
+                RemoteAction.OnNextClick,
+                RemoteAction.OnNextBoxClick
+            ).forEach { action ->
+                viewModel.onAction(action)
+                assertLockedPosted()
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.sent).isEmpty()
+    }
+
+    @Test
+    fun `while locked a presentation live outside a playlist sends nothing`() = runTest {
+        preferences.lock.value = true
+        live.goLive(LiveCue(CueSource.Presentation(SONG_C), SONG_C, 1), totalCues = 3)
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitShowing().sidebarSource).isEqualTo(CueSource.Presentation(SONG_C))
+            listOf(
+                RemoteAction.OnCurrentClick,
+                RemoteAction.OnNextClick,
+                RemoteAction.OnPreviousClick,
+                RemoteAction.OnSidebarCueClick(2)
+            ).forEach { action ->
+                viewModel.onAction(action)
+                assertLockedPosted()
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.sent).isEmpty()
+    }
+
+    @Test
+    fun `while the playlist loads the lock button shows the saved lock and toggles it`() = runTest {
+        content.pending += PLAYLIST
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().locked).isFalse()
+            viewModel.onAction(RemoteAction.OnLockClick)
+            assertThat(expectMostRecentItem().locked).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(preferences.writes).containsExactly(true)
+    }
+
+    @Test
+    fun `unlocked the cue list sends its cue`() = runTest {
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitShowing().locked).isFalse()
+            viewModel.onAction(RemoteAction.OnSidebarCueClick(4))
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.sent).containsExactly(RemoteCommand.TriggerCue(key(0), 4))
+    }
+
+    @Test
+    fun `the Remote is locked until the lock is read, then a Next is sent`() = runTest {
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
+        preferences.lock.value = null
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitShowing().locked).isTrue()
+            viewModel.onAction(RemoteAction.OnNextClick)
+            assertLockedPosted()
+            assertThat(client.sent).isEmpty()
+            preferences.lock.value = false
+            awaitUntil { !it.locked }
+            viewModel.onAction(RemoteAction.OnNextClick)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.sent).containsExactly(RemoteCommand.TriggerCue(key(0), 3))
+    }
+
+    @Test
+    fun `the Remote is locked when the lock cannot be read`() = runTest {
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
+        preferences.failRead = true
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            assertThat(awaitShowing().locked).isTrue()
+            viewModel.onAction(RemoteAction.OnNextClick)
+            assertLockedPosted()
+            viewModel.onAction(RemoteAction.OnLockClick)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertThat(client.sent).isEmpty()
+        assertThat(preferences.writes).isEmpty()
+    }
+
+    @Test
+    fun `while locked the item steps and back to live still work`() = runTest {
+        preferences.lock.value = true
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
+        val viewModel = viewModel()
+
+        viewModel.state.test {
+            awaitShowing()
+            viewModel.onAction(RemoteAction.OnNextItemClick)
+            awaitUntil { it.display.cued }
+            viewModel.onAction(RemoteAction.OnBackToLiveClick)
+            awaitUntil { !it.display.cued }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the lock button saves the other state and a failed save posts the setting message`() = runTest {
+        live.goLive(LiveCue(CueSource.PlaylistItem(key(0)), SONG_A, 2))
+        val viewModel = viewModel()
+
+        viewModel.events.test {
+            viewModel.state.test {
+                assertThat(awaitShowing().locked).isFalse()
+                viewModel.onAction(RemoteAction.OnLockClick)
+                assertThat(awaitUntil { it.locked }.locked).isTrue()
+                preferences.failWrites = true
+                viewModel.onAction(RemoteAction.OnLockClick)
+                cancelAndIgnoreRemainingEvents()
+            }
+            val event = awaitItem() as RemoteEvent.ShowError
+            assertThat((event.message as UiText.StringResource).id).isEqualTo(DesignR.string.setting_not_saved)
+        }
+
+        assertThat(preferences.writes).containsExactly(true, false)
     }
 
     @Test

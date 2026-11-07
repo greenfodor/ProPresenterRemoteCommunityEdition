@@ -6,6 +6,8 @@ import assertk.assertions.containsExactly
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
+import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.domain.layout.GridPreferences
 import com.greenfodor.ppremotece.core.domain.layout.GridStep
 import com.greenfodor.ppremotece.core.domain.layout.ViewMode
@@ -34,6 +36,7 @@ import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
+import com.greenfodor.ppremotece.feature.playlist.FakeAppPreferences
 import com.greenfodor.ppremotece.feature.playlist.FakeContentRepository
 import com.greenfodor.ppremotece.feature.playlist.FakeProPresenterClient
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +50,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 /** The slide grid after a clear, on Song C "A": Verse 1 (cue 1 disabled), Chorus, Verse 1 (cue 6 disabled). */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -80,6 +84,8 @@ class SlideGridClearedTest {
 
         override suspend fun remove(keys: Collection<String>) = Unit
     }
+    private val preferences = FakeAppPreferences()
+    private val messages = UiMessages()
     private val cleared = LiveState(ConnectionStatus.CONNECTED, item = null, slide = null)
     private val relativeSteps = CueSteps(next = CueStep.Relative, previous = CueStep.Relative)
 
@@ -141,6 +147,47 @@ class SlideGridClearedTest {
         }
         assertThat(client.triggeredCues).containsExactly(item to 3, item to 0)
         assertThat(client.steps).isEmpty()
+    }
+
+    @Test
+    fun `while cleared and locked next and previous send nothing and post Locked`() = runTest {
+        preferences.lock.value = true
+        val viewModel = viewModel()
+        remembered.value = LiveCue(CueSource.PlaylistItem(item), SONG_C, cueIndex = 2)
+        live.value = cleared
+
+        viewModel.state.test {
+            assertThat(expectMostRecentItem().steps).isEqualTo(CueSteps(CueStep.Explicit(3), CueStep.Explicit(0)))
+            viewModel.onAction(SlideGridAction.OnNextClick)
+            assertLockedPosted()
+            viewModel.onAction(SlideGridAction.OnPreviousClick)
+            assertLockedPosted()
+        }
+        assertThat(client.triggeredCues).isEmpty()
+        assertThat(client.steps).isEmpty()
+    }
+
+    @Test
+    fun `a cleared library presentation while locked sends nothing`() = runTest {
+        preferences.lock.value = true
+        val viewModel = viewModel(CueSource.Presentation(SONG_C))
+        remembered.value = LiveCue(CueSource.Presentation(SONG_C), SONG_C, cueIndex = 2)
+        live.value = cleared
+
+        viewModel.state.test {
+            expectMostRecentItem()
+            viewModel.onAction(SlideGridAction.OnNextClick)
+            assertLockedPosted()
+            viewModel.onAction(SlideGridAction.OnPreviousClick)
+            assertLockedPosted()
+        }
+        assertThat(client.triggeredPresentationCues).isEmpty()
+    }
+
+    private suspend fun assertLockedPosted() {
+        messages.messages.test {
+            assertThat((awaitItem() as UiText.StringResource).id).isEqualTo(DesignR.string.slide_locked)
+        }
     }
 
     @Test
@@ -232,7 +279,9 @@ class SlideGridClearedTest {
             liveStateRepository,
             thumbnailSource,
             thumbnailCache,
-            gridPreferences
+            gridPreferences,
+            preferences,
+            messages
         )
 
     private companion object {

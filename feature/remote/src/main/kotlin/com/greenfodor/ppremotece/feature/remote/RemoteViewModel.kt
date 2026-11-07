@@ -2,6 +2,8 @@ package com.greenfodor.ppremotece.feature.remote
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.greenfodor.ppremotece.core.designsystem.ui.UiMessages
+import com.greenfodor.ppremotece.core.designsystem.ui.UiText
 import com.greenfodor.ppremotece.core.designsystem.ui.toUiText
 import com.greenfodor.ppremotece.core.domain.content.ContentRepository
 import com.greenfodor.ppremotece.core.domain.live.LiveStateRepository
@@ -23,6 +25,8 @@ import com.greenfodor.ppremotece.core.domain.remote.remotePrefetch
 import com.greenfodor.ppremotece.core.domain.result.DataError
 import com.greenfodor.ppremotece.core.domain.result.Result
 import com.greenfodor.ppremotece.core.domain.result.onFailure
+import com.greenfodor.ppremotece.core.domain.settings.AppPreferences
+import com.greenfodor.ppremotece.core.domain.settings.SlideLock
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailQuality
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
@@ -45,6 +49,7 @@ import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.greenfodor.ppremotece.core.designsystem.R as DesignR
 
 private const val STOP_TIMEOUT_MILLIS = 5_000L
 
@@ -58,14 +63,18 @@ private const val STOP_TIMEOUT_MILLIS = 5_000L
  * enabled cue of the sidebar sends its item-cue trigger, or its presentation-cue trigger for a
  * presentation played outside a playlist. The current and next boxes ask for
  * thumbnails at their measured width, and the thumbnails [remotePrefetch] names are loaded
- * ahead; the sidebar asks for grid thumbnails.
+ * ahead; the sidebar asks for grid thumbnails. While the slide lock is on, and until it is read or when it cannot
+ * be read, every command sends nothing and posts "Locked" to [messages]; ⏮/⏭ and "Back to live" are unaffected,
+ * and the lock button saves the other state once the lock is read ([SlideLock]).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RemoteViewModel(
     private val client: ProPresenterClient,
     private val liveStateRepository: LiveStateRepository,
     private val contentRepository: ContentRepository,
-    thumbnailSource: ThumbnailSource
+    thumbnailSource: ThumbnailSource,
+    private val appPreferences: AppPreferences,
+    private val messages: UiMessages
 ) : ViewModel() {
     /** An item chosen while [since] was the last live cue. */
     private data class Chosen(
@@ -83,6 +92,7 @@ class RemoteViewModel(
     private val mediaLive = MutableStateFlow<Chosen?>(null)
     private val retries = MutableStateFlow(0)
     private val boxWidth = MutableStateFlow(0)
+    private val lock = SlideLock(appPreferences, viewModelScope)
 
     private val inputs: Flow<RemoteInputs> =
         combine(liveStateRepository.liveState, liveStateRepository.lastLive, cued, mediaLive) {
@@ -154,7 +164,11 @@ class RemoteViewModel(
                 sidebarFocus = display.sidebar?.focus,
                 sidebarSource = display.sidebar?.source
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), RemoteState())
+        }
+            // The content keeps its last value across a pause, and the lock shows before it loads.
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), RemoteState())
+            .combine(lock.on) { state, locked -> state.copy(locked = locked) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), RemoteState(locked = true))
 
     private val _events = Channel<RemoteEvent>()
     val events = _events.receiveAsFlow()
@@ -170,6 +184,9 @@ class RemoteViewModel(
             RemoteAction.OnNextItemClick -> display.nextItem?.let { cue(it, display) }
             RemoteAction.OnBackToLiveClick -> cued.value = null
             RemoteAction.OnRetryClick -> retries.value++
+            RemoteAction.OnLockClick -> lock.toggle {
+                _events.send(RemoteEvent.ShowError(it.toUiText()))
+            }
             is RemoteAction.OnSidebarCueClick -> sendSidebarCue(action.index, display)
             is RemoteAction.OnBoxSized -> boxWidth.value = action.px
         }
@@ -192,6 +209,10 @@ class RemoteViewModel(
 
     private fun send(command: RemoteCommand?) {
         command ?: return
+        if (lock.isOn) {
+            messages.post(UiText.StringResource(DesignR.string.slide_locked))
+            return
+        }
         viewModelScope.launch {
             val result = when (command) {
                 is RemoteCommand.TriggerCue -> client.triggerCue(command.item, command.cueIndex)
