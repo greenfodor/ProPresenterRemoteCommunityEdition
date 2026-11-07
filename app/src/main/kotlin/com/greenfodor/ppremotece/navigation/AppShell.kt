@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -151,6 +150,7 @@ private const val RAIL_PADDING_DP = 12
  * under More, whose rows select their own tabs; while nothing is listed there, Presentation is shown
  * in place of a selected More list ([TabStacks.fitting]) and the selection is kept. The rail ends with the Clear button in a pinned
  * 64 dp footer and no screen shows the Clear FAB; with the bar, each screen shows the Clear FAB.
+ * With two panes the Presentation tab's one Reconnecting strip runs across both panes ([reconnectingStrips]).
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -218,42 +218,45 @@ fun AppShell(
             clearOpen = clearOpen,
             onClearOpenChange = { clearOpen = it }
         ) { padding ->
-            NavDisplay(
-                backStack = shown().displayed(inMore),
-                modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
-                onBack = onBack,
-                entryDecorators = rememberShellEntryDecorators(),
-                sceneStrategies = listOf(listDetailStrategy),
-                entryProvider = entryProvider {
-                    presentationEntries(
-                        values = { PresentationValues(currentListMode, shellStacks.detail, currentFab) },
-                        detailValues = { DetailValues(currentWidthClass, currentCompactHeight, currentTwoPanes) },
-                        reconnecting = reconnecting,
-                        onModeChange = { listMode = it },
-                        onOpenPlaylist = { uuid ->
-                            update(shown().openPlaylist(PlaylistRoute(uuid), twoPanes = currentTwoPanes))
-                        },
-                        onOpenDetail = { key -> update(shown().openDetail(key)) },
-                        onBack = onBack,
-                        onCloseDetail = { update(shown().closeDetail()) }
-                    )
-                    tabEntries(
-                        widthClass = { currentWidthClass },
-                        reconnecting = reconnecting,
-                        fab = { currentFab },
-                        moreEntries = { currentMoreEntries },
-                        onOpenFromMore = onOpenFromMore,
-                        onDisconnected = onDisconnected
-                    )
-                    stageEntries(
-                        widthClass = { currentWidthClass },
-                        reconnecting = reconnecting,
-                        fab = { currentFab },
-                        onOpenScreen = { uuid -> update(shown().open(ShellTab.STAGE, StageLayoutsRoute(uuid))) },
-                        onCloseScreen = { uuid -> update(shown().close(ShellTab.STAGE, StageLayoutsRoute(uuid))) }
-                    )
-                }
-            )
+            val strips = reconnectingStrips(currentTwoPanes, reconnecting(), shown().current)
+            ShellContent(padding = padding, sharedStrip = strips.shell) { contentModifier ->
+                NavDisplay(
+                    backStack = shown().displayed(inMore),
+                    modifier = contentModifier,
+                    onBack = onBack,
+                    entryDecorators = rememberShellEntryDecorators(),
+                    sceneStrategies = listOf(listDetailStrategy),
+                    entryProvider = entryProvider {
+                        presentationEntries(
+                            values = { PresentationValues(currentListMode, shellStacks.detail, currentFab) },
+                            detailValues = { DetailValues(currentWidthClass, currentCompactHeight, currentTwoPanes) },
+                            reconnecting = reconnecting,
+                            onModeChange = { listMode = it },
+                            onOpenPlaylist = { uuid ->
+                                update(shown().openPlaylist(PlaylistRoute(uuid), twoPanes = currentTwoPanes))
+                            },
+                            onOpenDetail = { key -> update(shown().openDetail(key)) },
+                            onBack = onBack,
+                            onCloseDetail = { update(shown().closeDetail()) }
+                        )
+                        tabEntries(
+                            widthClass = { currentWidthClass },
+                            reconnecting = reconnecting,
+                            fab = { currentFab },
+                            moreEntries = { currentMoreEntries },
+                            onOpenFromMore = onOpenFromMore,
+                            onDisconnected = onDisconnected
+                        )
+                        stageEntries(
+                            widthClass = { currentWidthClass },
+                            reconnecting = reconnecting,
+                            fab = { currentFab },
+                            onOpenScreen = { uuid -> update(shown().open(ShellTab.STAGE, StageLayoutsRoute(uuid))) },
+                            onCloseScreen = { uuid -> update(shown().close(ShellTab.STAGE, StageLayoutsRoute(uuid))) }
+                        )
+                    }
+                )
+            }
         }
     }
 }
@@ -339,8 +342,8 @@ private class DetailValues(
 /**
  * The playlist tree or library list, the playlist screen opened from the tree, and the slide grid
  * or item screen opened from them. [values], [detailValues] and [reconnecting] are read while an
- * entry composes. The playlist screen's back arrow is [onBack]; a detail's own back or close
- * button is [onCloseDetail].
+ * entry composes; with two panes no entry draws its Reconnecting strip. The playlist screen's back
+ * arrow is [onBack]; a detail's own back or close button is [onCloseDetail].
  */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Suppress("LongParameterList")
@@ -363,7 +366,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
             mode = shown.listMode,
             onModeChange = onModeChange,
             openPresentation = (shown.detail as? LibraryGridRoute)?.presentationUuid,
-            reconnecting = reconnecting(),
+            reconnecting = reconnectingStrips(detailValues().closesPane, reconnecting(), ShellTab.PRESENTATION).panes,
             onOpenPlaylist = onOpenPlaylist,
             onOpenPresentation = { uuid -> onOpenDetail(LibraryGridRoute(uuid)) },
             floatingActionButton = shown.fab.takeIf { shown.detail == null }
@@ -378,7 +381,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
         PlaylistRoot(
             playlistUuid = route.playlistUuid,
             openItem = shown.detail.toItemKey(),
-            reconnecting = reconnecting(),
+            reconnecting = reconnectingStrips(detailValues().closesPane, reconnecting(), ShellTab.PRESENTATION).panes,
             onBack = onBack,
             onOpenSlides = { item -> onOpenDetail(SlideGridRoute(item.playlistUuid, item.index)) },
             onOpenItem = { item -> onOpenDetail(PlaylistItemRoute(item.playlistUuid, item.index)) },
@@ -388,7 +391,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
     entry<PlaylistItemRoute>(metadata = ListDetailSceneStrategy.detailPane()) { route ->
         PlaylistItemRoot(
             key = PlaylistItemKey(route.playlistUuid, route.itemIndex),
-            reconnecting = reconnecting(),
+            reconnecting = reconnectingStrips(detailValues().closesPane, reconnecting(), ShellTab.PRESENTATION).panes,
             onBack = onCloseDetail,
             closesPane = detailValues().closesPane,
             floatingActionButton = values().fab ?: {}
@@ -400,7 +403,7 @@ private fun EntryProviderScope<NavKey>.presentationEntries(
             source = source,
             widthClass = detail.widthClass,
             headerScrollsWithGrid = detail.compactHeight,
-            reconnecting = reconnecting(),
+            reconnecting = reconnectingStrips(detail.closesPane, reconnecting(), ShellTab.PRESENTATION).panes,
             onBack = onCloseDetail,
             closesPane = detail.closesPane,
             floatingActionButton = values().fab ?: {}

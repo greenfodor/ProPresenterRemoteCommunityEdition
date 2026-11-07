@@ -4,7 +4,7 @@
     <string name="playlists_expand">Expand</string>
     <string name="playlists_collapse">Collapse</string>
     <string name="arrangement_unnamed">Unnamed arrangement</string>
-    <string name="arrangement_song_order">Song order</string>
+    <string name="arrangement_master">Master</string>
     <string name="grid_back">Back</string>
     <string name="grid_close">Close</string>
     <string name="grid_previous">Previous</string>
@@ -43,9 +43,9 @@
         <item quantity="one">Live in %1$s · %2$d cue</item>
         <item quantity="other">Live in %1$s · %2$d cues</item>
     </plurals>
-    <plurals name="grid_banner_song_order">
-        <item quantity="one">Live in Song order · %1$d cue</item>
-        <item quantity="other">Live in Song order · %1$d cues</item>
+    <plurals name="grid_banner_master">
+        <item quantity="one">Live in Master · %1$d cue</item>
+        <item quantity="other">Live in Master · %1$d cues</item>
     </plurals>
     <plurals name="grid_banner_other">
         <item quantity="one">Live in a different arrangement · %1$d cue</item>

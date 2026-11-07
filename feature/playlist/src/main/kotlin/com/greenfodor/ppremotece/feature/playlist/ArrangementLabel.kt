@@ -11,12 +11,14 @@ sealed interface ArrangementLabel {
     ) : ArrangementLabel
 
     data object Unnamed : ArrangementLabel
+
+    data object Master : ArrangementLabel
 }
 
-/** The chip label for an item's arrangement; null when the item plays the presentation's own group order. */
-fun ArrangementChoice.toArrangementLabel(): ArrangementLabel? =
+/** The chip label for an item's arrangement; [ArrangementLabel.Master] when the item has no arrangement. */
+fun ArrangementChoice.toArrangementLabel(): ArrangementLabel =
     when (this) {
-        ArrangementChoice.SongOrder -> null
+        ArrangementChoice.SongOrder -> ArrangementLabel.Master
         is ArrangementChoice.Resolved ->
             if (arrangement.name.isEmpty()) ArrangementLabel.Unnamed else ArrangementLabel.Named(arrangement.name)
     }
@@ -26,4 +28,5 @@ fun ArrangementLabel.text(): String =
     when (this) {
         is ArrangementLabel.Named -> name
         ArrangementLabel.Unnamed -> stringResource(R.string.arrangement_unnamed)
+        ArrangementLabel.Master -> stringResource(R.string.arrangement_master)
     }

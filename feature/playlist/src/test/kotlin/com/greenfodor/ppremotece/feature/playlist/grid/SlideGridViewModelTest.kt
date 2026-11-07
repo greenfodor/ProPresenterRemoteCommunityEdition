@@ -43,6 +43,7 @@ import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailCache
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequest
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailRequests
 import com.greenfodor.ppremotece.core.domain.thumbnail.ThumbnailSource
+import com.greenfodor.ppremotece.feature.playlist.ArrangementLabel
 import com.greenfodor.ppremotece.feature.playlist.FakeContentRepository
 import com.greenfodor.ppremotece.feature.playlist.FakeProPresenterClient
 import kotlinx.coroutines.Dispatchers
@@ -163,6 +164,35 @@ class SlideGridViewModelTest {
             assertThat(state.cues.map { it.index }).containsExactly(0, 1, 2, 3, 4, 5, 6, 7)
             assertThat(state.cues.filterNot { it.enabled }.map { it.index }).containsExactly(1, 6)
             assertThat(state.aspect).isEqualTo(1920f / 858f)
+        }
+    }
+
+    @Test
+    fun `an item without an arrangement is labelled Master and shows the song order`() = runTest {
+        val songOrderItem = PlaylistItemKey(PLAYLIST, 9)
+        val playlist = checkNotNull(content.playlists[PLAYLIST])
+        content.playlists[PLAYLIST] = playlist.copy(
+            items = playlist.items + PlaylistItem(
+                key = songOrderItem,
+                name = "Song C",
+                type = PlaylistItemType.PRESENTATION,
+                presentation = PresentationRef(SONG_C, arrangementUuid = "", arrangementName = "")
+            )
+        )
+
+        viewModel(CueSource.PlaylistItem(songOrderItem)).state.test {
+            val state = awaitItem()
+            assertThat(state.label).isEqualTo(ArrangementLabel.Master)
+            assertThat(state.cues.map { it.index }).containsExactly(0, 1, 2, 3, 4)
+        }
+    }
+
+    @Test
+    fun `a library presentation without a current arrangement is labelled Master`() = runTest {
+        content.presentations[SONG_C] = songC(chorusText = "Chorus · 1").copy(currentArrangementUuid = "")
+
+        viewModel(CueSource.Presentation(SONG_C)).state.test {
+            assertThat(awaitItem().label).isEqualTo(ArrangementLabel.Master)
         }
     }
 

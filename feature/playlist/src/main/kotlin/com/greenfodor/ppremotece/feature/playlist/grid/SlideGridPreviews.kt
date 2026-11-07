@@ -76,14 +76,14 @@ private fun SlideGridClearedPreview() {
     GridPreview(cleared = true, steps = CueSteps(next = CueStep.Explicit(2), previous = CueStep.Disabled))
 }
 
-@Preview
+@Preview(widthDp = 527)
 @Composable
 private fun LibraryGridScreenPreview() {
     PPRemoteTheme {
         SlideGridScreen(
             state = SlideGridState(
                 title = "Song A",
-                label = null,
+                label = ArrangementLabel.Master,
                 cues = List(PREVIEW_LIBRARY_CUES) {
                     CueUi(it, "Verse 1", null, "Verse 1 · ${it + 1}", label = "", enabled = true, startsGroup = it == 0)
                 },

@@ -8,6 +8,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.greenfodor.ppremotece.core.designsystem.ui.CueCell
@@ -15,7 +21,11 @@ import com.greenfodor.ppremotece.core.domain.model.CueSource
 
 val CueSidebarWidth = 280.dp
 
-/** One column of the [cues] of [source]; it scrolls so that the cue at [focus] is fully visible whenever [source] or [focus] changes. */
+/**
+ * One column of the [cues] of [source]. A change of [source] or [focus] that [CueScrollGate] lets through scrolls so
+ * that the cue at [focus] is centred, held within the list's bounds; the first scroll of a new column is immediate,
+ * later ones animate. The column starts at [focus].
+ */
 @Composable
 internal fun CueSidebar(
     cues: List<SidebarCueUi>,
@@ -25,15 +35,19 @@ internal fun CueSidebar(
     onCueClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState()
-    LaunchedEffect(source, focus, cues.size) {
-        val index = focus ?: return@LaunchedEffect
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = focus ?: 0)
+    val gate = remember { CueScrollGate() }
+    val currentFocus by rememberUpdatedState(focus)
+    var scrolled by remember { mutableStateOf(false) }
+    LaunchedEffect(source, focus) {
+        val index = focus?.takeIf { gate.onChange(source, it) } ?: return@LaunchedEffect
+        withFrameNanos {}
+        if (listState.layoutInfo.visibleItemsInfo.none { it.index == index }) listState.scrollToItem(index)
         val layout = listState.layoutInfo
-        val shown = layout.visibleItemsInfo.firstOrNull { it.index == index }
-        val fullyShown = shown != null &&
-            shown.offset >= layout.viewportStartOffset &&
-            shown.offset + shown.size <= layout.viewportEndOffset
-        if (!fullyShown) listState.animateScrollToItem(index)
+        val item = layout.visibleItemsInfo.firstOrNull { it.index == index } ?: return@LaunchedEffect
+        val offset = centringOffset(layout.viewportStartOffset, layout.viewportEndOffset, item.size)
+        if (scrolled) listState.animateScrollToItem(index, offset) else listState.scrollToItem(index, offset)
+        scrolled = true
     }
     LazyColumn(
         state = listState,
@@ -48,7 +62,10 @@ internal fun CueSidebar(
                 groupColor = row.cue.groupColor,
                 fallbackText = row.cue.slideText.ifBlank { row.cue.groupName },
                 aspect = aspect,
-                onClick = { onCueClick(row.cue.index) },
+                onClick = {
+                    source?.let { gate.onTap(it, row.cue.index, currentFocus) }
+                    onCueClick(row.cue.index)
+                },
                 thumbnail = row.thumbnail,
                 label = row.cue.slideLabel,
                 enabled = row.cue.enabled,

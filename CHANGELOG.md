@@ -7,6 +7,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- A song with no arrangement is labelled "Master", as ProPresenter names it: a chip on its
+  playlist row, "Master · N cues" in the slide grid's header, "Live in Master" in the
+  arrangement banner and its Re-sync line, and the chips on the Remote.
+- Audio track names are shown without their file extension (such as `.mp3`) on the track cards,
+  in the now-playing bar and in the "Couldn't play" message.
+- Remote: the cue list keeps the live or cued cue in its middle, so the cues before and after it
+  show; near the start or end of the list the first or last cue stays at its edge. A tap in the
+  list does not move it. Below 840 dp the cue drawer opens with that cue in its middle.
+- Tested with ProPresenter 22.0.
+
+### Fixed
+- The two-pane Presentation tab shows one Reconnecting strip instead of one in each pane.
+
 ## [0.4.0] - 2026-10-10
 
 ### Added

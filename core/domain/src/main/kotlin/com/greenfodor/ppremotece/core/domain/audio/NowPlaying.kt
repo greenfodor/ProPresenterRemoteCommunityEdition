@@ -13,7 +13,7 @@ enum class TransportButton {
 }
 
 /**
- * The now-playing bar: the loaded audio's [name], its [readout] `m:ss / m:ss` and [progress]
+ * The now-playing bar: the loaded audio's [name] ([trackDisplayName]), its [readout] `m:ss / m:ss` and [progress]
  * 0…1, the middle [button] and which buttons are enabled. Nothing is [loaded] for [Nothing], and
  * the bar is not [available] for [Unavailable].
  */
@@ -65,7 +65,7 @@ private fun loadedBar(loaded: Transport, position: Double, active: ActiveAudio?)
     return NowPlaying(
         available = true,
         loaded = true,
-        name = loaded.name,
+        name = trackDisplayName(loaded.name),
         button = if (loaded.isPlaying) TransportButton.PAUSE else TransportButton.PLAY,
         playPauseEnabled = true,
         skipEnabled = active != null,

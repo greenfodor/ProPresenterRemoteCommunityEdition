@@ -188,7 +188,7 @@ private fun noMatchText(reason: NoMatchReason, arrangement: ArrangementLabel?): 
     when (reason) {
         NoMatchReason.NOT_IN_ARRANGEMENT -> stringResource(
             R.string.grid_resync_not_in_arrangement,
-            arrangement?.text() ?: stringResource(R.string.arrangement_song_order)
+            arrangement.orMaster().text()
         )
         NoMatchReason.LIVE_ARRANGEMENT_UNKNOWN -> stringResource(R.string.grid_resync_live_unknown)
         NoMatchReason.NO_ENABLED_AFTER -> stringResource(R.string.grid_resync_no_enabled_after)
@@ -198,12 +198,23 @@ private fun noMatchText(reason: NoMatchReason, arrangement: ArrangementLabel?): 
 private fun bannerText(banner: ArrangementBanner): String {
     val count = banner.totalCues
     val name = banner.arrangementName
-    return when {
-        banner.isSongOrder -> pluralStringResource(R.plurals.grid_banner_song_order, count, count)
-        name != null -> pluralStringResource(R.plurals.grid_banner_named, count, name, count)
-        else -> pluralStringResource(R.plurals.grid_banner_other, count, count)
+    return if (name != null && !banner.isSongOrder) {
+        pluralStringResource(banner.textPlural(), count, name, count)
+    } else {
+        pluralStringResource(banner.textPlural(), count, count)
     }
 }
+
+/** The plurals resource of the banner's text: "Live in Master", the live arrangement's name, or "a different arrangement". */
+internal fun ArrangementBanner.textPlural(): Int =
+    when {
+        isSongOrder -> R.plurals.grid_banner_master
+        arrangementName != null -> R.plurals.grid_banner_named
+        else -> R.plurals.grid_banner_other
+    }
+
+/** This label, or [ArrangementLabel.Master] when there is none. */
+internal fun ArrangementLabel?.orMaster(): ArrangementLabel = this ?: ArrangementLabel.Master
 
 private const val DISABLED_ALPHA = 0.38f
 

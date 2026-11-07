@@ -119,6 +119,19 @@ class PlaylistViewModelTest {
     }
 
     @Test
+    fun `a presentation item without an arrangement is labelled Master`() = runTest {
+        val playlist = checkNotNull(content.playlists[PLAYLIST])
+        content.playlists[PLAYLIST] = playlist.copy(
+            items = playlist.items +
+                item(8, "Song B", PlaylistItemType.PRESENTATION, presentation = PresentationRef(SONG_A, "", ""))
+        )
+
+        val items = viewModel().state.value.rows.filterIsInstance<PlaylistRowUi.Item>()
+
+        assertThat(items.last().label).isEqualTo(ArrangementLabel.Master)
+    }
+
+    @Test
     fun `a presentation row opens its slides and a media row opens its item screen`() = runTest {
         val viewModel = viewModel()
 
